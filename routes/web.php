@@ -27,6 +27,10 @@ Route::middleware('auth')->group(function () {
         return view('auth.penjualan.index'); // buat view penjualan/index.blade.php
     })->name('penjualan.index');
 
+    Route::get('/profil', function () {
+        return view('auth.profil.index'); // buat view profil/index.blade.php
+    })->name('profil.index');
+
     Route::post('/logout', [UserController::class, 'keluar'])->name('logout');
 });
 
