@@ -7,16 +7,14 @@
 @endphp
 
 <aside class="w-[250px] bg-[#344579] text-white flex flex-col" style="background-color: {{ $navBG }}">
-
     {{-- ===== Profil Akun (TOP) ===== --}}
     {{-- HEADER LOGO --}}
     <div class="px-4 h-[56px] flex items-center border-b border-white/10">
-        <a href="{{ route('dashboard') }}" class="flex items-center rounded-lg hover:bg-white/10">
-            <div class="text-white font-extrabold tracking-wide">
+        <div class="flex items-center">
+            <div class="text-white text-center font-extrabold tracking-wide">
                 CV. CAHAYA LOWA
             </div>
-        </a>
-
+        </div>
     </div>
 
 

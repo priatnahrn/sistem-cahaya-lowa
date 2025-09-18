@@ -53,8 +53,6 @@
                 </div>
             </header>
 
-
-
             {{-- Content area (scroll) --}}
             <section class="flex-1 overflow-auto p-6">
                 @yield('content')
