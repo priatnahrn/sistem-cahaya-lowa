@@ -33,6 +33,7 @@
                     <div class="text-right">
                         <div class="text-sm font-semibold text-slate-700">{{ auth()->user()->name ?? 'Super Admin' }}
                         </div>
+                        <div class="text-xs text-slate-500">{{ auth()->user()->role ?? 'Administrator' }}</div>
                     </div>
                     <div class="relative" x-data="{ open: false }">
                         <button @click="open=!open" class="flex items-center gap-2">
@@ -43,7 +44,8 @@
                         <div x-show="open" @click.outside="open=false" x-transition
                             class="absolute right-0 mt-2 w-48 bg-white border border-slate-200 rounded-lg shadow-lg overflow-hidden">
                             <a href="#" class="block px-4 py-2 text-sm hover:bg-slate-50">Profil</a>
-                            <form method="POST" action="{{ route('logout') }}">
+                            <a href="#" class="block px-4 py-2 text-sm hover:bg-slate-50">Ganti Akun</a>
+                            <form method="POST" action="#">
                                 @csrf
                                 <button
                                     class="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-slate-50">Keluar</button>
