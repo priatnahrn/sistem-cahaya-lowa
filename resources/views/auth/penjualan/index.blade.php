@@ -7,7 +7,7 @@
     {{-- ===== ACTION BAR ===== --}}
     <div class="bg-white border border-slate-200 rounded-xl px-6 py-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
         <div class="flex items-center gap-3">
-            <a href="#"
+            <a href="{{ route('penjualan.create') }}"
                class="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-white bg-[#344579] hover:bg-[#3a8f70] shadow">
                 <i class="fa-solid fa-plus"></i> Tambah Penjualan Baru
             </a>

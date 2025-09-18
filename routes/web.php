@@ -26,6 +26,9 @@ Route::middleware('auth')->group(function () {
     Route::get('/penjualan', function () {
         return view('auth.penjualan.index'); // buat view penjualan/index.blade.php
     })->name('penjualan.index');
+    Route::get('/penjualan/create', function () {
+        return view('auth.penjualan.create'); // buat view penjualan/create.blade.php
+    })->name('penjualan.create');
 
     Route::get('/profil', function () {
         return view('auth.profil.index'); // buat view profil/index.blade.php
