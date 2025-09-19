@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\KategoriItemController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Auth;
@@ -23,12 +24,58 @@ Route::middleware('auth')->group(function () {
         return view('auth.dashboard'); // buat view dashboard.blade.php
     })->name('dashboard');
 
-    Route::get('/penjualan', function () {
-        return view('auth.penjualan.index'); // buat view penjualan/index.blade.php
-    })->name('penjualan.index');
-    Route::get('/penjualan/create', function () {
-        return view('auth.penjualan.create'); // buat view penjualan/create.blade.php
-    })->name('penjualan.create');
+    Route::prefix('penjualan')->group(function () {
+        Route::get('/', function () {
+            return view('auth.penjualan.index'); // buat view penjualan/index.blade.php
+        })->name('penjualan.index');
+        Route::get('/create', function () {
+            return view('auth.penjualan.create'); // buat view penjualan/create.blade.php
+        })->name('penjualan.create');
+    });
+
+    Route::prefix('gudang')->group(function () {
+        Route::get('/', function () {
+            return view('auth.gudang.index'); // buat view gudang/index.blade.php
+        })->name('gudang.index');
+        Route::get('/create', function () {
+            return view('auth.gudang.create'); // buat view gudang/create.blade.php
+        })->name('gudang.create');
+    });
+
+    Route::prefix('supplier')->group(function () {
+        Route::get('/', function () {
+            return view('auth.supplier.index'); // buat view supplier/index.blade.php
+        })->name('supplier.index');
+        Route::get('/create', function () {
+            return view('auth.supplier.create'); // buat view supplier/create.blade.php
+        })->name('supplier.create');
+    });
+
+    
+
+    Route::prefix('items')->name('items.')->group(function () {
+        Route::get('/', function () {
+            return view('auth.items.index'); // buat view items/index.blade.php
+        })->name('index');
+        Route::get('/create', function () {
+            return view('auth.items.create'); // buat view items/create.blade.php
+        })->name('create');
+
+        Route::prefix('categories')->name('categories.')->group(function () {
+            Route::get('/', [KategoriItemController::class, 'index'])->name('index');
+            Route::get('/create', [KategoriItemController::class, 'create'])->name('create');
+            Route::post('/store', [KategoriItemController::class, 'store'])->name('store');
+        });
+    });
+
+    Route::prefix('pelanggan')->group(function () {
+        Route::get('/', function () {
+            return view('auth.pelanggan.index'); // buat view pelanggan/index.blade.php
+        })->name('pelanggan.index');
+        Route::get('/create', function () {
+            return view('auth.pelanggan.create'); // buat view pelanggan/create.blade.php
+        })->name('pelanggan.create');
+    });
 
     Route::get('/profil', function () {
         return view('auth.profil.index'); // buat view profil/index.blade.php
