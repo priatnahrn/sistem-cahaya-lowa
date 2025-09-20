@@ -70,11 +70,34 @@ class KategoriItemController extends Controller
         try {
             // Logika update kategori item
             $category = KategoriItem::find($request->id);
+            if (!$category) {
+                return redirect()->route('items.categories.index')->withErrors(['error' => 'Kategori item tidak ditemukan.']);
+            }
             $category->update($request->all());
             return redirect()->route('items.categories.index')->with('success', 'Kategori item berhasil diperbarui.');
         } catch (\Exception $e) {
             return back()->withErrors(['error' => 'Terjadi kesalahan saat memperbarui data.'])->withInput();
         }
         
+    }
+
+    public function destroy($id)
+    {
+        // Implementasi hapus kategori item
+
+        $auth = Auth::user();
+        if (!$auth) {
+            return response()->json(['message' => 'Unauthorized'], 401);
+        }
+        try {
+            $category = KategoriItem::find($id);
+            if (!$category) {
+                return redirect()->route('items.categories.index')->withErrors(['error' => 'Kategori item tidak ditemukan.']);
+            }
+            $category->delete();
+            return redirect()->route('items.categories.index')->with('success', 'Kategori item berhasil dihapus.');
+        } catch (\Exception $e) {
+            return back()->withErrors(['error' => 'Terjadi kesalahan saat menghapus data.'])->withInput();
+        }
     }
 }

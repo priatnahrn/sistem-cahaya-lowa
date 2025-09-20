@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\GudangController;
 use App\Http\Controllers\KategoriItemController;
+use App\Http\Controllers\SupplierController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Auth;
@@ -38,15 +39,18 @@ Route::middleware('auth')->group(function () {
         Route::get('/', [GudangController::class, 'index'])->name('gudang.index');
         Route::get('/create', [GudangController::class, 'create'])->name('gudang.create');
         Route::post('/store', [GudangController::class, 'store'])->name('gudang.store');
+        Route::get('/{id}', [GudangController::class, 'show'])->name('gudang.show');
+        Route::put('/{id}/update', [GudangController::class, 'update'])->name('gudang.update');
+        Route::delete('/{id}/delete', [GudangController::class, 'destroy'])->name('gudang.destroy');
     });
 
     Route::prefix('supplier')->group(function () {
-        Route::get('/', function () {
-            return view('auth.supplier.index'); // buat view supplier/index.blade.php
-        })->name('supplier.index');
-        Route::get('/create', function () {
-            return view('auth.supplier.create'); // buat view supplier/create.blade.php
-        })->name('supplier.create');
+        Route::get('/', [SupplierController::class, 'index'])->name('supplier.index');
+        Route::get('/create', [SupplierController::class, 'create'])->name('supplier.create');
+        Route::post('/store', [SupplierController::class, 'store'])->name('supplier.store');
+        Route::get('/{id}', [SupplierController::class, 'show'])->name('supplier.show');
+        Route::put('/{id}/update', [SupplierController::class, 'update'])->name('supplier.update');
+        Route::delete('/{id}/delete', [SupplierController::class, 'destroy'])->name('supplier.destroy');
     });
 
     
@@ -65,6 +69,7 @@ Route::middleware('auth')->group(function () {
             Route::post('/store', [KategoriItemController::class, 'store'])->name('store');
             Route::get('/{id}', [KategoriItemController::class, 'show'])->name('show');
             Route::put('/{id}/update', [KategoriItemController::class, 'update'])->name('update');
+            Route::delete('/{id}/delete', [KategoriItemController::class, 'destroy'])->name('destroy');
         });
     });
 
@@ -88,3 +93,5 @@ Route::middleware('auth')->group(function () {
 Route::fallback(function () {
     return response()->view('errors.404', [], 404);
 });
+
+

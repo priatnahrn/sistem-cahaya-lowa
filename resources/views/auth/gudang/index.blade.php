@@ -110,12 +110,35 @@
                     <thead class="bg-slate-50 border-b border-slate-200">
                         <tr class="text-left text-slate-600">
                             <th class="px-4 py-3 w-[60px]">No.</th>
-                            <th class="px-4 py-3">Kode Gudang</th>
-                            <th class="px-4 py-3">Nama Gudang</th>
-                            <th class="px-4 py-3">Lokasi</th>
+
+                            <th class="px-4 py-3 cursor-pointer" @click="toggleSort('kode')">
+                                Kode Gudang
+                                <i class="fa-solid"
+                                    :class="sortBy === 'kode' ? (sortDir==='asc' ? 'fa-arrow-up ml-2' :
+                                        'fa-arrow-down ml-2'):
+                                    'fa-sort ml-2'"></i>
+                            </th>
+
+                            <th class="px-4 py-3 cursor-pointer" @click="toggleSort('nama')">
+                                Nama Gudang
+                                <i class="fa-solid"
+                                    :class="sortBy === 'nama' ? (sortDir==='asc' ? 'fa-arrow-up ml-2' :
+                                        'fa-arrow-down ml-2'):
+                                    'fa-sort ml-2'"></i>
+                            </th>
+
+                            <th class="px-4 py-3 cursor-pointer" @click="toggleSort('lokasi')">
+                                Lokasi
+                                <i class="fa-solid"
+                                    :class="sortBy === 'lokasi' ? (sortDir==='asc' ? 'fa-arrow-up ml-2' :
+                                        'fa-arrow-down ml-2'):
+                                    'fa-sort ml-2'"></i>
+                            </th>
+
                             <th class="px-2 py-3"></th>
                         </tr>
                     </thead>
+
                     <tbody>
                         <template x-for="(r, idx) in pagedData()" :key="r.id">
                             <tr class="hover:bg-slate-50 text-slate-700 border-b border-slate-200">
@@ -232,7 +255,7 @@
                     'kode' => $g->kode_gudang,
                     'nama' => $g->nama_gudang,
                     'lokasi' => $g->lokasi,
-                    'url' => '/gudang/' . $g->id,
+                    'url' => route('gudang.show', $g->id),
                 ],
             )
             ->toArray();
@@ -241,6 +264,7 @@
     <script>
         function gudangPage() {
             return {
+                // state
                 showFilter: false,
                 q: '',
                 filters: {
@@ -256,6 +280,11 @@
                 deleteItem: {},
                 data: @json($gudangsJson),
 
+                // sorting state
+                sortBy: 'nama', // default kolom
+                sortDir: 'asc', // 'asc' atau 'desc'
+
+                // init
                 init() {
                     this.showDeleteModal = false;
                     this.deleteItem = {};
@@ -263,30 +292,53 @@
                     this.showFilter = false;
                 },
 
+                // filter + sort (SINGLE implementation)
                 filteredList() {
                     const q = this.q.trim().toLowerCase();
-                    return this.data.filter(r => {
+                    let list = this.data.filter(r => {
                         if (q && !(`${r.kode} ${r.nama} ${r.lokasi}`.toLowerCase().includes(q))) return false;
                         if (this.filters.kode && !r.kode.toLowerCase().includes(this.filters.kode.toLowerCase()))
                             return false;
                         if (this.filters.nama && !r.nama.toLowerCase().includes(this.filters.nama.toLowerCase()))
                             return false;
                         if (this.filters.lokasi && !r.lokasi.toLowerCase().includes(this.filters.lokasi
-                                .toLowerCase())) return false;
+                            .toLowerCase())) return false;
                         return true;
                     });
+
+                    // SORTING
+                    const sortKey = this.sortBy;
+                    const dir = this.sortDir === 'asc' ? 1 : -1;
+
+                    list.sort((a, b) => {
+                        const va = (a[sortKey] ?? '').toString().toLowerCase();
+                        const vb = (b[sortKey] ?? '').toString().toLowerCase();
+
+                        const an = parseFloat(va);
+                        const bn = parseFloat(vb);
+                        if (!isNaN(an) && !isNaN(bn)) {
+                            return (an - bn) * dir;
+                        }
+
+                        return va.localeCompare(vb) * dir;
+                    });
+
+                    return list;
                 },
 
                 filteredTotal() {
                     return this.filteredList().length;
                 },
+
                 totalPages() {
                     return Math.max(1, Math.ceil(this.filteredTotal() / this.pageSize));
                 },
+
                 pagedData() {
                     const start = (this.currentPage - 1) * this.pageSize;
                     return this.filteredList().slice(start, start + this.pageSize);
                 },
+
                 goToPage(n) {
                     const t = this.totalPages();
                     if (n < 1) n = 1;
@@ -295,14 +347,17 @@
                     this.openActionId = null;
                     this.showDeleteModal = false;
                 },
+
                 prev() {
                     if (this.currentPage > 1) this.currentPage--;
                     this.openActionId = null;
                 },
+
                 next() {
                     if (this.currentPage < this.totalPages()) this.currentPage++;
                     this.openActionId = null;
                 },
+
                 pagesToShow() {
                     const total = this.totalPages(),
                         max = this.maxPageButtons,
@@ -322,27 +377,44 @@
                     return pages;
                 },
 
+                // actions
                 toggleActions(id) {
                     this.openActionId = (this.openActionId === id) ? null : id;
                 },
+
+                // sorting toggle
+                toggleSort(field) {
+                    if (this.sortBy === field) {
+                        this.sortDir = (this.sortDir === 'asc') ? 'desc' : 'asc';
+                    } else {
+                        this.sortBy = field;
+                        this.sortDir = 'asc';
+                    }
+                    this.currentPage = 1;
+                },
+
                 confirmDelete(item) {
                     this.openActionId = null;
                     this.deleteItem = Object.assign({}, item);
                     this.showDeleteModal = true;
                 },
+
                 closeDelete() {
                     this.showDeleteModal = false;
                     this.deleteItem = {};
                 },
+
                 doDelete() {
                     const idx = this.data.findIndex(d => d.id === this.deleteItem.id);
                     if (idx !== -1) this.data.splice(idx, 1);
                     if (this.currentPage > this.totalPages()) this.currentPage = this.totalPages();
                     this.closeDelete();
                 },
+
                 exportData() {
                     alert('Fitur export belum diimplementasikan');
                 },
+
                 resetFilters() {
                     this.filters = {
                         kode: '',
@@ -355,4 +427,5 @@
             }
         }
     </script>
+
 @endsection

@@ -55,11 +55,6 @@
                     class="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-white bg-[#344579] hover:bg-[#2e3e6a] shadow">
                     <i class="fa-solid fa-plus"></i> Tambah Kategori Baru
                 </a>
-
-                <button type="button" @click="exportData()"
-                    class="px-4 py-2 rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50">
-                    <i class="fa-solid fa-file-export mr-2"></i> Export
-                </button>
             </div>
 
             <div class="flex items-center gap-3">
@@ -101,10 +96,18 @@
                     <thead class="bg-slate-50 border-b border-slate-200">
                         <tr class="text-left text-slate-600">
                             <th class="px-4 py-3 w-[60px]">No.</th>
-                            <th class="px-4 py-3">Nama Kategori</th>
+
+                            <th class="px-4 py-3 cursor-pointer" @click="toggleSort('nama')">
+                                Nama Kategori
+                                <i class="fa-solid"
+                                    :class="sortBy === 'nama' ? (sortDir === 'asc' ? 'fa-arrow-up ml-2' :
+                                        'fa-arrow-down ml-2') : 'fa-sort ml-2'"></i>
+                            </th>
+
                             <th class="px-2 py-3"></th>
                         </tr>
                     </thead>
+
                     <tbody>
                         <template x-for="(r, idx) in pagedData()" :key="r.id">
                             <tr class="hover:bg-slate-50 text-slate-700 border-b border-slate-200">
@@ -211,58 +214,90 @@
     </div>
 
     @php
-    $categoryList = $categories->map(function($k) {
-        return [
-            'id'   => $k->id,
-            'nama' => $k->nama_kategori,
-            'url'  => route('items.categories.show', $k->id), // atau $k kalau model binding
-        ];
-    })->toArray();
-@endphp
+        $categoryList = $categories
+            ->map(function ($k) {
+                return [
+                    'id' => $k->id,
+                    'nama' => $k->nama_kategori,
+                    'url' => route('items.categories.show', $k->id), // atau $k kalau model binding
+                ];
+            })
+            ->toArray();
+    @endphp
+    <script>
+        function kategoriPage() {
+            return {
+                // data dari server
+                data: @json($categoryList),
 
-<script>
-    function kategoriPage() {
-        return {
-            // gunakan data dari server-side
-            data: @json($categoryList),
+                // state dasar
+                showFilter: false,
+                q: '',
+                filters: {
+                    nama: ''
+                },
+                pageSize: 10,
+                currentPage: 1,
+                maxPageButtons: 7,
+                openActionId: null,
+                showDeleteModal: false,
+                deleteItem: {},
 
-            showFilter: false,
-            q: '',
-            filters: { nama: '' },
-            pageSize: 10,
-            currentPage: 1,
-            maxPageButtons: 7,
-            openActionId: null,
-            showDeleteModal: false,
-            deleteItem: {},
+                // sorting state
+                sortBy: 'nama', // default kolom
+                sortDir: 'asc', // 'asc' atau 'desc'
 
-            init() {
-                console.log('kategori data', this.data);
-                this.showDeleteModal = false;
-                this.deleteItem = {};
-                this.openActionId = null;
-                this.showFilter = false;
-            },
+                init() {
+                    // opsional debug: console.log('kategori data', this.data);
+                    this.showDeleteModal = false;
+                    this.deleteItem = {};
+                    this.openActionId = null;
+                    this.showFilter = false;
+                },
 
-            filteredList() {
+                // SINGLE filteredList yang melakukan filter + sorting
+                filteredList() {
                     const q = this.q.trim().toLowerCase();
-                    return this.data.filter(r => {
+                    let list = this.data.filter(r => {
                         if (q && !r.nama.toLowerCase().includes(q)) return false;
                         if (this.filters.nama && !r.nama.toLowerCase().includes(this.filters.nama.toLowerCase()))
                             return false;
                         return true;
                     });
+
+                    // SORTING berdasarkan sortBy & sortDir
+                    const sortKey = this.sortBy;
+                    const dir = this.sortDir === 'asc' ? 1 : -1;
+
+                    list.sort((a, b) => {
+                        const va = (a[sortKey] ?? '').toString().toLowerCase();
+                        const vb = (b[sortKey] ?? '').toString().toLowerCase();
+
+                        const an = parseFloat(va);
+                        const bn = parseFloat(vb);
+                        if (!isNaN(an) && !isNaN(bn)) {
+                            return (an - bn) * dir;
+                        }
+
+                        return va.localeCompare(vb) * dir;
+                    });
+
+                    return list;
                 },
+
                 filteredTotal() {
-                    return this.filteredList().length
+                    return this.filteredList().length;
                 },
+
                 totalPages() {
                     return Math.max(1, Math.ceil(this.filteredTotal() / this.pageSize));
                 },
+
                 pagedData() {
                     const start = (this.currentPage - 1) * this.pageSize;
                     return this.filteredList().slice(start, start + this.pageSize);
                 },
+
                 goToPage(n) {
                     const t = this.totalPages();
                     if (n < 1) n = 1;
@@ -271,14 +306,17 @@
                     this.openActionId = null;
                     this.showDeleteModal = false;
                 },
+
                 prev() {
                     if (this.currentPage > 1) this.currentPage--;
                     this.openActionId = null;
                 },
+
                 next() {
                     if (this.currentPage < this.totalPages()) this.currentPage++;
                     this.openActionId = null;
                 },
+
                 pagesToShow() {
                     const total = this.totalPages(),
                         max = this.maxPageButtons,
@@ -301,24 +339,37 @@
                 toggleActions(id) {
                     this.openActionId = (this.openActionId === id) ? null : id;
                 },
+
+                // toggle sorting: klik kolom akan toggle asc/desc
+                toggleSort(field) {
+                    if (this.sortBy === field) {
+                        this.sortDir = (this.sortDir === 'asc') ? 'desc' : 'asc';
+                    } else {
+                        this.sortBy = field;
+                        this.sortDir = 'asc';
+                    }
+                    // reset ke page 1 supaya tidak bingung saat mengganti sort
+                    this.currentPage = 1;
+                },
+
                 confirmDelete(item) {
                     this.openActionId = null;
                     this.deleteItem = Object.assign({}, item);
                     this.showDeleteModal = true;
                 },
+
                 closeDelete() {
                     this.showDeleteModal = false;
                     this.deleteItem = {};
                 },
+
                 doDelete() {
                     const idx = this.data.findIndex(d => d.id === this.deleteItem.id);
                     if (idx !== -1) this.data.splice(idx, 1);
                     if (this.currentPage > this.totalPages()) this.currentPage = this.totalPages();
                     this.closeDelete();
                 },
-                exportData() {
-                    alert('Fitur export belum diimplementasikan');
-                },
+
                 resetFilters() {
                     this.filters = {
                         nama: ''
@@ -331,5 +382,5 @@
     </script>
 
 
-               
+
 @endsection

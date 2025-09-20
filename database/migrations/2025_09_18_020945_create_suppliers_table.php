@@ -13,6 +13,11 @@ return new class extends Migration
     {
         Schema::create('suppliers', function (Blueprint $table) {
             $table->id();
+            $table->string('nama_supplier');
+            $table->string('kontak')->nullable();
+            $table->text('alamat')->nullable();
+            $table->enum('nama_bank', ['BCA', 'BNI', 'BRI', 'Mandiri', 'BSI', 'BTN', 'SMBC', 'Lainnya'])->nullable();
+            $table->string('nomor_rekening')->nullable();
             $table->timestamps();
         });
     }

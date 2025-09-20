@@ -6,7 +6,6 @@
 <div class="space-y-6 w-full" x-data="{ 
         form: { 
             nama_kategori: '{{ old('nama_kategori') }}', 
-            deskripsi: '{{ old('deskripsi') }}' 
         } 
     }">
 
@@ -37,16 +36,6 @@
                 @enderror
             </div>
 
-            {{-- Deskripsi --}}
-            <div>
-                <label class="block text-sm text-slate-600 mb-1">Deskripsi</label>
-                <textarea name="deskripsi" x-model="form.deskripsi" rows="3"
-                          class="w-full px-3 py-2 rounded-lg border border-slate-200"
-                          placeholder="Deskripsi singkat kategori (opsional)"></textarea>
-                @error('deskripsi')
-                    <p class="text-rose-600 text-sm mt-1">{{ $message }}</p>
-                @enderror
-            </div>
 
             {{-- Actions --}}
             <div class="flex justify-end gap-3 pt-2">
