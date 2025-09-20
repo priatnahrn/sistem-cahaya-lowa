@@ -63,6 +63,8 @@ Route::middleware('auth')->group(function () {
             Route::get('/', [KategoriItemController::class, 'index'])->name('index');
             Route::get('/create', [KategoriItemController::class, 'create'])->name('create');
             Route::post('/store', [KategoriItemController::class, 'store'])->name('store');
+            Route::get('/{id}', [KategoriItemController::class, 'show'])->name('show');
+            Route::put('/{id}/update', [KategoriItemController::class, 'update'])->name('update');
         });
     });
 
