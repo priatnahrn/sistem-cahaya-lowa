@@ -63,9 +63,21 @@ Route::middleware('auth')->group(function () {
         Route::get('/create', function () {
             return view('auth.items.create'); // buat view items/create.blade.php
         })->name('create');
+        Route::post('/store', function () {
+            // simpan item
+        })->name('store');
+        Route::get('/{id}', function ($id) {
+            return view('auth.items.show', compact('id')); // buat view items/show.blade.php
+        })->name('show');
+        Route::put('/{id}/update', function ($id) {
+            // update item
+        })->name('update');
 
         Route::prefix('categories')->name('categories.')->group(function () {
-            Route::get('/', [KategoriItemController::class, 'index'])->name('index');
+            Route::get('/', function () {
+            return view('auth.items.categories.index'); // buat view items/index.blade.php
+        })->name('index');
+            
             Route::get('/create', [KategoriItemController::class, 'create'])->name('create');
             Route::post('/store', [KategoriItemController::class, 'store'])->name('store');
             Route::get('/{id}', [KategoriItemController::class, 'show'])->name('show');

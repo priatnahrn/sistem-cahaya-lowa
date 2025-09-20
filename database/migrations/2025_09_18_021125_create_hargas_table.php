@@ -13,6 +13,9 @@ return new class extends Migration
     {
         Schema::create('hargas', function (Blueprint $table) {
             $table->id();
+            $table->foreignId('satuan_id')->constrained('satuans')->onDelete('cascade');
+            $table->foreignId('item_id')->constrained('items')->onDelete('cascade');
+            $table->decimal('harga', 15, 2)->default(0);
             $table->timestamps();
         });
     }
