@@ -1,14 +1,24 @@
 @extends('layouts.app')
 
-@section('title','Tambah Pelanggan Baru')
+@section('title','Detail Pelanggan')
 
 @section('content')
 <div class="space-y-6 w-full" x-data="{ 
-        form: { 
-            nama_pelanggan: '{{ old('nama_pelanggan') }}', 
-            kontak: '{{ old('kontak') }}', 
-            alamat: '{{ old('alamat') }}' 
-        } 
+        original: {
+            nama_pelanggan: '{{ $pelanggan->nama_pelanggan }}',
+            kontak: '{{ $pelanggan->kontak ?? '' }}',
+            alamat: '{{ $pelanggan->alamat ?? '' }}'
+        },
+        form: {
+            nama_pelanggan: '{{ $pelanggan->nama_pelanggan }}',
+            kontak: '{{ $pelanggan->kontak ?? '' }}',
+            alamat: '{{ $pelanggan->alamat ?? '' }}'
+        },
+        get isChanged() {
+            return this.form.nama_pelanggan !== this.original.nama_pelanggan ||
+                   this.form.kontak !== this.original.kontak ||
+                   this.form.alamat !== this.original.alamat;
+        }
     }">
 
     {{-- BREADCRUMB --}}
@@ -17,15 +27,16 @@
         <div class="text-sm text-slate-400">/</div>
         <div class="inline-flex items-center text-sm">
             <span class="px-3 py-1 rounded-md bg-[#E9F3FF] text-[#1D4ED8] border border-[#BFDBFE] font-medium">
-                Tambah Pelanggan Baru
+                Detail Pelanggan
             </span>
         </div>
     </div>
 
-    {{-- FORM CARD --}}
+    {{-- DETAIL CARD --}}
     <div class="bg-white border border-slate-200 rounded-xl p-6 w-full">
-        <form action="{{ route('pelanggan.store') }}" method="POST" class="space-y-4 w-full">
+        <form :action="'{{ route('pelanggan.update', $pelanggan->id) }}'" method="POST" class="space-y-4 w-full">
             @csrf
+            @method('PUT')
 
             {{-- Nama Pelanggan --}}
             <div>
@@ -64,14 +75,14 @@
             <div class="flex justify-end gap-3 pt-2">
                 <a href="{{ route('pelanggan.index') }}" 
                    class="px-4 py-2 rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50">
-                    Batal
+                    Kembali
                 </a>
                 <button type="submit"
-                        :disabled="!form.nama_pelanggan || !form.kontak || !form.alamat"
-                        :class="(!form.nama_pelanggan || !form.kontak || !form.alamat) 
+                        :disabled="!isChanged"
+                        :class="(!isChanged) 
                                 ? 'bg-slate-300 cursor-not-allowed text-white px-4 py-2 rounded-lg' 
                                 : 'bg-[#344579] hover:bg-[#2e3f6a] text-white px-4 py-2 rounded-lg'">
-                    Simpan
+                    Simpan Perubahan
                 </button>
             </div>
         </form>

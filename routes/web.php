@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\GudangController;
 use App\Http\Controllers\KategoriItemController;
+use App\Http\Controllers\PelangganController;
 use App\Http\Controllers\SupplierController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\UserController;
@@ -74,12 +75,12 @@ Route::middleware('auth')->group(function () {
     });
 
     Route::prefix('pelanggan')->group(function () {
-        Route::get('/', function () {
-            return view('auth.pelanggan.index'); // buat view pelanggan/index.blade.php
-        })->name('pelanggan.index');
-        Route::get('/create', function () {
-            return view('auth.pelanggan.create'); // buat view pelanggan/create.blade.php
-        })->name('pelanggan.create');
+        Route::get('/', [PelangganController::class, 'index'])->name('pelanggan.index');
+        Route::get('/create', [PelangganController::class, 'create'])->name('pelanggan.create');
+        Route::post('/store', [PelangganController::class, 'store'])->name('pelanggan.store');
+        Route::get('/{id}', [PelangganController::class, 'show'])->name('pelanggan.show');
+        Route::put('/{id}/update', [PelangganController::class, 'update'])->name('pelanggan.update');
+        Route::delete('/{id}/delete', [PelangganController::class, 'destroy'])->name('pelanggan.destroy');
     });
 
     Route::get('/profil', function () {

@@ -10,7 +10,12 @@ class SupplierController extends Controller
 {
     public function index()
     {
-        return view('auth.supplier.index');
+        $auth = Auth::user();
+        if (!$auth) {
+            return response()->json(['message' => 'Unauthorized'], 401);
+        }
+        $suppliers = Supplier::all();
+        return view('auth.supplier.index', compact('suppliers'));
     }
 
     public function create()
@@ -29,6 +34,8 @@ class SupplierController extends Controller
             'nama_supplier' => 'required|string|max:255',
             'kontak' => 'nullable|string|max:100',
             'alamat' => 'nullable|string',
+            'nama_bank' => 'nullable|in:BCA,BNI,BRI,Mandiri,BSI,BTN,SMBC,Lainnya',
+            'nomor_rekening' => 'nullable|string|max:50',
         ]);
 
         try{
@@ -64,6 +71,8 @@ class SupplierController extends Controller
             'nama_supplier' => 'required|string|max:255',
             'kontak' => 'nullable|string|max:100',
             'alamat' => 'nullable|string',
+            'nama_bank' => 'nullable|in:BCA,BNI,BRI,Mandiri,BSI,BTN,SMBC,Lainnya',
+            'nomor_rekening' => 'nullable|string|max:50',
         ]);
 
         try {

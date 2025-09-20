@@ -28,7 +28,7 @@
                     <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
                     <input type="text" placeholder="Search" x-model="q"
                         class="w-64 pl-10 pr-3 py-2 rounded-lg border border-slate-200 text-slate-600 placeholder-slate-400
-                              focus:outline-none focus:ring-2 focus:ring-[#4BAC87]/30 focus:border-[#4BAC87]">
+                              focus:outline-none focus:ring-2 focus:ring-[#344579]/20 focus:border-[#344579]">
                 </div>
 
                 {{-- Filter toggle --}}
@@ -69,9 +69,31 @@
                     <thead class="bg-slate-50 border-b border-slate-200">
                         <tr class="text-left text-slate-600">
                             <th class="px-4 py-3 w-[60px]">No.</th>
-                            <th class="px-4 py-3">Nama Supplier</th>
-                            <th class="px-4 py-3">Nomor Telepon</th>
-                            <th class="px-4 py-3">Deskripsi</th>
+
+                            <th class="px-4 py-3 cursor-pointer" @click="toggleSort('nama')">
+                                Nama Supplier
+                                <i class="fa-solid"
+                                    :class="sortBy === 'nama' ? (sortDir==='asc' ? 'fa-arrow-up ml-2' :
+                                        'fa-arrow-down ml-2'):
+                                    'fa-sort ml-2'"></i>
+                            </th>
+
+                            <th class="px-4 py-3 cursor-pointer" @click="toggleSort('telp')">
+                                Nomor Telepon
+                                <i class="fa-solid"
+                                    :class="sortBy === 'telp' ? (sortDir==='asc' ? 'fa-arrow-up ml-2' :
+                                        'fa-arrow-down ml-2'):
+                                    'fa-sort ml-2'"></i>
+                            </th>
+
+                            <th class="px-4 py-3 cursor-pointer" @click="toggleSort('alamat')">
+                                Alamat
+                                <i class="fa-solid"
+                                    :class="sortBy === 'alamat' ? (sortDir==='asc' ? 'fa-arrow-up ml-2' :
+                                        'fa-arrow-down ml-2'):
+                                    'fa-sort ml-2'"></i>
+                            </th>
+
                             <th class="px-2 py-3"></th>
                         </tr>
                     </thead>
@@ -80,24 +102,23 @@
                             <tr class="hover:bg-slate-50 text-slate-700 border-b border-slate-200">
                                 <td class="px-4 py-3" x-text="(currentPage-1)*pageSize + idx + 1"></td>
                                 <td class="px-4 py-3">
-                                    {{-- pastikan url backend mengirim link show; fallback ke route client --}}
-                                    <a :href="r.url ?? '/supplier/'+ r.id" class="text-[#344579] font-semibold hover:underline"
-                                        x-text="r.nama" target="_self" @click="openActionId = null"></a>
+                                    <a :href="r.url" class="text-[#344579] font-semibold hover:underline"
+                                        x-text="r.nama" @click="openActionId = null"></a>
                                 </td>
                                 <td class="px-4 py-3" x-text="r.telp"></td>
-                                <td class="px-4 py-3" x-text="r.deskripsi"></td>
+                                <td class="px-4 py-3" x-text="r.alamat"></td>
 
                                 <td class="px-2 py-3 text-right relative">
                                     <button type="button" @click="toggleActions(r.id)" class="px-2 py-1 rounded hover:bg-slate-100">
                                         <i class="fa-solid fa-ellipsis-vertical"></i>
                                     </button>
 
-                                    {{-- Actions dropdown (x-cloak supaya tidak flash) --}}
+                                    {{-- Actions dropdown --}}
                                     <div x-cloak x-show="openActionId === r.id" @click.away="openActionId = null" x-transition
-                                        class="absolute right-2 mt-2 w-40 bg-white shadow rounded-md border border-slate-200 z-20">
+                                        class="absolute right-2 mt-2 w-48 bg-white shadow rounded-md border border-slate-200 z-20">
                                         <ul class="py-1">
                                             <li>
-                                                <a :href="r.url ?? '/supplier/'+ r.id"
+                                                <a :href="r.url"
                                                    class="block px-4 py-2 hover:bg-slate-50 text-left"
                                                    @click="openActionId = null">
                                                     <i class="fa-solid fa-eye mr-2"></i> Detail
@@ -186,15 +207,25 @@
 
     </div>
 
+    {{-- Prepare data from server: sesuaikan mapping sesuai properti model --}}
+    @php
+        $suppliersJson = $suppliers
+            ->map(fn($s) => [
+                'id' => $s->id,
+                'nama' => $s->nama_supplier,
+                'telp' => $s->kontak,
+                'alamat' => Str::limit($s->alamat ?? '', 60),
+                'url' => route('supplier.show', $s->id),
+            ])
+            ->toArray();
+    @endphp
+
     <script>
         function supplierPage() {
             return {
                 showFilter: false,
                 q: '',
-                filters: {
-                    nama: '',
-                    telp: ''
-                },
+                filters: { nama: '', telp: '' },
 
                 // pagination
                 pageSize: 5,
@@ -202,42 +233,30 @@
                 maxPageButtons: 7,
                 openActionId: null,
 
-                // sample data
-                data: [
-                    { id: 1, nama: 'PT Sumber Makmur', telp: '0812-1111-1111', deskripsi: 'Supplier bahan baku utama', url: '/supplier/1' },
-                    { id: 2, nama: 'CV Jaya Sentosa', telp: '0812-2222-2222', deskripsi: 'Pemasok kemasan', url: '/supplier/2' },
-                    { id: 3, nama: 'UD Maju Terus', telp: '0812-3333-3333', deskripsi: 'Supplier sparepart', url: '/supplier/3' },
-                    { id: 4, nama: 'PT Sejahtera', telp: '0812-4444-4444', deskripsi: 'Penyedia logistik', url: '/supplier/4' },
-                    { id: 5, nama: 'CV Aneka Sari', telp: '0812-5555-5555', deskripsi: 'Supplier bahan tambahan', url: '/supplier/5' },
-                    { id: 6, nama: 'PT Bintang', telp: '0812-6666-6666', deskripsi: 'Supplier alat tulis', url: '/supplier/6' },
-                    { id: 7, nama: 'CV Bahagia', telp: '0812-7777-7777', deskripsi: 'Packaging', url: '/supplier/7' },
-                    { id: 8, nama: 'PT Lancar', telp: '0812-8888-8888', deskripsi: 'Supplier elektronik', url: '/supplier/8' },
-                    { id: 9, nama: 'UD Makmur Jaya', telp: '0812-9999-9999', deskripsi: 'Supplier bahan kimia', url: '/supplier/9' },
-                    { id: 10, nama: 'PT Prima', telp: '0812-1010-1010', deskripsi: 'Supplier bahan baku tambahan', url: '/supplier/10' },
-                    { id: 11, nama: 'CV Cemerlang', telp: '0812-1110-1110', deskripsi: 'Supplier plastik', url: '/supplier/11' },
-                    { id: 12, nama: 'PT Sentra', telp: '0812-1212-1212', deskripsi: 'Supplier logistik tambahan', url: '/supplier/12' },
-                ],
+                // data from server
+                data: @json($suppliersJson),
 
                 // delete modal state
                 showDeleteModal: false,
                 deleteItem: {},
 
+                // sorting
+                sortBy: 'nama',
+                sortDir: 'asc',
+
                 init() {
-                    // reset state saat load supaya tidak ada modal/dropdown yang masih terbuka
                     this.showDeleteModal = false;
                     this.deleteItem = {};
                     this.openActionId = null;
                     this.showFilter = false;
 
-                    // pastikan saat browser restore page (bfcache) modal ditutup
+                    // graceful keyboard / pageshow handlers
                     window.addEventListener('pageshow', () => {
                         this.showDeleteModal = false;
                         this.deleteItem = {};
                         this.openActionId = null;
                         this.showFilter = false;
                     });
-
-                    // tutup modal/dropdown ketika user tekan ESC
                     window.addEventListener('keydown', (e) => {
                         if (e.key === 'Escape') {
                             this.openActionId = null;
@@ -245,17 +264,14 @@
                             this.showFilter = false;
                         }
                     });
-
-                    // jika mau load data dari API, lakukan di sini
-                    // fetch('/api/suppliers').then(r => r.json()).then(js => this.data = js);
                 },
 
-                // SEARCH + FILTER
+                // SEARCH + FILTER + SORT
                 filteredList() {
                     const q = this.q.trim().toLowerCase();
-                    return this.data.filter(r => {
+                    let list = this.data.filter(r => {
                         if (q) {
-                            const hay = `${r.nama} ${r.telp} ${r.deskripsi}`.toLowerCase();
+                            const hay = `${r.nama} ${r.telp} ${r.alamat}`.toLowerCase();
                             if (!hay.includes(q)) return false;
                         }
                         if (this.filters.nama && !r.nama.toLowerCase().includes(this.filters.nama.toLowerCase()))
@@ -264,7 +280,27 @@
                             return false;
                         return true;
                     });
+
+                    // SORTING
+                    const key = this.sortBy;
+                    const dir = this.sortDir === 'asc' ? 1 : -1;
+
+                    list.sort((a, b) => {
+                        const va = (a[key] ?? '').toString().toLowerCase();
+                        const vb = (b[key] ?? '').toString().toLowerCase();
+
+                        const an = parseFloat(va);
+                        const bn = parseFloat(vb);
+                        if (!isNaN(an) && !isNaN(bn)) {
+                            return (an - bn) * dir;
+                        }
+
+                        return va.localeCompare(vb) * dir;
+                    });
+
+                    return list;
                 },
+
                 filteredTotal() {
                     return this.filteredList().length;
                 },
@@ -282,7 +318,6 @@
                     if (n < 1) n = 1;
                     if (n > t) n = t;
                     this.currentPage = n;
-                    // pastikan dropdown/modal ditutup saat pindah halaman
                     this.openActionId = null;
                     this.showDeleteModal = false;
                 },
@@ -295,36 +330,35 @@
                     this.openActionId = null;
                 },
 
-                // pagination dengan elipsis
                 pagesToShow() {
-                    const total = this.totalPages();
-                    const maxButtons = this.maxPageButtons;
-                    const current = this.currentPage;
-                    if (total <= maxButtons) {
-                        return Array.from({ length: total }, (_, i) => i + 1);
-                    }
-
+                    const total = this.totalPages(), max = this.maxPageButtons, current = this.currentPage;
+                    if (total <= max) return Array.from({ length: total }, (_, i) => i + 1);
                     const pages = [];
-                    const side = Math.floor((maxButtons - 3) / 2);
+                    const side = Math.floor((max - 3) / 2);
                     const left = Math.max(2, current - side);
                     const right = Math.min(total - 1, current + side);
-
                     pages.push(1);
-
                     if (left > 2) pages.push('...');
-
                     for (let i = left; i <= right; i++) pages.push(i);
-
                     if (right < total - 1) pages.push('...');
-
                     pages.push(total);
-
                     return pages;
                 },
 
                 // ACTIONS
                 toggleActions(id) {
                     this.openActionId = (this.openActionId === id) ? null : id;
+                },
+
+                // sorting toggle
+                toggleSort(field) {
+                    if (this.sortBy === field) {
+                        this.sortDir = (this.sortDir === 'asc') ? 'desc' : 'asc';
+                    } else {
+                        this.sortBy = field;
+                        this.sortDir = 'asc';
+                    }
+                    this.currentPage = 1;
                 },
 
                 confirmDelete(item) {
@@ -341,9 +375,7 @@
                     const idx = this.data.findIndex(d => d.id === id);
                     if (idx !== -1) {
                         this.data.splice(idx, 1);
-                        if (this.currentPage > this.totalPages()) {
-                            this.currentPage = this.totalPages();
-                        }
+                        if (this.currentPage > this.totalPages()) this.currentPage = this.totalPages();
                     }
                     this.closeDelete();
                 },
@@ -353,10 +385,7 @@
                 },
 
                 resetFilters() {
-                    this.filters = {
-                        nama: '',
-                        telp: ''
-                    };
+                    this.filters = { nama: '', telp: '' };
                     this.q = '';
                     this.currentPage = 1;
                 }
