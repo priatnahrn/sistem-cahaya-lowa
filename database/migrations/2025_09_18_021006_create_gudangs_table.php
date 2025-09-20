@@ -13,6 +13,9 @@ return new class extends Migration
     {
         Schema::create('gudangs', function (Blueprint $table) {
             $table->id();
+            $table->string('kode_gudang', 100);
+            $table->string('nama_gudang', 100);
+            $table->text('lokasi')->nullable();
             $table->timestamps();
         });
     }

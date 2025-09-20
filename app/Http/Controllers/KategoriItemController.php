@@ -43,9 +43,12 @@ class KategoriItemController extends Controller
             'deskripsi' => 'nullable|string',
         ]);
 
-        KategoriItem::create($validated);
-
-        return redirect()->route('items.categories.index')->with('success', 'Kategori item berhasil dibuat.');
+        try {
+            KategoriItem::create($validated);
+            return redirect()->route('items.categories.index')->with('success', 'Kategori item berhasil dibuat.');
+        } catch (\Exception $e) {
+            return back()->withErrors(['error' => 'Terjadi kesalahan saat menyimpan data.'])->withInput();
+        }
     }
 
     public function edit($id)

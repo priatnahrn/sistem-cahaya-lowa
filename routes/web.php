@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\GudangController;
 use App\Http\Controllers\KategoriItemController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\UserController;
@@ -34,12 +35,9 @@ Route::middleware('auth')->group(function () {
     });
 
     Route::prefix('gudang')->group(function () {
-        Route::get('/', function () {
-            return view('auth.gudang.index'); // buat view gudang/index.blade.php
-        })->name('gudang.index');
-        Route::get('/create', function () {
-            return view('auth.gudang.create'); // buat view gudang/create.blade.php
-        })->name('gudang.create');
+        Route::get('/', [GudangController::class, 'index'])->name('gudang.index');
+        Route::get('/create', [GudangController::class, 'create'])->name('gudang.create');
+        Route::post('/store', [GudangController::class, 'store'])->name('gudang.store');
     });
 
     Route::prefix('supplier')->group(function () {
