@@ -12,16 +12,15 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('items', function (Blueprint $table) {
-            $table->id();
-            $table->string('kode_item');
-            $table->string('nama_item');
-            $table->foreignId('kategori_item_id')->constrained('kategori_items')->onDelete('cascade');
-            $table->foreignId('satuan_id')->constrained('satuans')->onDelete('cascade');
-            $table->foreignId('harga_id')->constrained('hargas')->onDelete('cascade');
-            $table->foreignId('gudang_id')->constrained('gudangs')->onDelete('cascade');
+            $table->id(); // bigIncrements -> bigint unsigned
+            $table->string('kode_item')->nullable()->unique();
+            $table->string('nama_item')->nullable();
+            $table->foreignId('kategori_item_id')->nullable()->constrained('kategori_items')->nullOnDelete();
             $table->integer('stok_minimal')->default(0);
-            $table->string('foto')->nullable();
+            $table->unsignedBigInteger('primary_satuan_id')->nullable(); // nanti FK optional
+            $table->string('foto_path')->nullable();
             $table->timestamps();
+            $table->softDeletes();
         });
     }
 

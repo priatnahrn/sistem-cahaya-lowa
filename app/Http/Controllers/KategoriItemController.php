@@ -11,8 +11,12 @@ class KategoriItemController extends Controller
     public function index()
     {
 
-       
-        return view('auth.items.categories.index');
+       $auth = Auth::user();
+        if (!$auth) {
+            return response()->json(['message' => 'Unauthorized'], 401);
+        }
+        $categories = KategoriItem::all();
+        return view('auth.items.categories.index', compact('categories'));
     }
 
     public function create()

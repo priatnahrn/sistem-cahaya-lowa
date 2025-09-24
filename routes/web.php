@@ -1,8 +1,10 @@
 <?php
 
 use App\Http\Controllers\GudangController;
+use App\Http\Controllers\ItemController;
 use App\Http\Controllers\KategoriItemController;
 use App\Http\Controllers\PelangganController;
+use App\Http\Controllers\PembelianController;
 use App\Http\Controllers\SupplierController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\UserController;
@@ -36,6 +38,16 @@ Route::middleware('auth')->group(function () {
         })->name('penjualan.create');
     });
 
+    Route::prefix('pembelian')->group(function () {
+        Route::get('/', [PembelianController::class, 'index'])->name('pembelian.index');
+        Route::get('/create', [PembelianController::class, 'create'])->name('pembelian.create');
+        Route::post('/store', [PembelianController::class, 'store'])->name('pembelian.store');
+        Route::get('/{id}', [PembelianController::class, 'show'])->name('pembelian.show');
+        Route::put('/{id}/update', [PembelianController::class, 'update'])->name('pembelian.update');
+        Route::get('/{id}/last-price', [PembelianController::class, 'getLastPrice'])->name('pembelian.last_price');
+        Route::delete('/{id}/delete', [PembelianController::class, 'destroy'])->name('pembelian.destroy');
+    });
+
     Route::prefix('gudang')->group(function () {
         Route::get('/', [GudangController::class, 'index'])->name('gudang.index');
         Route::get('/create', [GudangController::class, 'create'])->name('gudang.create');
@@ -49,42 +61,37 @@ Route::middleware('auth')->group(function () {
         Route::get('/', [SupplierController::class, 'index'])->name('supplier.index');
         Route::get('/create', [SupplierController::class, 'create'])->name('supplier.create');
         Route::post('/store', [SupplierController::class, 'store'])->name('supplier.store');
+        Route::get('/search', [SupplierController::class, 'search'])->name('supplier.search');
         Route::get('/{id}', [SupplierController::class, 'show'])->name('supplier.show');
         Route::put('/{id}/update', [SupplierController::class, 'update'])->name('supplier.update');
         Route::delete('/{id}/delete', [SupplierController::class, 'destroy'])->name('supplier.destroy');
     });
 
-    
+
 
     Route::prefix('items')->name('items.')->group(function () {
-        Route::get('/', function () {
-            return view('auth.items.index'); // buat view items/index.blade.php
-        })->name('index');
-        Route::get('/create', function () {
-            return view('auth.items.create'); // buat view items/create.blade.php
-        })->name('create');
-        Route::post('/store', function () {
-            // simpan item
-        })->name('store');
-        Route::get('/{id}', function ($id) {
-            return view('auth.items.show', compact('id')); // buat view items/show.blade.php
-        })->name('show');
-        Route::put('/{id}/update', function ($id) {
-            // update item
-        })->name('update');
+        Route::get('/', [ItemController::class, 'index'])->name('index');
+        Route::get('/create', [ItemController::class, 'create'])->name('create');
+        Route::post('/store', [ItemController::class, 'store'])->name('store');
+        Route::get('/search', [ItemController::class, 'search'])->name('search');
 
+
+        // categories harus di sini, sebelum /{id}
         Route::prefix('categories')->name('categories.')->group(function () {
-            Route::get('/', function () {
-            return view('auth.items.categories.index'); // buat view items/index.blade.php
-        })->name('index');
-            
+            Route::get('/', [KategoriItemController::class, 'index'])->name('index');
             Route::get('/create', [KategoriItemController::class, 'create'])->name('create');
             Route::post('/store', [KategoriItemController::class, 'store'])->name('store');
             Route::get('/{id}', [KategoriItemController::class, 'show'])->name('show');
             Route::put('/{id}/update', [KategoriItemController::class, 'update'])->name('update');
-            Route::delete('/{id}/delete', [KategoriItemController::class, 'destroy'])->name('destroy');
+            Route::delete('/{id}', [KategoriItemController::class, 'destroy'])->name('destroy');
         });
+
+        // route dinamis item setelah categories
+        Route::get('/{id}', [ItemController::class, 'show'])->name('show');
+        Route::put('/{id}/update', [ItemController::class, 'update'])->name('update');
+        Route::delete('/{id}/delete', [ItemController::class, 'destroy'])->name('destroy');
     });
+
 
     Route::prefix('pelanggan')->group(function () {
         Route::get('/', [PelangganController::class, 'index'])->name('pelanggan.index');
@@ -106,5 +113,3 @@ Route::middleware('auth')->group(function () {
 Route::fallback(function () {
     return response()->view('errors.404', [], 404);
 });
-
-

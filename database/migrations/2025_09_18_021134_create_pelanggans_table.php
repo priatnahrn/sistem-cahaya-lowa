@@ -16,6 +16,7 @@ return new class extends Migration
             $table->string('nama_pelanggan');
             $table->string('kontak')->nullable();
             $table->text('alamat')->nullable(); 
+            $table->enum('level', ['Retail', 'Partai Kecil', 'Grosir'])->default('Retail');
             $table->timestamps();
         });
     }

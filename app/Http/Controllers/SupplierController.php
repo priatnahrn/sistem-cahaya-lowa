@@ -38,12 +38,39 @@ class SupplierController extends Controller
             'nomor_rekening' => 'nullable|string|max:50',
         ]);
 
-        try{
+        try {
             Supplier::create($validated);
             return redirect()->route('supplier.index')->with('success', 'Supplier berhasil dibuat.');
         } catch (\Exception $e) {
             return back()->withErrors(['error' => 'Terjadi kesalahan saat menyimpan data.'])->withInput();
         }
+    }
+
+
+    public function search(Request $request)
+    {
+        // sementara supaya tidak gagal waktu debugging local
+        // $auth = Auth::user();
+        // if (!$auth) return response()->json(['message' => 'Unauthorized'], 401);
+
+        $q = $request->query('q', '');
+
+        $query = Supplier::query();
+
+        if (trim($q) !== '') {
+            $q = trim($q);
+            $query->where(function ($sub) use ($q) {
+                $sub->where('nama_supplier', 'like', "%{$q}%")
+                    ->orWhere('kontak', 'like', "%{$q}%")
+                    ->orWhere('nomor_rekening', 'like', "%{$q}%");
+            });
+        }
+
+        $suppliers = $query->orderBy('nama_supplier')
+            ->limit(10)
+            ->get(['id', 'nama_supplier', 'kontak', 'nama_bank', 'nomor_rekening']);
+
+        return response()->json($suppliers);
     }
 
     public function show($id)

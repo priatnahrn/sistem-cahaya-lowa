@@ -2,7 +2,7 @@
 
 namespace Database\Seeders;
 
-use App\Models\User;
+
 // use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 
@@ -16,6 +16,12 @@ class DatabaseSeeder extends Seeder
          $this->call([
             RolesAndPermissionsSeeder::class,
             UserSeeder::class,
+            GudangSeeder::class,
+            PelangganSeeder::class,
+            SupplierSeeder::class,
+            KategoriItemSeeder::class,
+            ItemSeeder::class,
+            PembelianSeeder::class,
         ]);
     }
 }

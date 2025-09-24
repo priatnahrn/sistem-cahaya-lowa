@@ -1,12 +1,39 @@
 @extends('layouts.app')
 
-@section('title','Daftar Item')
+@section('title', 'Daftar Item')
 
 @section('content')
-    {{-- cegah flash sebelum Alpine siap --}}
-    <style>[x-cloak]{display:none!important;}</style>
+    <style>
+        [x-cloak] { display: none !important; }
+    </style>
+
+    {{-- Toasts container (Alpine-managed) --}}
+    <div x-data="toasts()" class="fixed top-6 right-6 space-y-3 z-50 w-80" aria-live="polite" aria-atomic="true">
+        <template x-for="(t, i) in items" :key="t.id">
+            <div x-show="t.show" x-transition class="flex items-start gap-3 rounded-md border px-4 py-3 shadow text-sm"
+                 :class="t.type === 'success' ? 'bg-[#ECFDF5] border-[#A7F3D0] text-[#065F46]' : 'bg-[#FFEAE6] border-[#FCA5A5] text-[#B91C1C]'">
+                <i class="fa-solid" :class="t.type === 'success' ? 'fa-circle-check' : 'fa-circle-xmark'"></i>
+                <div>
+                    <div class="font-semibold" x-text="t.type === 'success' ? 'Berhasil' : 'Gagal'"></div>
+                    <div x-text="t.message"></div>
+                </div>
+                <button class="ml-auto" @click="close(i)" aria-label="Tutup">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+        </template>
+
+        {{-- show server-side session flash jika ada (non-AJAX page load) --}}
+        @if(session('success'))
+            <div x-init="$root.push('success', @js(session('success')))" style="display:none"></div>
+        @endif
+        @if(session('error'))
+            <div x-init="$root.push('error', @js(session('error')))" style="display:none"></div>
+        @endif
+    </div>
 
     <div x-data="itemsPage()" x-init="init()" class="space-y-6">
+
         {{-- ACTION BAR --}}
         <div class="bg-white border border-slate-200 rounded-xl px-6 py-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
             <div class="flex items-center gap-3">
@@ -14,23 +41,16 @@
                    class="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-white bg-[#344579] hover:bg-[#2e3e6a] shadow">
                     <i class="fa-solid fa-plus"></i> Tambah Item Baru
                 </a>
-
-                <button type="button" @click="exportData()"
-                        class="px-4 py-2 rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50">
-                    <i class="fa-solid fa-file-export mr-2"></i> Export
-                </button>
             </div>
 
             <div class="flex items-center gap-3">
-                {{-- Search --}}
                 <div class="relative">
                     <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
-                    <input type="text" placeholder="Search Kode / Nama / Supplier" x-model="q"
-                           class="w-80 pl-10 pr-3 py-2 rounded-lg border border-slate-200 text-slate-600 placeholder-slate-400
+                    <input type="text" placeholder="Search Kode / Nama / Gudang" x-model="q"
+                           class="w-64 pl-10 pr-3 py-2 rounded-lg border border-slate-200 text-slate-600 placeholder-slate-400
                                   focus:outline-none focus:ring-2 focus:ring-[#344579]/20 focus:border-[#344579]">
                 </div>
 
-                {{-- Filter toggle --}}
                 <button type="button" @click="showFilter=!showFilter"
                         class="px-4 py-2 rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50">
                     <i class="fa-solid fa-filter mr-2"></i> Filter
@@ -38,7 +58,7 @@
             </div>
         </div>
 
-        {{-- FILTER (toggle) --}}
+        {{-- FILTER --}}
         <div x-show="showFilter" x-collapse x-transition
              class="bg-white border border-slate-200 rounded-xl px-6 py-4 grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
@@ -47,11 +67,7 @@
                        class="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm text-slate-700">
             </div>
 
-            <div>
-                <label class="block text-sm text-slate-500 mb-1">Supplier</label>
-                <input type="text" placeholder="Cari Supplier" x-model="filters.supplier"
-                       class="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm text-slate-700">
-            </div>
+           
 
             <div class="flex items-end">
                 <button type="button" @click="resetFilters()"
@@ -66,81 +82,82 @@
             <div class="overflow-x-auto">
                 <table class="min-w-full text-sm">
                     <thead class="bg-slate-50 border-b border-slate-200">
-                        <tr class="text-left text-slate-600">
-                            <th class="px-4 py-3 w-[60px]">No.</th>
-                            <th class="px-4 py-3">Kode Item</th>
-                            <th class="px-4 py-3">Nama Item</th>
-                            <th class="px-4 py-3">Kategori</th>
-                            <th class="px-4 py-3">Supplier</th>
-                            <th class="px-4 py-3">Stock</th>
-                            <th class="px-4 py-3 text-right">Satuan</th>
-                            <th class="px-2 py-3"></th>
-                        </tr>
+                    <tr class="text-left text-slate-600">
+                        <th class="px-4 py-3 w-[60px]">No.</th>
+
+                        <th class="px-4 py-3">Kode Item</th>
+                        <th class="px-4 py-3">Nama Item</th>
+                        <th class="px-4 py-3">Kategori</th>
+                        <th class="px-4 py-3">Stok</th>
+                        <th class="px-4 py-3 text-right">Satuan</th>
+                        <th class="px-2 py-3"></th>
+                    </tr>
                     </thead>
+
                     <tbody>
-                        <template x-for="(r, idx) in pagedData()" :key="r.id">
-                            <tr class="hover:bg-slate-50 text-slate-700 border-b border-slate-200">
-                                <td class="px-4 py-3" x-text="(currentPage-1)*pageSize + idx + 1"></td>
+                    <template x-for="(r, idx) in pagedData()" :key="r.id">
+                        <tr class="hover:bg-slate-50 text-slate-700 border-b border-slate-200">
+                            <td class="px-4 py-3" x-text="(currentPage-1)*pageSize + idx + 1"></td>
 
-                                <td class="px-4 py-3">
-                                    <span class="font-mono text-sm" x-text="r.kode"></span>
-                                </td>
+                            <td class="px-4 py-3"><span class="font-mono text-sm" x-text="r.kode"></span></td>
 
-                                <td class="px-4 py-3">
-                                    <a :href="r.url ?? '/items/' + r.id"
-                                       class="text-[#344579] font-semibold hover:underline"
-                                       x-text="r.nama" @click="openActionId = null"></a>
-                                    <div class="text-slate-500 text-xs mt-1" x-text="r.deskripsi"></div>
-                                </td>
+                            <td class="px-4 py-3">
+                                <a :href="r.url ?? ('/items/' + r.id)" class="text-[#344579] font-semibold hover:underline" x-text="r.nama" @click="openActionId = null"></a>
+                                <div class="text-slate-500 text-xs mt-1" x-text="r.deskripsi"></div>
+                            </td>
 
-                                <td class="px-4 py-3" x-text="r.kategori"></td>
+                            <td class="px-4 py-3" x-text="r.kategori"></td>
 
-                                <td class="px-4 py-3">
-                                    <div class="max-w-xs truncate" x-text="r.supplier"></div>
-                                </td>
+                            
+                            
 
-                                <td class="px-4 py-3" x-text="r.stock"></td>
+                            <td class="px-4 py-3" x-text="r.stock ?? '-' "></td>
 
-                                <td class="px-4 py-3 text-right font-medium" x-text="r.satuan"></td>
-
-                                <td class="px-2 py-3 text-right relative">
-                                    <button type="button" @click="toggleActions(r.id)" class="px-2 py-1 rounded hover:bg-slate-100">
-                                        <i class="fa-solid fa-ellipsis-vertical"></i>
-                                    </button>
-
-                                    {{-- actions dropdown --}}
-                                    <div x-cloak x-show="openActionId === r.id" @click.away="openActionId = null" x-transition
-                                         class="absolute right-2 mt-2 w-44 bg-white shadow rounded-md border border-slate-200 z-20">
-                                        <ul class="py-1">
-                                            <li>
-                                                <a :href="r.url ?? '/items/'+ r.id"
-                                                   class="block px-4 py-2 hover:bg-slate-50 text-left"
-                                                   @click="openActionId = null">
-                                                    <i class="fa-solid fa-eye mr-2"></i> Detail
-                                                </a>
-                                            </li>
-                                            <li>
-                                                <a :href="r.urlEdit ?? '/items/'+ r.id + '/edit'"
-                                                   class="block px-4 py-2 hover:bg-slate-50 text-left"
-                                                   @click="openActionId = null">
-                                                    <i class="fa-solid fa-pen mr-2"></i> Edit
-                                                </a>
-                                            </li>
-                                            <li>
-                                                <button type="button" @click="confirmDelete(r)"
-                                                        class="w-full text-left px-4 py-2 text-red-500 hover:bg-slate-50">
-                                                    <i class="fa-solid fa-trash mr-2"></i> Hapus
-                                                </button>
-                                            </li>
-                                        </ul>
+                            <td class="px-4 py-3 text-right font-medium">
+                                <template x-if="Array.isArray(r.satuans) && r.satuans.length">
+                                    <div>
+                                        <template x-for="(s, i) in r.satuans" :key="i">
+                                            <div class="text-sm">
+                                                <span x-text="s.nama_satuan ?? s.nama ?? '-' "></span>
+                                                
+                                            </div>
+                                        </template>
                                     </div>
-                                </td>
-                            </tr>
-                        </template>
+                                </template>
+                                <template x-if="!Array.isArray(r.satuans) || !r.satuans.length">
+                                    -
+                                </template>
+                            </td>
 
-                        <tr x-show="filteredTotal() === 0" class="text-center text-slate-500">
-                            <td colspan="8" class="px-4 py-6">Tidak ada data item.</td>
+                            <td class="px-2 py-3 text-right relative">
+                                <button type="button" @click="toggleActions(r.id)" class="px-2 py-1 rounded hover:bg-slate-100">
+                                    <i class="fa-solid fa-ellipsis-vertical"></i>
+                                </button>
+
+                                {{-- actions dropdown --}}
+                                <div x-cloak x-show="openActionId === r.id" @click.away="openActionId = null" x-transition
+                                     class="absolute right-2 mt-2 w-44 bg-white shadow rounded-md border border-slate-200 z-20">
+                                    <ul class="py-1">
+                                        <li>
+                                            <a :href="r.url ?? ('/items/' + r.id)"
+                                               class="block px-4 py-2 hover:bg-slate-50 text-left" @click="openActionId = null">
+                                                <i class="fa-solid fa-eye mr-2"></i> Detail
+                                            </a>
+                                        </li>
+                                        <li>
+                                            <button type="button" @click="confirmDelete(r)" class="w-full text-left px-4 py-2 text-red-500 hover:bg-slate-50">
+                                                <i class="fa-solid fa-trash mr-2"></i> Hapus
+                                            </button>
+                                        </li>
+                                    </ul>
+                                </div>
+                            </td>
                         </tr>
+                    </template>
+
+                    <tr x-show="filteredTotal() === 0" class="text-center text-slate-500">
+                        <td colspan="8" class="px-4 py-6">Tidak ada data item.</td>
+                    </tr>
                     </tbody>
                 </table>
             </div>
@@ -191,7 +208,8 @@
                 <div class="px-6 py-4">
                     <p class="text-slate-600">
                         Apakah Anda yakin ingin menghapus item
-                        <span class="font-semibold" x-text="deleteItem.nama"></span> ( <span x-text="deleteItem.kode"></span> ) ?
+                        <span class="font-semibold" x-text="deleteItem.nama"></span>
+                        ( <span x-text="deleteItem.kode"></span> ) ?
                     </p>
                 </div>
                 <div class="px-6 py-4 border-t border-slate-200 flex justify-end gap-2">
@@ -207,161 +225,203 @@
         </div>
     </div>
 
-<script>
-function itemsPage(){
-    return {
-        showFilter:false,
-        q:'',
-        filters:{
-            kategori:'',
-            supplier:'',
-        },
+    @php
+    $itemList = collect($items ?? [])->map(function ($it) {
+        $id = data_get($it, 'id');
+        return [
+            'id' => $id,
+            'kode' => data_get($it, 'kode_item') ?? data_get($it, 'kode') ?? null,
+            'nama' => data_get($it, 'nama_item') ?? data_get($it, 'nama') ?? null,
+            'kategori' => data_get($it, 'kategori.nama') ?? data_get($it, 'kategori') ?? null,
+            'stock' => data_get($it, 'stok') ?? data_get($it, 'stock') ?? null,
+            'deskripsi' => data_get($it, 'deskripsi') ?? null,
+            'url' => $id ? route('items.show', $id) : null,
+            'deleteUrl' => $id ? route('items.destroy', $id) : null,
+            'satuans' => collect(data_get($it, 'satuans', []))->map(function ($s) {
+                return [
+                    'nama_satuan' => data_get($s, 'nama_satuan') ?? data_get($s, 'nama') ?? null,
+                ];
+            })->values()->toArray(),
+        ];
+    })->values()->toArray();
+@endphp
 
-        // pagination
-        pageSize: 5,
-        currentPage: 1,
-        maxPageButtons: 7,
-        openActionId: null,
-
-        // sample data (sesuaikan / fetch dari API di init jika perlu)
-        data:[
-            {id:1, kode:'08389328QD', nama:'Semen Full Tiga Roga Kuat Tahan', kategori:'Bahan Baku', supplier:'Gudang Asparagus', satuan:'PCS', stock:250, deskripsi:''},
-            {id:2, kode:'08389328QD', nama:'Semen Full Tiga Roga Kuat Tahan', kategori:'Bahan Baku', supplier:'Toko untuk membeli sekrup lengkap dan murah banget', satuan:'PCS, BOX, SAK', stock:2500000, deskripsi:''},
-            {id:3, kode:'08389328QD', nama:'Semen Full Tiga Roga Kuat Tahan', kategori:'Bahan Baku', supplier:'Toko untuk membeli sekrup lengkap dan murah banget', satuan:'PCS', stock:2500000, deskripsi:''},
-            {id:4, kode:'08389328QD', nama:'Semen Full Tiga Roga Kuat Tahan', kategori:'Bahan Baku', supplier:'Toko untuk membeli sekrup lengkap dan murah banget', satuan:'PCS', stock:2500000, deskripsi:''},
-            {id:5, kode:'08389328QD', nama:'Semen Full Tiga Roga Kuat Tahan', kategori:'Bahan Baku', supplier:'Toko untuk membeli sekrup lengkap dan murah banget', satuan:'PCS', stock:2500000, deskripsi:''},
-            {id:6, kode:'08389328QD', nama:'Semen Full Tiga Roga Kuat Tahan', kategori:'Bahan Baku', supplier:'Toko untuk membeli sekrup lengkap dan murah banget', satuan:'PCS', stock:2500000, deskripsi:''},
-            {id:7, kode:'08389328QD', nama:'Semen Full Tiga Roga Kuat Tahan', kategori:'Bahan Baku', supplier:'Toko untuk membeli sekrup lengkap dan murah banget', satuan:'BOX', stock:2500000, deskripsi:''},
-            {id:8, kode:'08389328QD', nama:'Semen Full Tiga Roga Kuat Tahan', kategori:'Bahan Baku', supplier:'Toko untuk membeli sekrup lengkap dan murah banget', satuan:'BOX', stock:2500000, deskripsi:''},
-            {id:9, kode:'08389328QD', nama:'Semen Full Tiga Roga Kuat Tahan', kategori:'Bahan Baku', supplier:'Toko untuk membeli sekrup lengkap dan murah banget', satuan:'BOX', stock:2500000, deskripsi:''},
-            {id:10, kode:'08389328QD', nama:'Semen Full Tiga Roga Kuat Tahan', kategori:'Bahan Baku', supplier:'Toko untuk membeli sekrup lengkap dan murah banget', satuan:'BOX', stock:2500000, deskripsi:''},
-            {id:11, kode:'08389328QD', nama:'Semen Full Tiga Roga Kuat Tahan', kategori:'Bahan Baku', supplier:'Toko untuk membeli sekrup lengkap dan murah banget', satuan:'BOX', stock:2500000, deskripsi:''},
-        ],
-
-        // delete modal state
-        showDeleteModal:false,
-        deleteItem:{},
-
-        init(){
-            this.showDeleteModal = false;
-            this.deleteItem = {};
-            this.openActionId = null;
-            this.showFilter = false;
-
-            window.addEventListener('pageshow', () => {
-                this.showDeleteModal = false;
-                this.deleteItem = {};
-                this.openActionId = null;
-                this.showFilter = false;
-            });
-
-            window.addEventListener('keydown', (e) => {
-                if (e.key === 'Escape') {
-                    this.openActionId = null;
-                    this.showDeleteModal = false;
-                    this.showFilter = false;
-                }
-            });
-
-            // jika mau fetch dari backend, uncomment contoh berikut:
-            // fetch('/api/items').then(r => r.json()).then(js => this.data = js);
-        },
-
-        // SEARCH + FILTER
-        filteredList(){
-            const q = this.q.trim().toLowerCase();
-            return this.data.filter(r=>{
-                if(q){
-                    const hay = `${r.kode} ${r.nama} ${r.supplier}`.toLowerCase();
-                    if(!hay.includes(q)) return false;
-                }
-                if(this.filters.kategori && !r.kategori.toLowerCase().includes(this.filters.kategori.toLowerCase())) return false;
-                if(this.filters.supplier && !r.supplier.toLowerCase().includes(this.filters.supplier.toLowerCase())) return false;
-                return true;
-            });
-        },
-        filteredTotal(){ return this.filteredList().length },
-
-        // PAGINATION helpers
-        totalPages(){ return Math.max(1, Math.ceil(this.filteredTotal() / this.pageSize)); },
-        pagedData(){
-            const start = (this.currentPage - 1) * this.pageSize;
-            return this.filteredList().slice(start, start + this.pageSize);
-        },
-        goToPage(n){
-            const t = this.totalPages();
-            if(n < 1) n = 1;
-            if(n > t) n = t;
-            this.currentPage = n;
-            this.openActionId = null;
-            this.showDeleteModal = false;
-        },
-        prev(){ if(this.currentPage > 1) this.currentPage--; this.openActionId = null; },
-        next(){ if(this.currentPage < this.totalPages()) this.currentPage++; this.openActionId = null; },
-
-        // pagination with ellipsis
-        pagesToShow(){
-            const total = this.totalPages();
-            const maxButtons = this.maxPageButtons;
-            const current = this.currentPage;
-            if(total <= maxButtons) return Array.from({length: total}, (_, i)=>i+1);
-
-            const pages = [];
-            const side = Math.floor((maxButtons - 3) / 2);
-            const left = Math.max(2, current - side);
-            const right = Math.min(total - 1, current + side);
-
-            pages.push(1);
-            if(left > 2) pages.push('...');
-            for(let i = left; i <= right; i++) pages.push(i);
-            if(right < total - 1) pages.push('...');
-            pages.push(total);
-
-            return pages;
-        },
-
-        // ACTIONS
-        toggleActions(id){
-            this.openActionId = (this.openActionId === id) ? null : id;
-        },
-
-        confirmDelete(item){
-            this.openActionId = null;
-            this.deleteItem = Object.assign({}, item);
-            this.showDeleteModal = true;
-        },
-        closeDelete(){
-            this.showDeleteModal = false;
-            this.deleteItem = {};
-        },
-        doDelete(){
-            const id = this.deleteItem.id;
-            const idx = this.data.findIndex(d => d.id === id);
-            if(idx !== -1){
-                this.data.splice(idx, 1);
-                if(this.currentPage > this.totalPages()){
-                    this.currentPage = this.totalPages();
+    <script>
+        // Toast manager (used globally at top)
+        function toasts() {
+            return {
+                items: [],
+                _id: 1,
+                push(type, message, timeout = 4000) {
+                    const id = this._id++;
+                    this.items.push({ id, type, message, show: true });
+                    setTimeout(() => {
+                        const idx = this.items.findIndex(t => t.id === id);
+                        if (idx !== -1) this.items[idx].show = false;
+                        setTimeout(() => {
+                            const j = this.items.findIndex(t => t.id === id);
+                            if (j !== -1) this.items.splice(j, 1);
+                        }, 300);
+                    }, timeout);
+                },
+                close(index) {
+                    if (!this.items[index]) return;
+                    this.items[index].show = false;
+                    setTimeout(() => this.items.splice(index, 1), 300);
                 }
             }
-            this.closeDelete();
-        },
-
-        exportData(){
-            alert('Fitur export belum diimplementasikan — panggil endpoint export pada backend.');
-        },
-
-        resetFilters(){
-            this.filters = {kategori:'', supplier:''};
-            this.q = '';
-            this.currentPage = 1;
-        },
-
-        // helper formatting
-        formatRupiah(v){
-            if(v === null || v === undefined) return '-';
-            return 'Rp' + v.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
         }
-    }
-}
-</script>
+
+        function itemsPage() {
+            return {
+                data: @json($itemList),
+
+                showFilter: false,
+                q: '',
+                filters: { kategori: ''},
+                pageSize: 10,
+                currentPage: 1,
+                maxPageButtons: 7,
+                openActionId: null,
+                showDeleteModal: false,
+                deleteItem: {},
+
+                init() {
+                    this.showDeleteModal = false;
+                    this.deleteItem = {};
+                    this.openActionId = null;
+                    this.showFilter = false;
+                },
+
+                filteredList() {
+                    const q = this.q.trim().toLowerCase();
+                    return this.data.filter(r => {
+                        if (q) {
+                            const hay = `${r.kode ?? ''} ${r.nama ?? ''} 
+                            `.toLowerCase();
+                            if (!hay.includes(q)) return false;
+                        }
+                        if (this.filters.kategori && !(r.kategori || '').toLowerCase().includes(this.filters.kategori.toLowerCase())) return false;
+                        
+                        
+                        return true;
+                    });
+                },
+
+                filteredTotal() { return this.filteredList().length; },
+
+                totalPages() { return Math.max(1, Math.ceil(this.filteredTotal() / this.pageSize)); },
+
+                pagedData() {
+                    const start = (this.currentPage - 1) * this.pageSize;
+                    return this.filteredList().slice(start, start + this.pageSize);
+                },
+
+                goToPage(n) {
+                    const t = this.totalPages();
+                    if (n < 1) n = 1;
+                    if (n > t) n = t;
+                    this.currentPage = n;
+                    this.openActionId = null;
+                    this.showDeleteModal = false;
+                },
+
+                prev() { if (this.currentPage > 1) this.currentPage--; this.openActionId = null; },
+                next() { if (this.currentPage < this.totalPages()) this.currentPage++; this.openActionId = null; },
+
+                pagesToShow() {
+                    const total = this.totalPages();
+                    const maxButtons = this.maxPageButtons;
+                    const current = this.currentPage;
+                    if (total <= maxButtons) return Array.from({ length: total }, (_, i) => i + 1);
+                    const pages = [];
+                    const side = Math.floor((maxButtons - 3) / 2);
+                    const left = Math.max(2, current - side);
+                    const right = Math.min(total - 1, current + side);
+                    pages.push(1);
+                    if (left > 2) pages.push('...');
+                    for (let i = left; i <= right; i++) pages.push(i);
+                    if (right < total - 1) pages.push('...');
+                    pages.push(total);
+                    return pages;
+                },
+
+                toggleActions(id) { this.openActionId = (this.openActionId === id) ? null : id; },
+
+                confirmDelete(item) {
+                    this.openActionId = null;
+                    this.deleteItem = Object.assign({}, item);
+                    this.showDeleteModal = true;
+                },
+
+                closeDelete() {
+                    this.showDeleteModal = false;
+                    this.deleteItem = {};
+                },
+
+                async doDelete() {
+                    if (!this.deleteItem || !this.deleteItem.id) { this.closeDelete(); return; }
+
+                    if (!this.deleteItem.deleteUrl) {
+                        const idx0 = this.data.findIndex(d => d.id === this.deleteItem.id);
+                        if (idx0 !== -1) this.data.splice(idx0, 1);
+                        if (this.currentPage > this.totalPages()) this.currentPage = this.totalPages();
+                        const root = document.querySelector('[x-data="toasts()"]');
+                        if (root && root.__x && root.__x.$data) root.__x.$data.push('success', 'Item dihapus');
+                        this.closeDelete();
+                        return;
+                    }
+
+                    try {
+                        const tokenMeta = document.querySelector('meta[name="csrf-token"]');
+                        const token = tokenMeta ? tokenMeta.getAttribute('content') : '';
+
+                        const res = await fetch(this.deleteItem.deleteUrl, {
+                            method: 'DELETE',
+                            headers: {
+                                'X-CSRF-TOKEN': token,
+                                'Accept': 'application/json',
+                                'X-Requested-With': 'XMLHttpRequest',
+                            },
+                        });
+
+                        if (res.ok) {
+                            const idx = this.data.findIndex(d => d.id === this.deleteItem.id);
+                            if (idx !== -1) this.data.splice(idx, 1);
+                            if (this.currentPage > this.totalPages()) this.currentPage = this.totalPages();
+
+                            let msg = 'Item berhasil dihapus.';
+                            try { const j = await res.json(); if (j && j.message) msg = j.message; } catch (e) {}
+
+                            const root = document.querySelector('[x-data="toasts()"]');
+                            if (root && root.__x && root.__x.$data && typeof root.__x.$data.push === 'function') {
+                                root.__x.$data.push('success', msg);
+                            } else { alert(msg); }
+
+                            this.closeDelete();
+                        } else {
+                            let msg = 'Gagal menghapus item.';
+                            try { const j = await res.json(); if (j && j.message) msg = j.message; } catch (e) {}
+                            const root = document.querySelector('[x-data="toasts()"]');
+                            if (root && root.__x && root.__x.$data && typeof root.__x.$data.push === 'function') {
+                                root.__x.$data.push('error', msg);
+                            } else { alert(msg); }
+                            this.closeDelete();
+                        }
+                    } catch (err) {
+                        console.error(err);
+                        const root = document.querySelector('[x-data="toasts()"]');
+                        if (root && root.__x && root.__x.$data && typeof root.__x.$data.push === 'function') {
+                            root.__x.$data.push('error', 'Terjadi error saat menghapus item. Periksa koneksi atau server.');
+                        } else { alert('Terjadi error saat menghapus item. Periksa koneksi atau server.'); }
+                        this.closeDelete();
+                    }
+                },
+
+                resetFilters() { this.filters = { kategori: ''
+                    
+                }; this.q = ''; this.currentPage = 1; }
+            }
+        }
+    </script>
 @endsection

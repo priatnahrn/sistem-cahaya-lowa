@@ -12,6 +12,13 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
 
     @stack('styles')
+
+    <style>
+        /* Pastikan ini ada di CSS global (atau head) supaya x-cloak bekerja */
+        [x-cloak] {
+            display: none !important;
+        }
+    </style>
 </head>
 
 <body class="bg-[#F9FAFB]">
@@ -42,7 +49,8 @@
                         </button>
                         <div x-show="open" @click.outside="open=false" x-transition
                             class="absolute right-0 mt-2 w-48 bg-white border border-slate-200 rounded-lg shadow-lg overflow-hidden">
-                            <a href="{{ route('profil.index') }}" class="block px-4 py-2 text-sm hover:bg-slate-50">Profil</a>
+                            <a href="{{ route('profil.index') }}"
+                                class="block px-4 py-2 text-sm hover:bg-slate-50">Profil</a>
                             <form method="POST" action="{{ route('logout') }}">
                                 @csrf
                                 <button
