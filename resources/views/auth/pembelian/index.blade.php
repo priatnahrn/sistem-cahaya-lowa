@@ -13,28 +13,15 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
     {{-- TOAST --}}
-    <div x-data class="fixed top-6 right-6 space-y-3 z-50 w-80">
+    <div class="fixed top-6 right-6 space-y-3 z-[9999] w-80">
         @if (session('success'))
             <div x-data="{ show: true }" x-show="show" x-transition x-init="setTimeout(() => show = false, 4000)"
-                class="fixed top-4 right-4 flex items-start gap-3 rounded-md border px-4 py-3 shadow text-sm z-50"
+                class="flex items-start gap-3 rounded-md border px-4 py-3 shadow text-sm"
                 style="background-color:#ECFDF5; border-color:#A7F3D0; color:#065F46;">
                 <i class="fa-solid fa-circle-check text-lg mt-0.5"></i>
                 <div>
                     <div class="font-semibold">Berhasil</div>
                     <div>{{ session('success') }}</div>
-                </div>
-                <button class="ml-auto" @click="show=false"><i class="fa-solid fa-xmark"></i></button>
-            </div>
-        @endif
-
-        @if (session('error'))
-            <div x-data="{ show: true }" x-show="show" x-transition x-init="setTimeout(() => show = false, 4000)"
-                class="fixed top-4 right-4 flex items-start gap-3 rounded-md border px-4 py-3 shadow text-sm z-50"
-                style="background-color:#FFEAE6; border-color:#FCA5A5; color:#B91C1C;">
-                <i class="fa-solid fa-circle-xmark text-lg mt-0.5"></i>
-                <div>
-                    <div class="font-semibold">Gagal</div>
-                    <div>{{ session('error') }}</div>
                 </div>
                 <button class="ml-auto" @click="show=false"><i class="fa-solid fa-xmark"></i></button>
             </div>
@@ -73,7 +60,8 @@
         </div>
 
         {{-- FILTER --}}
-        <div x-show="showFilter" x-collapse x-transition
+        {{-- NOTE: x-collapse dihapus supaya tidak butuh plugin --}}
+        <div x-show="showFilter" x-transition
             class="bg-white border border-slate-200 rounded-xl px-6 py-4 grid grid-cols-1 md:grid-cols-5 gap-4">
             <div>
                 <label class="block text-sm text-slate-500 mb-1">No Faktur</label>
@@ -183,7 +171,8 @@
                                                 </a>
                                             </li>
                                             <li>
-                                                <button type="button" @click="confirmDelete(r)"
+                                                {{-- IMPORTANT: stop event to avoid dropdown closing issues --}}
+                                                <button type="button" @click.stop="confirmDelete(r)"
                                                     class="w-full text-left px-4 py-2 text-red-500 hover:bg-slate-50">
                                                     <i class="fa-solid fa-trash mr-2"></i> Hapus
                                                 </button>
@@ -235,55 +224,67 @@
                 </nav>
             </div>
         </div>
-    </div>
 
-    {{-- DELETE CONFIRM MODAL --}}
-    <div x-cloak x-show="showDeleteModal" class="fixed inset-0 z-50 flex items-center justify-center">
-        <div class="absolute inset-0 bg-black/40" @click="closeDelete()"></div>
-        <div x-transition class="bg-white rounded-xl shadow-lg w-11/12 md:w-1/3 z-10 overflow-hidden">
-            <div class="px-6 py-4 border-b border-slate-200">
-                <h3 class="text-lg font-semibold text-red-600">Konfirmasi Hapus</h3>
-            </div>
-            <div class="px-6 py-4">
-                <p class="text-slate-600">
-                    Apakah Anda yakin ingin menghapus pembelian
-                    <span class="font-semibold" x-text="deleteItem.no_faktur"></span> dari
-                    <span class="text-green-600" x-text="deleteItem.supplier"></span>?
-                </p>
-            </div>
-            <div class="px-6 py-4 border-t border-slate-200 flex justify-end gap-2">
-                <button type="button" @click="closeDelete()"
-                    class="px-4 py-2 rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50">
-                    Batal
-                </button>
-                <button type="button" @click="doDelete()"
-                    class="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700">
-                    Hapus
-                </button>
+        {{-- DELETE CONFIRM MODAL (DI DALAM SCOPE x-data supaya binding bekerja) --}}
+        <div x-cloak x-show="showDeleteModal" x-transition.opacity class="fixed inset-0 z-[9999] flex items-center justify-center">
+            <div class="absolute inset-0 bg-black/40" @click="closeDelete()"></div>
+            <div class="bg-white rounded-xl shadow-lg w-11/12 md:w-1/3 z-50 overflow-hidden">
+                <div class="px-6 py-4 border-b border-slate-200">
+                    <h3 class="text-lg font-semibold text-red-600">Konfirmasi Hapus</h3>
+                </div>
+                <div class="px-6 py-4">
+                    <p class="text-slate-600">
+                        Apakah Anda yakin ingin menghapus pembelian
+                        <span class="font-semibold" x-text="deleteItem.no_faktur"></span> dari
+                        <span class="text-green-600" x-text="deleteItem.supplier"></span>?
+                    </p>
+                </div>
+                <div class="px-6 py-4 border-t border-slate-200 flex justify-end gap-2">
+                    <button type="button" @click="closeDelete()"
+                        class="px-4 py-2 rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50">
+                        Batal
+                    </button>
+                    <button type="button" @click="doDelete()"
+                        class="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700">
+                        Hapus
+                    </button>
+                </div>
             </div>
         </div>
-    </div>
+        {{-- END MODAL --}}
+
+    </div> {{-- end x-data wrapper --}}
 
     @php
-        // prepare data for JS (safely convert relations)
+        use Carbon\Carbon;
+
         $pembeliansJson = $pembelians
             ->map(function ($p) {
+                // default: ambil tanggal dari kolom `tanggal`
+                if ($p->tanggal) {
+                    $tanggal = Carbon::parse($p->tanggal)->timezone('Asia/Singapore'); // UTC+8
+                    $jam = $p->created_at
+                        ? Carbon::parse($p->created_at)->timezone('Asia/Singapore')->format('H:i')
+                        : '00:00';
+                    $tanggalFinal = $tanggal->format('Y-m-d') . ' ' . $jam . ':00';
+                } else {
+                    // fallback full dari created_at
+                    $tanggalFinal = $p->created_at
+                        ? Carbon::parse($p->created_at)->timezone('Asia/Singapore')->format('Y-m-d H:i:s')
+                        : null;
+                }
+
                 return [
                     'id' => $p->id,
                     'no_faktur' => $p->no_faktur,
-                    // ensure ISO-like format so JS Date can parse
-                    'tanggal' => $p->tanggal ? $p->tanggal->format('Y-m-d H:i:s') : null,
+                    'tanggal' => $tanggalFinal,
                     'supplier' => optional($p->supplier)->nama_supplier ?? '-',
                     'total' => (float) ($p->total ?? 0),
                     'status' => $p->status ?? 'draft',
                     'url' => route('pembelian.show', $p->id),
-                    // include items (joined string) so searching dapat mendeteksi item meski tidak ditampilkan
                     'items' => $p->items
-                        ->map(function ($it) {
-                            return optional($it->item)->nama_item ?? ($it->item_id ?? '');
-                        })
+                        ->map(fn($it) => optional($it->item)->nama_item ?? ($it->item_id ?? ''))
                         ->filter()
-                        ->values()
                         ->implode(', '),
                 ];
             })
@@ -314,7 +315,8 @@
                 sortDir: 'desc',
 
                 init() {
-                    // nothing special now
+                    // debug init
+                    // console.log('pembelianPage init');
                 },
 
                 // helpers
@@ -337,9 +339,9 @@
                     const hh = String(d.getHours()).padStart(2, '0');
                     const mi = String(d.getMinutes()).padStart(2, '0');
 
+                    // tanpa detik
                     return `${dd}-${mm}-${yyyy}, ${hh}:${mi}`;
                 },
-
 
                 // returns css classes for sort icon (re-usable)
                 sortIcon(field) {
@@ -353,7 +355,7 @@
                     let list = this.data.filter(r => {
                         // global search includes no_faktur, supplier, items
                         if (q && !(`${r.no_faktur} ${r.supplier} ${r.items}`.toLowerCase().includes(q)))
-                        return false;
+                            return false;
 
                         if (this.filters.no_faktur && !r.no_faktur.toLowerCase().includes(this.filters.no_faktur
                                 .toLowerCase())) return false;
@@ -490,6 +492,7 @@
 
                 // delete workflow (calls backend if route exists, otherwise still removes from client)
                 confirmDelete(item) {
+                    console.log('confirmDelete called', item);
                     this.openActionId = null;
                     this.deleteItem = Object.assign({}, item);
                     this.showDeleteModal = true;
@@ -501,9 +504,10 @@
                 },
 
                 async doDelete() {
-                    // try backend delete first (RESTful route: DELETE /pembelian/{id})
                     const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
-                    const url = `{{ url('pembelian') }}/${this.deleteItem.id}`;
+                    // sesuai route yang kamu tunjukkan: /pembelian/{id}/delete
+                    const base = "{{ url('pembelian') }}";
+                    const url = `${base}/${this.deleteItem.id}/delete`;
 
                     try {
                         const res = await fetch(url, {
@@ -514,36 +518,42 @@
                             }
                         });
 
+                        let payload = null;
+                        try { payload = await res.json(); } catch (e) { /* ignore */ }
+
                         if (res.ok) {
-                            // remove from client list
+                            const message = (payload && payload.message) ? payload.message : 'Data berhasil dihapus.';
                             const idx = this.data.findIndex(d => d.id === this.deleteItem.id);
                             if (idx !== -1) this.data.splice(idx, 1);
+
+                            // small non-blocking feedback (simple)
+                            this.showToast(message);
                         } else {
-                            // if backend not implemented or returned error, still remove client-side?
-                            // We'll try to read message and show alert, but still remove from client to reflect UI change.
-                            const text = await res.text();
-                            console.error('Delete failed:', text);
-                            // optional: don't remove if you prefer; here we remove for UX
-                            const idx2 = this.data.findIndex(d => d.id === this.deleteItem.id);
-                            if (idx2 !== -1) this.data.splice(idx2, 1);
-                            alert('Hapus: server memberi respon error (lihat console). Item dihapus di UI.');
+                            const msg = (payload && payload.message) ? payload.message : `Hapus gagal (status ${res.status}).`;
+                            console.error('Delete failed:', payload ?? await res.text());
+                            alert(msg);
                         }
                     } catch (e) {
                         console.error('Delete error', e);
-                        // remove locally so UI is consistent
-                        const idx3 = this.data.findIndex(d => d.id === this.deleteItem.id);
-                        if (idx3 !== -1) this.data.splice(idx3, 1);
-                        alert('Terjadi kesalahan koneksi; item dihapus di UI.');
+                        alert('Terjadi kesalahan koneksi saat menghapus.');
                     } finally {
                         this.closeDelete();
                         if (this.currentPage > this.totalPages()) this.currentPage = this.totalPages();
                     }
                 },
 
-                exportData() {
-                    // fallback: redirect to index with export flag
-                    window.location = "{{ route('pembelian.index') }}?export=1";
-                }
+                // simple toast helper (temporary)
+                showToast(message = '') {
+                    const el = document.createElement('div');
+                    el.className = 'fixed top-6 right-6 z-[10000] rounded-md border px-4 py-3 shadow text-sm';
+                    el.style.backgroundColor = '#ECFDF5';
+                    el.style.borderColor = '#A7F3D0';
+                    el.style.color = '#065F46';
+                    el.innerHTML = `<div class="font-semibold">Berhasil</div><div>${message}</div>`;
+                    document.body.appendChild(el);
+                    setTimeout(() => el.remove(), 3500);
+                },
+
             }
         }
     </script>

@@ -105,15 +105,15 @@
 
                 {{-- Menu Utama Pembelian --}}
                 {{-- Menu Utama Pembelian --}}
-    <button @click="open = true; window.location.href='{{ route('pembelian.index') }}';"
-            class="w-full flex items-center gap-3 px-3 py-[10px] rounded-md transition text-white/85 hover:bg-white/5"
-            :class="{ 'justify-center': collapsed }">
-        <i class="fa-solid fa-bag-shopping opacity-60" :class="collapsed ? 'text-lg' : ''"></i>
-        <span x-show="!collapsed" class="flex-1 text-left font-medium">Pembelian</span>
-        <i x-show="!collapsed"
-           class="fa-solid fa-chevron-down text-white/60 transition-transform duration-200"
-           :class="open ? 'rotate-180' : ''"></i>
-    </button>
+                <button @click="open = true; window.location.href='{{ route('pembelian.index') }}';"
+                    class="w-full flex items-center gap-3 px-3 py-[10px] rounded-md transition text-white/85 hover:bg-white/5"
+                    :class="{ 'justify-center': collapsed }">
+                    <i class="fa-solid fa-bag-shopping opacity-60" :class="collapsed ? 'text-lg' : ''"></i>
+                    <span x-show="!collapsed" class="flex-1 text-left font-medium">Pembelian</span>
+                    <i x-show="!collapsed"
+                        class="fa-solid fa-chevron-down text-white/60 transition-transform duration-200"
+                        :class="open ? 'rotate-180' : ''"></i>
+                </button>
 
                 {{-- Submenu --}}
                 <div x-show="open && !collapsed" x-transition class="mt-1 pl-6 space-y-1">
@@ -229,6 +229,15 @@
                     <i class="fa-solid fa-users" :class="collapsed ? 'text-lg' : ''"></i>
                     <span x-show="!collapsed" class="font-medium">Pelanggan</span>
                 </a>
+                {{-- Mutasi Stok --}}
+                @php $active = $is('mutasi-stok.*'); @endphp
+                <a href=""
+                    class="mt-2 flex items-center gap-3 px-3 py-[10px] rounded-md transition {{ $active ? 'bg-white text-[#344579]' : 'text-white/85 hover:bg-white/5' }}"
+                    :class="{ 'justify-center': collapsed }">
+                    <i class="fa-solid fa-right-left" :class="collapsed ? 'text-lg' : ''"></i>
+                    <span x-show="!collapsed" class="font-medium">Mutasi Stok</span>
+                </a>
+
             </div>
 
             {{-- MANAJEMEN PENGGUNA --}}
@@ -254,23 +263,43 @@
                     <i class="fa-solid fa-users-gear" :class="collapsed ? 'text-lg' : ''"></i>
                     <span x-show="!collapsed" class="font-medium">Daftar Akun</span>
                 </a>
+
+                {{-- Log Aktivitas --}}
+                @php $active = $is('log.*'); @endphp
+                <a href=""
+                    class="mt-2 flex items-center gap-3 px-3 py-[10px] rounded-md transition {{ $active ? 'bg-white text-[#344579]' : 'text-white/85 hover:bg-white/5' }}"
+                    :class="{ 'justify-center': collapsed }">
+                    <i class="fa-solid fa-list-check" :class="collapsed ? 'text-lg' : ''"></i>
+                    <span x-show="!collapsed" class="font-medium">Aktivitas Pengguna</span>
+                </a>
+
             </div>
 
-            {{-- LAINNYA --}}
+            {{-- KEUANGAN --}}
             <div class="pt-4 border-t border-white/10">
                 <div x-show="!collapsed" class="text-[11px] font-semibold tracking-wider mb-3 text-blue-100/80">
-                    LAINNYA
+                    KEUANGAN
                 </div>
 
                 {{-- Kas Keuangan --}}
-                @php $active = $is('kas.*') || $is('keuangan.*'); @endphp
-                <a href="javascript:void(0)"
+                @php $active = $is('kas.*') || $is('keuangan.kas.*'); @endphp
+                <a href=""
                     class="flex items-center gap-3 px-3 py-[10px] rounded-md transition {{ $active ? 'bg-white text-[#344579]' : 'text-white/85 hover:bg-white/5' }}"
                     :class="{ 'justify-center': collapsed }">
                     <i class="fa-solid fa-wallet" :class="collapsed ? 'text-lg' : ''"></i>
                     <span x-show="!collapsed" class="font-medium">Kas Keuangan</span>
                 </a>
+
+                {{-- Catatan Penggajian --}}
+                @php $active = $is('penggajian.*'); @endphp
+                <a href=""
+                    class="mt-2 flex items-center gap-3 px-3 py-[10px] rounded-md transition {{ $active ? 'bg-white text-[#344579]' : 'text-white/85 hover:bg-white/5' }}"
+                    :class="{ 'justify-center': collapsed }">
+                    <i class="fa-solid fa-file-invoice-dollar" :class="collapsed ? 'text-lg' : ''"></i>
+                    <span x-show="!collapsed" class="font-medium">Gaji Karyawan</span>
+                </a>
             </div>
+
 
         </div>
 </aside>

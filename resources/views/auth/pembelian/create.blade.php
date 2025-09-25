@@ -5,8 +5,19 @@
 @section('content')
     <div x-data="pembelianCreatePage()" x-init="init()" class="space-y-6">
 
+        {{-- BREADCRUMB --}}
+        <div class="flex items-center gap-3">
+            <a href="{{ route('pembelian.index') }}" class="text-slate-500 hover:underline text-sm">Pembelian</a>
+            <div class="text-sm text-slate-400">/</div>
+            <div class="inline-flex items-center text-sm">
+                <span class="px-3 py-1 rounded-md bg-[#E9F3FF] text-[#1D4ED8] border border-[#BFDBFE] font-medium">
+                    Tambah Pembelian Baru
+                </span>
+            </div>
+        </div>
+
         {{-- INFO UMUM --}}
-        <div class="bg-white border border-slate-200 rounded-xl px-6 py-4 shadow-sm space-y-4">
+        <div class="bg-white border border-slate-200 rounded-xl px-6 py-4 space-y-4">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {{-- Supplier --}}
                 <div>
@@ -18,8 +29,11 @@
                             class="w-full pl-12 pr-4 py-2 rounded-lg border border-gray-300 text-slate-600 placeholder-slate-400
                                focus:outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400">
                         <input type="hidden" name="supplier_id" :value="form.supplier_id">
-                        <ul x-show="supplierResults.length"
+                        <ul x-show="supplierQuery.length >= 2 && !form.supplier_id"
                             class="absolute z-50 left-0 right-0 mt-1 bg-white border border-gray-300 rounded-lg shadow text-sm max-h-56 overflow-auto">
+                            <template x-if="supplierResults.length === 0">
+                                <li class="px-3 py-2 text-gray-500 italic">Data supplier tidak ditemukan</li>
+                            </template>
                             <template x-for="s in supplierResults" :key="s.id">
                                 <li @click="selectSupplier(s)" class="px-3 py-2 cursor-pointer hover:bg-gray-100">
                                     <span x-text="s.nama_supplier"></span>
@@ -88,8 +102,11 @@
                                         <input type="text" x-model="item.query" @input.debounce.300ms="searchItem(idx)"
                                             placeholder="Cari item"
                                             class="w-full pl-10 pr-3 py-2 rounded-lg border border-gray-300 text-sm">
-                                        <ul x-show="item.results.length"
+                                        <ul x-show="item.query.length >= 2 && !item.item_id"
                                             class="absolute z-50 left-0 right-0 mt-1 bg-white border border-gray-300 rounded-lg shadow text-sm max-h-56 overflow-auto">
+                                            <template x-if="item.results.length === 0">
+                                                <li class="px-3 py-2 text-gray-500 italic">Data item tidak ditemukan</li>
+                                            </template>
                                             <template x-for="r in item.results" :key="r.id">
                                                 <li @click="selectItem(idx, r)"
                                                     class="px-3 py-2 cursor-pointer hover:bg-gray-100">
@@ -124,6 +141,7 @@
                                     <div class="relative">
                                         <select x-model="item.satuan_id"
                                             class="w-full border border-gray-300 rounded-lg px-3 py-2 pr-8 text-sm appearance-none">
+                                            <option value="">Pilih</option>
                                             <template x-for="s in item.satuans" :key="s.id">
                                                 <option :value="s.id" x-text="s.nama_satuan"></option>
                                             </template>
@@ -132,14 +150,28 @@
                                             class="fa-solid fa-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"></i>
                                     </div>
                                 </td>
+
                                 {{-- Harga --}}
                                 <td class="px-4 py-3">
-                                    <input type="text" :value="formatRupiah(item.harga)"
-                                        @input="updateHarga(idx, $event.target.value)"
-                                        class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-right" />
+                                    <div class="relative">
+                                        <span
+                                            class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-sm">Rp</span>
+                                        <input type="text" :value="formatRupiah(item.harga)"
+                                            @input="updateHarga(idx, $event.target.value)"
+                                            class="pl-10 pr-3 w-full border border-gray-300 rounded-lg py-2 text-sm text-right focus:outline-none focus:ring-1 focus:ring-indigo-200" />
+                                    </div>
                                 </td>
+
                                 {{-- Total --}}
-                                <td class="px-4 py-3 text-right" x-text="formatRupiah(item.jumlah * item.harga)"></td>
+                                <td class="px-4 py-3 text-right">
+                                    <div class="relative">
+                                        <span
+                                            class="absolute left-0 top-1/2 -translate-y-1/2 text-slate-500 text-sm">Rp</span>
+                                        <span class="pl-6"
+                                            x-text="formatRupiah(item.jumlah * item.harga).replace('Rp', '')"></span>
+                                    </div>
+                                </td>
+
                                 {{-- Aksi --}}
                                 <td class="px-2 py-3 text-center">
                                     <button type="button" @click="removeItem(idx)"
@@ -162,32 +194,38 @@
 
         {{-- RINGKASAN --}}
         <div class="flex flex-col md:flex-row md:justify-end gap-4">
-            <div
-                class="w-full md:w-96 bg-gradient-to-b from-white to-slate-50 border border-slate-200 rounded-2xl p-6 shadow-md">
+            <div class="w-full md:w-96 bg-gradient-to-b from-white to-slate-50 border border-slate-200 rounded-2xl p-6 ">
                 <div class="flex justify-between items-center mb-4">
                     <div class="text-slate-600">Sub Total</div>
-                    <div class="font-semibold text-slate-700" x-text="formatRupiah(subTotal)"></div>
+                    <div class="font-normal text-slate-700">
+                        Rp <span x-text="formatRupiah(subTotal)"></span>
+                    </div>
                 </div>
                 <div class="flex justify-between items-center mb-4">
                     <div class="text-slate-600">Biaya Transportasi</div>
-                    <div class="relative">
+                    <div class="relative w-40">
                         <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-sm">Rp</span>
                         <input type="text" :value="formatRupiah(form.biaya_transport)"
                             @input="updateTransport($event.target.value)"
-                            class="w-40 pl-10 pr-3 py-2 rounded-lg border border-slate-200 text-sm text-right focus:outline-none focus:ring-2 focus:ring-indigo-200">
+                            class="pl-10 pr-3 w-full border border-slate-200 rounded-lg px-2 py-2 text-sm text-right focus:outline-none focus:ring-1 focus:ring-indigo-200" />
                     </div>
+
                 </div>
                 <div class="border-t border-slate-200 pt-4 mt-4"></div>
                 <div class="flex justify-between items-center mb-4">
                     <div class="text-slate-700 font-bold">TOTAL PEMBELIAN</div>
-                    <div class="text-green-700 text-xl font-extrabold tracking-wide"
-                        x-text="formatRupiah(totalPembayaran)"></div>
+                    <div class="text-[#344579] text-xl font-extrabold tracking-wide">
+                        Rp <span x-text="formatRupiah(totalPembayaran)"></span>
+                    </div>
                 </div>
                 <div class="mt-5 flex gap-3 justify-end">
                     <a href="{{ route('pembelian.index') }}"
                         class="px-4 py-2 rounded-lg border border-slate-300 text-slate-600 hover:bg-slate-100">Batal</a>
-                    <button @click="save" type="button"
-                        class="px-4 py-2 rounded-lg bg-indigo-600 text-white w-full hover:bg-indigo-700">Simpan</button>
+                    <button @click="save" type="button" :disabled="!isValid()"
+                        class="px-4 py-2 rounded-lg w-full text-white"
+                        :class="isValid() ? 'bg-[#344579] hover:bg-[#2d3e6f] cursor-pointer' : 'bg-gray-300 cursor-not-allowed'">
+                        Simpan
+                    </button>
                 </div>
             </div>
         </div>
@@ -214,12 +252,10 @@
                     this.addItem();
                     this.form.tanggal = new Date().toISOString().split('T')[0];
 
-                    const today = new Date();
-                    const yyyymmdd = today.toISOString().split('T')[0].replace(/-/g, '');
-                    this.form.no_faktur = `PB-${yyyymmdd}-${Math.floor(Math.random() * 1000)
-                    .toString()
-                    .padStart(3, '0')}`;
+                    // pakai preview dari backend, bukan random
+                    this.form.no_faktur = @json($noFakturPreview);
                 },
+
 
                 async searchSupplier() {
                     if (this.supplierQuery.length < 2) {
@@ -241,7 +277,7 @@
                         item_id: null,
                         query: '',
                         results: [],
-                        gudang_id: '{{ $gudangs->first()->id ?? '' }}',
+                        gudang_id: '',
                         satuan_id: '',
                         satuans: [],
                         jumlah: 1,
@@ -266,20 +302,16 @@
                     this.form.items[idx].results = [];
                     this.form.items[idx].satuans = item.satuans || [];
 
-                    // satuan default
                     if (item.satuan_default) {
                         this.form.items[idx].satuan_id = item.satuan_default;
                     } else if (item.satuans && item.satuans.length > 0) {
                         this.form.items[idx].satuan_id = item.satuans[0].id;
                     }
 
-                    // gudang default kalau belum dipilih
                     if (!this.form.items[idx].gudang_id) {
                         this.form.items[idx].gudang_id = '{{ $gudangs->first()->id ?? '' }}';
                     }
                 },
-
-                
 
                 removeItem(idx) {
                     this.form.items.splice(idx, 1);
@@ -305,20 +337,32 @@
 
                 formatRupiah(n) {
                     return new Intl.NumberFormat('id-ID', {
-                        style: 'currency',
-                        currency: 'IDR',
                         minimumFractionDigits: 0
                     }).format(n || 0);
                 },
 
+                isValid() {
+                    if (!this.form.supplier_id) return false;
+                    if (this.form.items.length === 0) return false;
+
+                    for (let it of this.form.items) {
+                        if (!it.item_id) return false;
+                        if (!it.gudang_id) return false;
+                        if (!it.satuan_id) return false;
+                        if (!it.jumlah || it.jumlah <= 0) return false;
+                        if (!it.harga || it.harga <= 0) return false;
+                    }
+                    return true;
+                },
+
                 async save() {
+                    if (!this.isValid()) return;
+
                     const payload = JSON.parse(JSON.stringify(this.form));
                     payload.sub_total = this.subTotal;
                     payload.total = this.totalPembayaran;
                     payload.status = this.form.lunas ? 'paid' : 'unpaid';
                     payload.biaya_transport = parseInt(this.form.biaya_transport) || 0;
-
-                    // hapus lunas biar gak ikut ke backend
                     delete payload.lunas;
 
                     payload.items = this.form.items.map(i => ({
@@ -352,5 +396,4 @@
             }
         }
     </script>
-
 @endsection

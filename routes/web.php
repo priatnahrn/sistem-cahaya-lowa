@@ -5,6 +5,7 @@ use App\Http\Controllers\ItemController;
 use App\Http\Controllers\KategoriItemController;
 use App\Http\Controllers\PelangganController;
 use App\Http\Controllers\PembelianController;
+use App\Http\Controllers\PenjualanController;
 use App\Http\Controllers\SupplierController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\UserController;
@@ -30,12 +31,13 @@ Route::middleware('auth')->group(function () {
     })->name('dashboard');
 
     Route::prefix('penjualan')->group(function () {
-        Route::get('/', function () {
-            return view('auth.penjualan.index'); // buat view penjualan/index.blade.php
-        })->name('penjualan.index');
-        Route::get('/create', function () {
-            return view('auth.penjualan.create'); // buat view penjualan/create.blade.php
-        })->name('penjualan.create');
+        Route::get('/', [PenjualanController::class, 'index'])->name('penjualan.index');
+        Route::get('/create', [PenjualanController::class, 'create'])->name('penjualan.create');
+        Route::post('/store', [PenjualanController::class, 'store'])->name('penjualan.store');
+        Route::get('/{id}', [PenjualanController::class, 'show'])->name('penjualan.show');
+        Route::put('/{id}/update', [PenjualanController::class, 'update'])->name('penjualan.update');
+        Route::get('/{id}/last-price', [PenjualanController::class, 'getLastPrice'])->name('penjualan.last_price');
+        Route::delete('/{id}/delete', [PenjualanController::class, 'destroy'])->name('penjualan.destroy');
     });
 
     Route::prefix('pembelian')->group(function () {
