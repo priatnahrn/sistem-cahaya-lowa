@@ -9,7 +9,7 @@
         }
     </style>
 
-    
+
 
     {{-- Toasts --}}
     <div x-data class="fixed top-6 right-6 space-y-3 z-50 w-80">
@@ -77,82 +77,25 @@
                 {{-- Filter Kode --}}
                 <div>
                     <label class="block text-sm font-medium text-slate-700 mb-2">Kode Gudang</label>
-                    <div class="relative" x-data="{ open: false }">
-                        <input type="text" placeholder="Cari kode gudang..." x-model="filters.kode" @focus="open=true"
-                            @input="open=true" @click.away="open=false"
-                            class="w-full px-3 py-2 pr-8 rounded-lg border border-slate-200 text-sm text-slate-700
-                                   focus:outline-none focus:ring-2 focus:ring-[#344579]/20 focus:border-[#344579]">
-                        <i class="fa-solid fa-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
-
-                        <div x-show="open && filters.kode" x-cloak x-transition
-                            class="absolute z-30 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
-                            <div class="p-2">
-                                <template
-                                    x-for="kode in getUniqueCodes().filter(k => k.toLowerCase().includes(filters.kode.toLowerCase()))"
-                                    :key="kode">
-                                    <div @click="filters.kode = kode; open=false"
-                                        class="px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 cursor-pointer rounded"
-                                        x-text="kode"></div>
-                                </template>
-                                <div x-show="getUniqueCodes().filter(k => k.toLowerCase().includes(filters.kode.toLowerCase())).length === 0"
-                                    class="px-3 py-2 text-sm text-slate-400 text-center">Tidak ada kode ditemukan</div>
-                            </div>
-                        </div>
-                    </div>
+                    <input type="text" placeholder="Cari kode gudang..." x-model="filters.kode"
+                        class="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm text-slate-700
+                       focus:outline-none focus:ring-2 focus:ring-[#344579]/20 focus:border-[#344579]">
                 </div>
 
                 {{-- Filter Nama --}}
                 <div>
                     <label class="block text-sm font-medium text-slate-700 mb-2">Nama Gudang</label>
-                    <div class="relative" x-data="{ open: false }">
-                        <input type="text" placeholder="Cari nama gudang..." x-model="filters.nama" @focus="open=true"
-                            @input="open=true" @click.away="open=false"
-                            class="w-full px-3 py-2 pr-8 rounded-lg border border-slate-200 text-sm text-slate-700
-                                   focus:outline-none focus:ring-2 focus:ring-[#344579]/20 focus:border-[#344579]">
-                        <i class="fa-solid fa-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
-
-                        <div x-show="open && filters.nama" x-cloak x-transition
-                            class="absolute z-30 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
-                            <div class="p-2">
-                                <template
-                                    x-for="nama in getUniqueNames().filter(n => n.toLowerCase().includes(filters.nama.toLowerCase()))"
-                                    :key="nama">
-                                    <div @click="filters.nama = nama; open=false"
-                                        class="px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 cursor-pointer rounded"
-                                        x-text="nama"></div>
-                                </template>
-                                <div x-show="getUniqueNames().filter(n => n.toLowerCase().includes(filters.nama.toLowerCase())).length === 0"
-                                    class="px-3 py-2 text-sm text-slate-400 text-center">Tidak ada gudang ditemukan</div>
-                            </div>
-                        </div>
-                    </div>
+                    <input type="text" placeholder="Cari nama gudang..." x-model="filters.nama"
+                        class="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm text-slate-700
+                       focus:outline-none focus:ring-2 focus:ring-[#344579]/20 focus:border-[#344579]">
                 </div>
 
                 {{-- Filter Lokasi --}}
                 <div>
                     <label class="block text-sm font-medium text-slate-700 mb-2">Lokasi</label>
-                    <div class="relative" x-data="{ open: false }">
-                        <input type="text" placeholder="Cari lokasi..." x-model="filters.lokasi" @focus="open=true"
-                            @input="open=true" @click.away="open=false"
-                            class="w-full px-3 py-2 pr-8 rounded-lg border border-slate-200 text-sm text-slate-700
-                                   focus:outline-none focus:ring-2 focus:ring-[#344579]/20 focus:border-[#344579]">
-                        <i class="fa-solid fa-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
-
-                        <div x-show="open && filters.lokasi" x-cloak x-transition
-                            class="absolute z-30 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
-                            <div class="p-2">
-                                <template
-                                    x-for="lok in getUniqueLocations().filter(l => l.toLowerCase().includes(filters.lokasi.toLowerCase()))"
-                                    :key="lok">
-                                    <div @click="filters.lokasi = lok; open=false"
-                                        class="px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 cursor-pointer rounded"
-                                        x-text="lok"></div>
-                                </template>
-                                <div x-show="getUniqueLocations().filter(l => l.toLowerCase().includes(filters.lokasi.toLowerCase())).length === 0"
-                                    class="px-3 py-2 text-sm text-slate-400 text-center">Tidak ada lokasi ditemukan</div>
-                            </div>
-                        </div>
-                    </div>
+                    <input type="text" placeholder="Cari lokasi..." x-model="filters.lokasi"
+                        class="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm text-slate-700
+                       focus:outline-none focus:ring-2 focus:ring-[#344579]/20 focus:border-[#344579]">
                 </div>
             </div>
 
@@ -173,6 +116,7 @@
                 </div>
             </div>
         </div>
+
 
         {{-- TABLE --}}
         <div class="bg-white border border-slate-200 rounded-xl overflow-hidden">
@@ -338,16 +282,6 @@
 
                 init() {},
 
-                getUniqueCodes() {
-                    return [...new Set(this.data.map(g => g.kode).filter(Boolean))].sort();
-                },
-                getUniqueNames() {
-                    return [...new Set(this.data.map(g => g.nama).filter(Boolean))].sort();
-                },
-                getUniqueLocations() {
-                    return [...new Set(this.data.map(g => g.lokasi).filter(Boolean))].sort();
-                },
-
                 hasActiveFilters() {
                     return this.filters.kode || this.filters.nama || this.filters.lokasi;
                 },
@@ -368,7 +302,7 @@
                         if (this.filters.nama && !r.nama.toLowerCase().includes(this.filters.nama.toLowerCase()))
                             return false;
                         if (this.filters.lokasi && !r.lokasi.toLowerCase().includes(this.filters.lokasi
-                            .toLowerCase())) return false;
+                                .toLowerCase())) return false;
                         return true;
                     });
 
@@ -451,7 +385,7 @@
                     if (this.currentPage > this.totalPages()) this.currentPage = this.totalPages();
                     this.closeDelete();
                 },
-           
+
                 resetFilters() {
                     this.filters = {
                         kode: '',

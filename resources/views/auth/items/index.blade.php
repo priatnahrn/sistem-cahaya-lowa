@@ -74,71 +74,27 @@
                 {{-- Filter Kode Item --}}
                 <div>
                     <label class="block text-sm font-medium text-slate-700 mb-2">Kode Item</label>
-                    <div class="relative" x-data="{ open: false }">
-                        <input type="text" placeholder="Cari kode item..." x-model="filters.kode" @focus="open = true"
-                            @input="open = true" @click.away="open = false"
-                            class="w-full px-3 py-2 pr-8 rounded-lg border border-slate-200 text-sm text-slate-700 
+                    <input type="text" placeholder="Cari kode item..." x-model="filters.kode"
+                        class="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm text-slate-700 
                        focus:outline-none focus:ring-2 focus:ring-[#344579]/20 focus:border-[#344579]">
-                        <i
-                            class="fa-solid fa-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"></i>
-
-                        <div x-show="open && filters.kode" x-cloak x-transition
-                            class="absolute z-30 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
-                            <div class="p-2">
-                                <template
-                                    x-for="kode in getUniqueCodes().filter(k => k.toLowerCase().includes(filters.kode.toLowerCase()))"
-                                    :key="kode">
-                                    <div @click="filters.kode = kode; open = false"
-                                        class="px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 cursor-pointer rounded"
-                                        x-text="kode"></div>
-                                </template>
-                                <div x-show="getUniqueCodes().filter(k => k.toLowerCase().includes(filters.kode.toLowerCase())).length === 0"
-                                    class="px-3 py-2 text-sm text-slate-400 text-center">
-                                    Tidak ada kode ditemukan
-                                </div>
-                            </div>
-                        </div>
-                    </div>
                 </div>
 
                 {{-- Filter Nama Item --}}
                 <div>
                     <label class="block text-sm font-medium text-slate-700 mb-2">Nama Item</label>
-                    <div class="relative" x-data="{ open: false }">
-                        <input type="text" placeholder="Cari nama item..." x-model="filters.nama" @focus="open = true"
-                            @input="open = true" @click.away="open = false"
-                            class="w-full px-3 py-2 pr-8 rounded-lg border border-slate-200 text-sm text-slate-700 
+                    <input type="text" placeholder="Cari nama item..." x-model="filters.nama"
+                        class="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm text-slate-700 
                        focus:outline-none focus:ring-2 focus:ring-[#344579]/20 focus:border-[#344579]">
-                        <i
-                            class="fa-solid fa-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"></i>
-
-                        <div x-show="open && filters.nama" x-cloak x-transition
-                            class="absolute z-30 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
-                            <div class="p-2">
-                                <template
-                                    x-for="nama in getUniqueNames().filter(n => n.toLowerCase().includes(filters.nama.toLowerCase()))"
-                                    :key="nama">
-                                    <div @click="filters.nama = nama; open = false"
-                                        class="px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 cursor-pointer rounded"
-                                        x-text="nama"></div>
-                                </template>
-                                <div x-show="getUniqueNames().filter(n => n.toLowerCase().includes(filters.nama.toLowerCase())).length === 0"
-                                    class="px-3 py-2 text-sm text-slate-400 text-center">
-                                    Tidak ada item ditemukan
-                                </div>
-                            </div>
-                        </div>
-                    </div>
                 </div>
 
-                {{-- Filter Kategori --}}
+                {{-- Filter Kategori (masih pakai dropdown suggestion) --}}
                 <div>
                     <label class="block text-sm font-medium text-slate-700 mb-2">Kategori</label>
                     <div class="relative" x-data="{ open: false }">
                         <input type="text" placeholder="Cari kategori..." x-model="filters.kategori" @focus="open = true"
                             @input="open = true" @click.away="open = false"
                             class="w-full px-3 py-2 pr-8 rounded-lg border border-slate-200 text-sm text-slate-700 
-                       focus:outline-none focus:ring-2 focus:ring-[#344579]/20 focus:border-[#344579]">
+                           focus:outline-none focus:ring-2 focus:ring-[#344579]/20 focus:border-[#344579]">
                         <i
                             class="fa-solid fa-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"></i>
 
@@ -166,8 +122,8 @@
                     <label class="block text-sm font-medium text-slate-700 mb-2">Stok</label>
                     <select x-model="filters.stok"
                         class="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm text-slate-700 
-               focus:outline-none focus:ring-2 focus:ring-[#344579]/20 focus:border-[#344579]
-               appearance-none pr-10">
+                       focus:outline-none focus:ring-2 focus:ring-[#344579]/20 focus:border-[#344579]
+                       appearance-none pr-10">
                         <option value="">Semua</option>
                         <option value="tersedia">Stok Tersedia (&gt; 0)</option>
                         <option value="kosong">Stok Kosong (= 0)</option>
@@ -176,7 +132,6 @@
                     <i
                         class="fa-solid fa-chevron-down absolute right-3 top-12 -translate-y-1/2 text-slate-400 pointer-events-none"></i>
                 </div>
-
 
             </div>
 
@@ -198,6 +153,7 @@
                 </div>
             </div>
         </div>
+
 
         {{-- TABLE --}}
         <div class="bg-white border border-slate-200 rounded-xl overflow-hidden">
@@ -437,19 +393,12 @@
 
                 init() {},
 
-                // Get unique names for dropdown
-                getUniqueNames() {
-                    return [...new Set(this.data.map(item => item.nama).filter(Boolean))].sort();
-                },
-
+                
                 // Get unique categories for dropdown
                 getUniqueCategories() {
                     return [...new Set(this.data.map(item => item.kategori).filter(Boolean))].sort();
                 },
-                getUniqueCodes() {
-                    return [...new Set(this.data.map(item => item.kode).filter(Boolean))].sort();
-                },
-
+               
 
                 // Check if there are active filters
                 hasActiveFilters() {
