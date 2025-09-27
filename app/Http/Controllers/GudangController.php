@@ -17,17 +17,30 @@ class GudangController extends Controller
         }
 
         $gudangs = Gudang::all();
-        return view('auth.gudang.index', compact('gudangs')); 
+        return view('auth.gudang.index', compact('gudangs'));
     }
 
     public function create()
     {
-        return view('auth.gudang.create');
+        // Ambil gudang terakhir berdasarkan kode_gudang
+        $lastGudang = Gudang::orderBy('id', 'desc')->first();
+
+        // Jika ada, ambil angka urutannya
+        $lastNumber = 0;
+        if ($lastGudang && preg_match('/GD-(\d+)/', $lastGudang->kode_gudang, $matches)) {
+            $lastNumber = (int) $matches[1];
+        }
+
+        // Tambah 1, lalu format jadi 5 digit
+        $newCode = 'GD-' . str_pad($lastNumber + 1, 5, '0', STR_PAD_LEFT);
+
+        return view('auth.gudang.create', compact('newCode'));
     }
+
 
     public function store(Request $request)
     {
-       $auth = Auth::user();
+        $auth = Auth::user();
         if (!$auth) {
             return response()->json(['message' => 'Unauthorized'], 401);
         }
@@ -85,13 +98,14 @@ class GudangController extends Controller
         }
     }
 
-    public function destroy($id){
+    public function destroy($id)
+    {
         // Implementasi logika penghapusan gudang
         $auth = Auth::user();
         if (!$auth) {
             return response()->json(['message' => 'Unauthorized'], 401);
         }
-       
+
         try {
             $gudang = Gudang::find($id);
             if (!$gudang) {

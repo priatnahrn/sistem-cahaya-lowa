@@ -13,4 +13,9 @@ class Gudang extends Model
         'nama_gudang',
         'lokasi',
     ];
+
+    public function items()
+    {
+        return $this->hasMany(Item::class);
+    }
 }
