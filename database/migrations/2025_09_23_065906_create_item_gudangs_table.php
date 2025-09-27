@@ -15,8 +15,9 @@ return new class extends Migration
             $table->id();
             $table->foreignId('item_id')->constrained()->onDelete('cascade');
             $table->foreignId('gudang_id')->constrained()->onDelete('cascade');
-            $table->foreignId('satuan_id')->nullable()->constrained()->onDelete('set null');
-            $table->decimal('stok', 15, 4)->default(0);
+            $table->foreignId('satuan_id')->constrained('satuans')->onDelete('cascade');
+            $table->decimal('stok', 15, 2)->default(0);
+            $table->decimal('total_stok', 15, 2)->default(0);
             $table->timestamps();
         });
     }

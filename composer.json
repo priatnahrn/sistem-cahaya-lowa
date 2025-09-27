@@ -13,6 +13,8 @@
         "blade-ui-kit/blade-heroicons": "^2.6",
         "laravel/framework": "^12.0",
         "laravel/tinker": "^2.10.1",
+        "milon/barcode": "^12.0",
+        "picqer/php-barcode-generator": "^3.2",
         "spatie/laravel-permission": "^6.21"
     },
     "require-dev": {

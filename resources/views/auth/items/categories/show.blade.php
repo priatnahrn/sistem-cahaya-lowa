@@ -6,15 +6,12 @@
 <div class="space-y-6 w-full" x-data="{ 
         original: {
             nama_kategori: '{{ $category->nama_kategori }}', 
-            deskripsi: '{{ $category->deskripsi ?? '' }}'
         },
         form: {
             nama_kategori: '{{ $category->nama_kategori }}', 
-            deskripsi: '{{ $category->deskripsi ?? '' }}'
         },
         get isChanged() {
-            return this.form.nama_kategori !== this.original.nama_kategori ||
-                   this.form.deskripsi !== this.original.deskripsi;
+            return this.form.nama_kategori !== this.original.nama_kategori
         }
     }">
 
@@ -42,17 +39,6 @@
                        class="w-full px-3 py-2 rounded-lg border border-slate-200"
                        placeholder="Contoh: Elektronik" />
                 @error('nama_kategori')
-                    <p class="text-rose-600 text-sm mt-1">{{ $message }}</p>
-                @enderror
-            </div>
-
-            {{-- Deskripsi --}}
-            <div>
-                <label class="block text-sm text-slate-600 mb-1">Deskripsi</label>
-                <textarea name="deskripsi" x-model="form.deskripsi" rows="3"
-                          class="w-full px-3 py-2 rounded-lg border border-slate-200"
-                          placeholder="Deskripsi singkat kategori (opsional)"></textarea>
-                @error('deskripsi')
                     <p class="text-rose-600 text-sm mt-1">{{ $message }}</p>
                 @enderror
             </div>

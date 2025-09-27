@@ -20,8 +20,8 @@ return new class extends Migration
             $table->decimal('sub_total', 15, 2);
             $table->decimal('biaya_transport', 15, 2)->default(0);
             $table->decimal('total', 15, 2);
-            $table->enum('status_bayar', ['lunas', 'belum lunas'])->default('belum lunas');
-            $table->enum('status_kirim', ['-', 'perlu dikirim' ,'dalam pengiriman', 'diterima'])->default('-');
+            $table->enum('status_bayar', ['paid', 'unpaid', 'return'])->default('unpaid');
+            $table->enum('status_kirim', ['-', 'pending', 'process', 'done'])->default('-');
             $table->foreignId('created_by')->nullable()->constrained('users')->nullOnDelete();
             $table->foreignId('updated_by')->nullable()->constrained('users')->nullOnDelete();
             $table->timestamps();

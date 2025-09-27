@@ -6,7 +6,7 @@ status
 data
 - tanggal retur
 - nomor retur
-- supplier
+- pelanggan
 - item []
   - nama item
   - qty
@@ -29,11 +29,11 @@ datatable
 - nomor
 - nomor retur
 - tanggal retur
-- supplier
+- pelanggan
 - total
 - status
 
 impacted
-- jika dikembalikan, stok yang sudah dibeli akan berkurang
+- jika dikembalikan, stok yang sudah dijual akan bertambah
 - harus lunas dulu baru bisa retur
-
+- transaksi penjualan hari ini, pemasukan juga bakal berkurang

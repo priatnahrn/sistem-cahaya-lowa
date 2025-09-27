@@ -84,18 +84,18 @@ class PembelianController extends Controller
             'items'              => 'required|array|min:1',
             'items.*.item_id'    => 'required|exists:items,id',
             'items.*.gudang_id'  => 'required|exists:gudangs,id',
-            'items.*.satuan_id'  => 'required|exists:satuans,id',
+            'items.*.satuan_id'  => 'required|exists:satuans,id', // pastikan tidak null
             'items.*.jumlah'     => 'required|numeric|min:1',
             'items.*.harga'      => 'required|numeric|min:0',
         ]);
 
         DB::beginTransaction();
         try {
-            // ===== Generate No Faktur sesuai format BLddmmyyXXX =====
+            // ===== Generate No Faktur BLddmmyyXXX =====
             $today = now()->format('dmy');
 
             $lastFaktur = DB::table('pembelians')
-                ->whereDate('tanggal', $validated['tanggal']) // pakai tanggal input user
+                ->whereDate('tanggal', $validated['tanggal'])
                 ->where('no_faktur', 'like', "BL{$today}%")
                 ->orderByDesc('no_faktur')
                 ->lockForUpdate()
@@ -144,16 +144,40 @@ class PembelianController extends Controller
                     'updated_by'       => Auth::id(),
                 ]);
 
-                ItemGudang::updateOrCreate(
-                    [
+                // Cek apakah item sudah ada di gudang
+                $itemGudang = ItemGudang::where('item_id', $it['item_id'])
+                    ->where('gudang_id', $it['gudang_id'])
+                    ->where('satuan_id', $it['satuan_id'])
+                    ->first();
+
+                if ($itemGudang) {
+                    // Update stok satuan
+                    $itemGudang->increment('stok', $it['jumlah']);
+                } else {
+                    // Buat stok baru
+                    $itemGudang = ItemGudang::create([
                         'item_id'   => $it['item_id'],
                         'gudang_id' => $it['gudang_id'],
                         'satuan_id' => $it['satuan_id'],
-                    ],
-                    [
-                        'stok' => DB::raw('stok + ' . $it['jumlah']),
-                    ]
-                );
+                        'stok'      => $it['jumlah'],
+                        'total_stok' => 0, // nanti dihitung ulang
+                    ]);
+                }
+
+                // ====== Hitung ulang total stok base unit untuk item + gudang ini ======
+                // Ambil semua stok per satuan di gudang ini
+                $stokGudang = ItemGudang::where('item_id', $it['item_id'])
+                    ->where('gudang_id', $it['gudang_id'])
+                    ->with('satuan')
+                    ->get();
+
+                // Hitung total dalam base unit
+                $totalStok = $stokGudang->sum(fn($row) => $row->stok * $row->satuan->jumlah);
+
+                // Update semua baris item_gudang untuk item+gudang tersebut
+                ItemGudang::where('item_id', $it['item_id'])
+                    ->where('gudang_id', $it['gudang_id'])
+                    ->update(['total_stok' => $totalStok]);
             }
 
             DB::commit();
@@ -166,6 +190,7 @@ class PembelianController extends Controller
             return back()->withErrors(['error' => 'Gagal menyimpan pembelian: ' . $e->getMessage()]);
         }
     }
+
 
     /**
      * Ambil harga terakhir item per satuan.

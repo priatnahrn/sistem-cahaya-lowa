@@ -34,7 +34,7 @@ class ItemSeeder extends Seeder
                     'kode_item' => 'SMN-001',
                     'nama_item' => 'Semen Tiga Roda 40Kg',
                     'kategori_item_id' => $kategoriSemen->id,
-                    'stok_minimal' => 50,
+
                     'satuans' => [
                         [
                             'nama_satuan' => 'Sak',
@@ -59,7 +59,7 @@ class ItemSeeder extends Seeder
                     'kode_item' => 'CAT-005',
                     'nama_item' => 'Cat Tembok 5L',
                     'kategori_item_id' => $kategoriCat->id,
-                    'stok_minimal' => 20,
+
                     'satuans' => [
                         [
                             'nama_satuan' => 'Kaleng 5L',
@@ -84,7 +84,6 @@ class ItemSeeder extends Seeder
                     'kode_item' => 'BES-010',
                     'nama_item' => 'Besi Beton Ø10mm (12m)',
                     'kategori_item_id' => $kategoriBesi->id,
-                    'stok_minimal' => 100,
                     'satuans' => [
                         [
                             'nama_satuan' => 'Batang',
@@ -113,7 +112,6 @@ class ItemSeeder extends Seeder
                     'kode_item' => $data['kode_item'],
                     'nama_item' => $data['nama_item'],
                     'kategori_item_id' => $data['kategori_item_id'],
-                    'stok_minimal' => $data['stok_minimal'] ?? 0,
                     'foto_path' => null,
                 ]);
 
@@ -142,11 +140,13 @@ class ItemSeeder extends Seeder
                 }
 
                 // masukkan ke semua gudang dengan stok awal 0
+                // masukkan ke semua gudang dengan stok awal 0
                 $gudangs = Gudang::all();
                 $itemGudangData = $gudangs->map(fn($g) => [
-                    'item_id' => $item->id,
+                    'item_id'   => $item->id,
                     'gudang_id' => $g->id,
-                    'stok' => 0,
+                    'satuan_id' => $item->primary_satuan_id, // tambahin ini!
+                    'stok'      => 0,
                     'created_at' => now(),
                     'updated_at' => now(),
                 ])->toArray();
@@ -154,5 +154,19 @@ class ItemSeeder extends Seeder
                 ItemGudang::insert($itemGudangData);
             }
         });
+    }
+
+
+    public function findByBarcode($kode)
+    {
+        $item = Item::with('satuans')
+            ->where('barcode', $kode) // kalau ada kolom barcode
+            ->orWhere('kode_item', $kode) // fallback ke kode_item
+            ->first();
+
+        if (!$item) {
+            return response()->json(['message' => 'Not found'], 404);
+        }
+        return response()->json($item);
     }
 }

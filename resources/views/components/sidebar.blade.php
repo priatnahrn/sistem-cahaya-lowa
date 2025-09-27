@@ -75,6 +75,17 @@
                         </span>
                     </a>
 
+                    {{-- Daftar Pengiriman --}}
+                    @php $on = $is('daftar-pengiriman.*'); @endphp
+                    <a href=""
+                        class="block px-3 py-2 rounded-md text-[13px] transition {{ $on ? 'bg-white text-[#344579] font-semibold' : 'text-white/80 hover:bg-white/5' }}">
+                        <span class="flex items-center gap-3">
+                            <span
+                                class="inline-block w-[3px] h-5 rounded {{ $on ? 'bg-white' : 'bg-transparent' }}"></span>
+                            <span>Daftar Pengiriman</span>
+                        </span>
+                    </a>
+
                     {{-- Retur Penjualan --}}
                     @php $on = $is('retur-penjualan.*'); @endphp
                     <a href=""
@@ -189,7 +200,7 @@
                     <button @click="open=!open"
                         class="w-full flex items-center gap-3 px-3 py-[10px] rounded-md transition text-white/85 hover:bg-white/5"
                         :class="{ 'justify-center': collapsed }">
-                        <i class="fa-solid fa-boxes opacity-60" :class="collapsed ? 'text-lg' : ''"></i>
+                        <i class="fa-solid fa-boxes" :class="collapsed ? 'text-lg' : ''"></i>
                         <span x-show="!collapsed" class="flex-1 text-left font-medium">Item</span>
                         <i x-show="!collapsed"
                             class="fa-solid fa-chevron-down text-white/60 transition-transform duration-200"

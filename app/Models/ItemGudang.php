@@ -11,6 +11,7 @@ class ItemGudang extends Model
     protected $fillable = [
         'item_id',
         'gudang_id',
+        'satuan_id',
         'stok',
     ];
 

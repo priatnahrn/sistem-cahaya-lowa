@@ -13,11 +13,16 @@ return new class extends Migration
     {
         Schema::create('item_penjualans', function (Blueprint $table) {
             $table->id();
-            $table->string('no_faktur');
-            $table->string('kode_barang');
-            $table->integer('jumlah');
-            $table->decimal('harga_satuan', 15, 2);
-            $table->decimal('subtotal', 15, 2);
+            $table->foreignId('penjualan_id')->constrained();
+            $table->foreignId('item_id')->constrained('items')->onDelete('cascade');
+            $table->foreignId('gudang_id')->constrained('gudangs')->onDelete('cascade');
+            $table->foreignId('satuan_id')->constrained('satuans')->onDelete('cascade');
+            $table->decimal('jumlah', 15, 2);
+            $table->decimal('harga', 15, 2);
+            $table->decimal('total', 15, 2);
+            $table->text('keterangan')->nullable();
+            $table->foreignId('created_by')->nullable()->constrained('users')->nullOnDelete();
+            $table->foreignId('updated_by')->nullable()->constrained('users')->nullOnDelete();
             $table->timestamps();
         });
     }

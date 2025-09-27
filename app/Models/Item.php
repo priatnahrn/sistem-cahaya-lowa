@@ -14,15 +14,15 @@ class Item extends Model
     protected $table = 'items';
     protected $fillable = [
         'kode_item',
+        'barcode',
+        'barcode_path',
         'nama_item',
         'kategori_item_id',
-        'stok_minimal',
-        'primary_satuan_id',
         'foto_path',
     ];
 
     /**
-     * Relasi ke Kategori
+     * Relasi ke kategori item
      */
     public function kategori()
     {
@@ -34,14 +34,17 @@ class Item extends Model
      */
     public function satuans()
     {
-        return $this->hasMany(Satuan::class);
+        // urutkan: base dulu, lalu berdasarkan id
+        return $this->hasMany(Satuan::class)
+            ->orderBy('is_base', 'desc')
+            ->orderBy('id', 'asc');
     }
 
     /**
-     * Relasi ke primary satuan (unit utama)
+     * Relasi ke primary satuan (satuan dasar)
      */
     public function primarySatuan()
     {
-        return $this->belongsTo(Satuan::class, 'primary_satuan_id');
+        return $this->hasOne(Satuan::class)->where('is_base', true);
     }
 }

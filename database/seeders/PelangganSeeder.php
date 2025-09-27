@@ -17,25 +17,25 @@ class PelangganSeeder extends Seeder
                 'nama_pelanggan' => 'Budi Santoso',
                 'kontak'         => '081234567890',
                 'alamat'         => 'Jl. Merdeka No. 10, Jakarta',
-                'level'          => 'Retail',
+                'level'          => 'retail',
             ],
             [
                 'nama_pelanggan' => 'Toko Sumber Makmur',
                 'kontak'         => '082233445566',
                 'alamat'         => 'Jl. Braga No. 25, Bandung',
-                'level'          => 'Partai Kecil',
+                'level'          => 'partai_kecil',
             ],
             [
                 'nama_pelanggan' => 'CV Maju Jaya',
                 'kontak'         => '085677889900',
                 'alamat'         => 'Jl. Diponegoro No. 7, Surabaya',
-                'level'          => 'Grosir',
+                'level'          => 'grosir',
             ],
             [
                 'nama_pelanggan' => 'Siti Aminah',
                 'kontak'         => null,
                 'alamat'         => 'Jl. Sudirman No. 88, Medan',
-                'level'          => 'Retail',
+                'level'          => 'retail',
             ],
         ];
 

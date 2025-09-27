@@ -23,6 +23,24 @@ class PelangganController extends Controller
         return view('auth.pelanggan.create');
     }
 
+
+    public function search(Request $request)
+    {
+        $q = $request->query('q', '');
+        if (strlen($q) < 2) {
+            return response()->json([]);
+        }
+
+        $results = Pelanggan::query()
+            ->where('nama_pelanggan', 'like', "%{$q}%")
+            ->orWhere('kontak', 'like', "%{$q}%")
+            ->orderBy('nama_pelanggan')
+            ->limit(15)
+            ->get(['id', 'nama_pelanggan', 'kontak']);
+
+        return response()->json($results);
+    }
+
     public function store(Request $request)
     {
         $auth = Auth::user();

@@ -76,8 +76,9 @@ Route::middleware('auth')->group(function () {
         Route::get('/create', [ItemController::class, 'create'])->name('create');
         Route::post('/store', [ItemController::class, 'store'])->name('store');
         Route::get('/search', [ItemController::class, 'search'])->name('search');
-
-
+        
+        
+        
         // categories harus di sini, sebelum /{id}
         Route::prefix('categories')->name('categories.')->group(function () {
             Route::get('/', [KategoriItemController::class, 'index'])->name('index');
@@ -87,11 +88,13 @@ Route::middleware('auth')->group(function () {
             Route::put('/{id}/update', [KategoriItemController::class, 'update'])->name('update');
             Route::delete('/{id}', [KategoriItemController::class, 'destroy'])->name('destroy');
         });
-
+        
         // route dinamis item setelah categories
+        Route::get('/by-barcode/{kode}', [ItemController::class, 'findByBarcode'])->name('scan');
+        Route::get('{id}/prices', [ItemController::class, 'getPrices'])->name('prices');
         Route::get('/{id}', [ItemController::class, 'show'])->name('show');
         Route::put('/{id}/update', [ItemController::class, 'update'])->name('update');
-        Route::delete('/{id}/delete', [ItemController::class, 'destroy'])->name('destroy');
+        Route::delete('/{id}', [ItemController::class, 'destroy'])->name('destroy');
     });
 
 
@@ -99,6 +102,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/', [PelangganController::class, 'index'])->name('pelanggan.index');
         Route::get('/create', [PelangganController::class, 'create'])->name('pelanggan.create');
         Route::post('/store', [PelangganController::class, 'store'])->name('pelanggan.store');
+        Route::get('/search', [PelangganController::class, 'search'])->name('pelanggan.search');
         Route::get('/{id}', [PelangganController::class, 'show'])->name('pelanggan.show');
         Route::put('/{id}/update', [PelangganController::class, 'update'])->name('pelanggan.update');
         Route::delete('/{id}/delete', [PelangganController::class, 'destroy'])->name('pelanggan.destroy');
