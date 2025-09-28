@@ -75,6 +75,7 @@ class PembelianController extends Controller
      */
     public function store(Request $request)
     {
+
         $validated = $request->validate([
             'supplier_id'        => 'nullable|exists:suppliers,id',
             'tanggal'            => 'required|date',
@@ -140,9 +141,8 @@ class PembelianController extends Controller
                     'harga_sebelumnya' => $last?->harga_beli ?? 0,
                     'harga_beli'       => $it['harga'],
                     'total'            => $it['jumlah'] * $it['harga'],
-                    'created_by'       => Auth::id(),
-                    'updated_by'       => Auth::id(),
                 ]);
+
 
                 // Cek apakah item sudah ada di gudang
                 $itemGudang = ItemGudang::where('item_id', $it['item_id'])
@@ -186,8 +186,11 @@ class PembelianController extends Controller
                 ->with('success', "Pembelian berhasil disimpan! No Faktur: $noFaktur");
         } catch (\Throwable $e) {
             DB::rollBack();
-            Log::error('Gagal menyimpan pembelian', ['error' => $e]);
-            return back()->withErrors(['error' => 'Gagal menyimpan pembelian: ' . $e->getMessage()]);
+            return response()->json([
+                'error' => $e->getMessage(),
+                'line'  => $e->getLine(),
+                'file'  => $e->getFile(),
+            ], 500);
         }
     }
 

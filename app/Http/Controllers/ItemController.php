@@ -24,12 +24,13 @@ class ItemController extends Controller
      */
     public function index(Request $request)
     {
-        $items = Item::with(['kategori', 'satuans', 'primarySatuan'])
+        $items = Item::with(['kategori', 'satuans', 'primarySatuan', 'gudangItems'])
             ->orderBy('id', 'desc')
             ->get();
 
         return view('auth.items.index', compact('items'));
     }
+
 
 
     /**
@@ -50,10 +51,9 @@ class ItemController extends Controller
     {
         $item = Item::with(['kategori', 'satuans', 'primarySatuan'])->findOrFail($id);
         $kategori_items = KategoriItem::orderBy('nama_kategori')->get();
-        $item_gudangs = ItemGudang::where('item_id', $id)->first();
         $gudangs = Gudang::orderBy('nama_gudang')->get();
 
-        return view('auth.items.show', compact('item', 'kategori_items', 'gudangs', 'item_gudangs'));
+        return view('auth.items.show', compact('item', 'kategori_items', 'gudangs'));
     }
 
     /**
@@ -130,6 +130,7 @@ class ItemController extends Controller
                 'barcode'          => $barcode,
                 'barcode_path'     => $barcodePath,
                 'nama_item'        => $validated['nama_item'],
+                'stok_minimal'     => $validated['stok_minimal'],
                 'kategori_item_id' => $validated['kategori_item_id'],
                 'foto_path'        => $fotoPath,
             ]);
@@ -162,22 +163,27 @@ class ItemController extends Controller
                 Satuan::where('id', reset($satuanIds))->update(['is_base' => true]);
             }
 
-            // 📌 Stok awal di semua gudang (tanpa satuan_id)
+            // 📌 Stok awal di semua gudang (per satuan)
             $gudangs = Gudang::all();
             $batch = [];
+
             foreach ($gudangs as $g) {
-                $batch[] = [
-                    'item_id'     => $item->id,
-                    'gudang_id'   => $g->id,
-                    'stok_minimal' => $validated['stok_minimal'],
-                    'stok'        => 0,
-                    'created_at'  => now(),
-                    'updated_at'  => now(),
-                ];
+                foreach ($satuanIds as $satuanId) {
+                    $batch[] = [
+                        'item_id'     => $item->id,
+                        'gudang_id'   => $g->id,
+                        'satuan_id'   => $satuanId,
+                        'stok'        => 0,
+                        'created_at'  => now(),
+                        'updated_at'  => now(),
+                    ];
+                }
             }
+
             if (!empty($batch)) {
                 ItemGudang::insert($batch);
             }
+
 
             DB::commit();
 
@@ -189,10 +195,6 @@ class ItemController extends Controller
             dd('Error Store Item:', $e->getMessage(), $e->getFile(), $e->getLine());
         }
     }
-
-
-
-
 
     public function search(Request $request)
     {

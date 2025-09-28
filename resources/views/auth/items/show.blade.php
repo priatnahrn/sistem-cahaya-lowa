@@ -251,7 +251,7 @@
                 form: {
                     kode_item: '{!! old('kode_item', $item->kode_item) !!}',
                     nama_item: '{{ old('nama_item', $item->nama_item) }}',
-                    stok_minimal: '{{ old('stok_minimal', $item_gudangs->stok_minimal) }}',
+                    stok_minimal: '{{ old('stok_minimal', $item->stok_minimal) }}',
                     kategori_item_id: '{{ old('kategori_item_id', $item->kategori_item_id) }}',
                     fotoPreview: null,
                     fotoFileName: '{{ $item->foto_path ? basename($item->foto_path) : '' }}',

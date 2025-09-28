@@ -3,6 +3,20 @@
 @section('title', 'Tambah Pembelian Baru')
 
 @section('content')
+
+    {{-- Toast Container --}}
+    <div x-data="{ toasts: [] }" x-init="$watch('toasts', () => { setTimeout(() => toasts.shift(), 4000) })" class="fixed top-6 right-6 space-y-3 z-50 w-80">
+
+        <template x-for="(t, i) in toasts" :key="i">
+            <div x-transition class="px-4 py-3 rounded-lg shadow-lg text-sm font-medium"
+                :class="t.type === 'error' ?
+                    'bg-rose-50 text-rose-700 border border-rose-200' :
+                    'bg-emerald-50 text-emerald-700 border border-emerald-200'">
+                <span x-text="t.message"></span>
+            </div>
+        </template>
+    </div>
+
     <div x-data="pembelianCreatePage()" x-init="init()" class="space-y-6">
 
         {{-- BREADCRUMB --}}
@@ -316,6 +330,9 @@
                     biaya_transport: 0,
                     items: []
                 },
+                toasts: [],
+                subTotal: 0,
+                totalPembayaran: 0,
 
                 init() {
                     this.addItem();
@@ -433,20 +450,20 @@
                 async save() {
                     if (!this.isValid()) return;
 
-                    const payload = JSON.parse(JSON.stringify(this.form));
-                    payload.sub_total = this.subTotal;
-                    payload.total = this.totalPembayaran;
-                    payload.status = this.form.lunas ? 'paid' : 'unpaid';
-                    payload.biaya_transport = parseInt(this.form.biaya_transport) || 0;
-                    delete payload.lunas;
-
-                    payload.items = this.form.items.map(i => ({
-                        item_id: i.item_id,
-                        gudang_id: i.gudang_id,
-                        satuan_id: i.satuan_id,
-                        jumlah: i.jumlah,
-                        harga: parseInt(i.harga) || 0
-                    }));
+                    const payload = {
+                        supplier_id: this.form.supplier_id,
+                        tanggal: this.form.tanggal,
+                        deskripsi: this.form.deskripsi,
+                        biaya_transport: parseInt(this.form.biaya_transport) || 0,
+                        status: this.form.lunas ? 'paid' : 'unpaid',
+                        items: this.form.items.map(i => ({
+                            item_id: i.item_id,
+                            gudang_id: i.gudang_id,
+                            satuan_id: i.satuan_id,
+                            jumlah: i.jumlah,
+                            harga: parseInt(i.harga) || 0
+                        }))
+                    };
 
                     console.log("Payload dikirim:", payload);
 
@@ -463,11 +480,26 @@
                     if (res.ok) {
                         window.location.href = "{{ route('pembelian.index') }}";
                     } else {
-                        const errText = await res.text();
-                        console.error("Gagal simpan:", errText);
-                        alert("Gagal menyimpan! Cek console untuk detail error.");
+                        const err = await res.json().catch(() => null);
+                        console.error("Gagal simpan:", err);
+
+                        if (err?.errors) {
+                            // Laravel validation errors
+                            Object.values(err.errors).flat().forEach(msg => {
+                                this.toasts.push({
+                                    type: 'error',
+                                    message: msg
+                                });
+                            });
+                        } else {
+                            this.toasts.push({
+                                type: 'error',
+                                message: "Gagal menyimpan! Cek console."
+                            });
+                        }
                     }
                 }
+
             }
         }
     </script>

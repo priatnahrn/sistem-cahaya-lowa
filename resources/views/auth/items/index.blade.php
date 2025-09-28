@@ -122,13 +122,14 @@
                     <label class="block text-sm font-medium text-slate-700 mb-2">Stok</label>
                     <select x-model="filters.stok"
                         class="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm text-slate-700 
-                       focus:outline-none focus:ring-2 focus:ring-[#344579]/20 focus:border-[#344579]
-                       appearance-none pr-10">
+           focus:outline-none focus:ring-2 focus:ring-[#344579]/20 focus:border-[#344579]
+           appearance-none pr-10">
                         <option value="">Semua</option>
-                        <option value="tersedia">Stok Tersedia (&gt; 0)</option>
-                        <option value="kosong">Stok Kosong (= 0)</option>
-                        <option value="rendah">Stok Rendah (&lt; 10)</option>
+                        <option value="aman">Aman (&gt; Stok Minimal)</option>
+                        <option value="perlu">Perlu Pembelian (&le; Stok Minimal)</option>
+                        <option value="kosong">Kosong (= 0)</option>
                     </select>
+
                     <i
                         class="fa-solid fa-chevron-down absolute right-3 top-12 -translate-y-1/2 text-slate-400 pointer-events-none"></i>
                 </div>
@@ -227,15 +228,26 @@
                                 <td class="px-4 py-3" x-text="r.kategori"></td>
                                 <td class="px-4 py-3">
                                     <span x-text="r.stock ?? '-'"></span>
+
+                                    <!-- Kosong -->
                                     <span x-show="r.stock === 0"
                                         class="ml-2 px-2 py-1 bg-red-100 text-red-700 text-xs rounded">
                                         Kosong
                                     </span>
-                                    <span x-show="r.stock > 0 && r.stock < 10"
+
+                                    <!-- Perlu Pembelian -->
+                                    <span x-show="r.stock > 0 && r.stock <= r.stok_minimal"
                                         class="ml-2 px-2 py-1 bg-yellow-100 text-yellow-700 text-xs rounded">
-                                        Rendah
+                                        Perlu Pembelian
+                                    </span>
+
+                                    <!-- Aman -->
+                                    <span x-show="r.stock > r.stok_minimal"
+                                        class="ml-2 px-2 py-1 bg-green-100 text-green-700 text-xs rounded">
+                                        Aman
                                     </span>
                                 </td>
+
 
                                 {{-- SATUAN --}}
                                 <td class="px-4 py-3">
@@ -351,7 +363,8 @@
                     'kode' => $it->kode_item,
                     'nama' => $it->nama_item,
                     'kategori' => optional($it->kategori)->nama_kategori,
-                    'stock' => $it->stok ?? 0,
+                    'stock' => $it->gudangItems->sum('total_stok'), // ambil total stok dari relasi
+                    'stok_minimal' => $it->stok_minimal,
                     'foto_path' => $it->foto_path,
                     'url' => route('items.show', $it->id),
                     'satuans' => $it->satuans
@@ -367,6 +380,7 @@
             )
             ->toArray();
     @endphp
+
 
 
     <script>
@@ -393,12 +407,12 @@
 
                 init() {},
 
-                
+
                 // Get unique categories for dropdown
                 getUniqueCategories() {
                     return [...new Set(this.data.map(item => item.kategori).filter(Boolean))].sort();
                 },
-               
+
 
                 // Check if there are active filters
                 hasActiveFilters() {
@@ -435,18 +449,20 @@
                         // Filter stok
                         if (this.filters.stok) {
                             const stock = r.stock || 0;
+                            const min = r.stok_minimal || 0;
                             switch (this.filters.stok) {
-                                case 'tersedia':
-                                    if (stock <= 0) return false;
+                                case 'aman':
+                                    if (stock <= min) return false;
+                                    break;
+                                case 'perlu':
+                                    if (!(stock > 0 && stock <= min)) return false;
                                     break;
                                 case 'kosong':
                                     if (stock !== 0) return false;
                                     break;
-                                case 'minimal':
-                                    if (stock >= 10) return false;
-                                    break;
                             }
                         }
+
 
                         return true;
                     });

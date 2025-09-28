@@ -11,7 +11,7 @@ class ItemGudang extends Model
     protected $fillable = [
         'item_id',
         'gudang_id',
-        'stok_minimal',
+        'satuan_id',
         'stok',
     ];
 
@@ -23,6 +23,11 @@ class ItemGudang extends Model
     public function gudang()
     {
         return $this->belongsTo(Gudang::class);
+    }
+
+    public function satuan()
+    {
+        return $this->belongsTo(Satuan::class);
     }
 
 }

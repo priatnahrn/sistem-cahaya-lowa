@@ -17,7 +17,7 @@ return new class extends Migration
             $table->string('barcode')->unique();
             $table->string('barcode_path')->nullable();         
             $table->string('nama_item');
-                           
+            $table->string('stok_minimal')->nullable();
             $table->foreignId('kategori_item_id')
                 ->constrained('kategori_items')
                 ->onDelete('cascade');                 

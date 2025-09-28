@@ -17,6 +17,7 @@ class Item extends Model
         'barcode',
         'barcode_path',
         'nama_item',
+        'stok_minimal',
         'kategori_item_id',
         'foto_path',
     ];
@@ -46,5 +47,10 @@ class Item extends Model
     public function primarySatuan()
     {
         return $this->hasOne(Satuan::class)->where('is_base', true);
+    }
+
+    public function gudangItems()
+    {
+        return $this->hasMany(ItemGudang::class, 'item_id');
     }
 }

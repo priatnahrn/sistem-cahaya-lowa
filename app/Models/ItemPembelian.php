@@ -14,8 +14,6 @@ class ItemPembelian extends Model
     protected $fillable = [
         'pembelian_id',
         'item_id',
-        'kode_item',
-        'nama_item',
         'gudang_id',
         'satuan_id',
         'jumlah',
@@ -34,7 +32,6 @@ class ItemPembelian extends Model
     // -------------------------------
     // Relationships
     // -------------------------------
-
     public function pembelian()
     {
         return $this->belongsTo(Pembelian::class);
