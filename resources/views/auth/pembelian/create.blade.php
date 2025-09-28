@@ -21,28 +21,48 @@
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {{-- Supplier --}}
                 <div>
-                    <label class="block text-sm text-slate-500 mb-2">Supplier</label>
-                    <div class="relative">
-                        <i class="fa-solid fa-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
-                        <input type="text" x-model="supplierQuery" @input.debounce.300ms="searchSupplier"
-                            placeholder="Cari supplier"
-                            class="w-full pl-12 pr-4 py-2 rounded-lg border border-gray-300 text-slate-600 placeholder-slate-400
-                               focus:outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400">
+                    <label class="block text-sm font-medium text-slate-700 mb-2">Supplier</label>
+                    <div class="relative" x-data="{ open: false }">
+                        {{-- Search Icon --}}
+                        <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+
+                        {{-- Input --}}
+                        <input type="text" x-model="supplierQuery" @input.debounce.300ms="searchSupplier(); open = true"
+                            @focus="open = true" @click.away="open = false" placeholder="Cari supplier..."
+                            class="w-full pl-10 pr-8 py-2.5 rounded-lg border border-slate-200 text-sm text-slate-700
+                   focus:outline-none focus:ring-2 focus:ring-[#344579]/20 focus:border-[#344579]">
+
+                        {{-- Chevron Down --}}
+                        <i
+                            class="fa-solid fa-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"></i>
+
                         <input type="hidden" name="supplier_id" :value="form.supplier_id">
-                        <ul x-show="supplierQuery.length >= 2 && !form.supplier_id"
-                            class="absolute z-50 left-0 right-0 mt-1 bg-white border border-gray-300 rounded-lg shadow text-sm max-h-56 overflow-auto">
-                            <template x-if="supplierResults.length === 0">
-                                <li class="px-3 py-2 text-gray-500 italic">Data supplier tidak ditemukan</li>
-                            </template>
-                            <template x-for="s in supplierResults" :key="s.id">
-                                <li @click="selectSupplier(s)" class="px-3 py-2 cursor-pointer hover:bg-gray-100">
-                                    <span x-text="s.nama_supplier"></span>
-                                    <small class="text-gray-500" x-text="s.kontak"></small>
-                                </li>
-                            </template>
-                        </ul>
+
+                        {{-- Dropdown suggestion --}}
+                        <div x-show="open && supplierQuery.length >= 2" x-cloak x-transition
+                            class="absolute z-30 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                            <div class="p-2">
+                                {{-- Jika tidak ada hasil --}}
+                                <div x-show="supplierResults.length === 0"
+                                    class="px-3 py-2 text-sm text-slate-400 text-center italic">
+                                    Tidak ada supplier ditemukan
+                                </div>
+
+                                {{-- Hasil --}}
+                                <template x-for="s in supplierResults" :key="s.id">
+                                    <div @click="selectSupplier(s); open=false"
+                                        class="px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 cursor-pointer rounded">
+                                        <div class="font-medium" x-text="s.nama_supplier"></div>
+                                        <div class="text-xs text-slate-500" x-text="s.kontak"></div>
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
                     </div>
                 </div>
+
+
+
 
                 {{-- Checkbox Lunas --}}
                 <div class="flex items-center gap-2 mt-6">
@@ -96,27 +116,43 @@
                                 <td class="px-4 py-3 text-center" x-text="idx+1"></td>
                                 {{-- Item --}}
                                 <td class="px-4 py-3">
-                                    <div class="relative">
+                                    <div class="relative" x-data="{ open: false }">
+                                        {{-- Search Icon --}}
                                         <i
                                             class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
-                                        <input type="text" x-model="item.query" @input.debounce.300ms="searchItem(idx)"
-                                            placeholder="Cari item"
-                                            class="w-full pl-10 pr-3 py-2 rounded-lg border border-gray-300 text-sm">
-                                        <ul x-show="item.query.length >= 2 && !item.item_id"
-                                            class="absolute z-50 left-0 right-0 mt-1 bg-white border border-gray-300 rounded-lg shadow text-sm max-h-56 overflow-auto">
-                                            <template x-if="item.results.length === 0">
-                                                <li class="px-3 py-2 text-gray-500 italic">Data item tidak ditemukan</li>
-                                            </template>
-                                            <template x-for="r in item.results" :key="r.id">
-                                                <li @click="selectItem(idx, r)"
-                                                    class="px-3 py-2 cursor-pointer hover:bg-gray-100">
-                                                    <span x-text="r.nama_item"></span>
-                                                    <small class="text-gray-500" x-text="r.kode_item"></small>
-                                                </li>
-                                            </template>
-                                        </ul>
+
+                                        {{-- Input --}}
+                                        <input type="text" x-model="item.query"
+                                            @input.debounce.300ms="searchItem(idx); open = true" @focus="open = true"
+                                            @click.away="open = false" placeholder="Cari item..."
+                                            class="w-full pl-10 pr-8 py-2 rounded-lg border border-slate-200 text-sm text-slate-700
+                   focus:outline-none focus:ring-2 focus:ring-[#344579]/20 focus:border-[#344579]">
+
+                                        {{-- Chevron Down --}}
+                                        <i
+                                            class="fa-solid fa-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"></i>
+
+                                        {{-- Dropdown suggestion --}}
+                                        <div x-show="open && item.query.length >= 2 && !item.item_id" x-cloak x-transition
+                                            class="absolute z-30 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                                            <div class="p-2">
+                                                <div x-show="item.results.length === 0"
+                                                    class="px-3 py-2 text-sm text-slate-400 text-center italic">
+                                                    Tidak ada item ditemukan
+                                                </div>
+
+                                                <template x-for="r in item.results" :key="r.id">
+                                                    <div @click="selectItem(idx, r); open = false"
+                                                        class="px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 cursor-pointer rounded">
+                                                        <div class="font-medium" x-text="r.nama_item"></div>
+                                                        <div class="text-xs text-slate-500" x-text="r.kode_item"></div>
+                                                    </div>
+                                                </template>
+                                            </div>
+                                        </div>
                                     </div>
                                 </td>
+
                                 {{-- Gudang --}}
                                 <td class="px-4 py-3 text-center">
                                     <div class="relative">
@@ -231,13 +267,46 @@
         </div>
     </div>
 
+    @php
+        $suppliersJson = $suppliers
+            ->map(
+                fn($s) => [
+                    'id' => $s->id,
+                    'nama_supplier' => $s->nama_supplier,
+                    'kontak' => $s->kontak,
+                ],
+            )
+            ->toArray();
+    @endphp
+
+    @php
+        $itemsJson = $items
+            ->map(
+                fn($i) => [
+                    'id' => $i->id,
+                    'kode_item' => $i->kode_item,
+                    'nama_item' => $i->nama_item,
+                    'satuans' => $i->satuans
+                        ->map(
+                            fn($s) => [
+                                'id' => $s->id,
+                                'nama_satuan' => $s->nama_satuan,
+                            ],
+                        )
+                        ->toArray(),
+                    'satuan_default' => $i->satuan_default_id ?? null,
+                ],
+            )
+            ->toArray();
+    @endphp
+
+
     <script>
         function pembelianCreatePage() {
             return {
                 supplierQuery: '',
                 supplierResults: [],
-                subTotal: 0,
-                totalPembayaran: 0,
+                allSuppliers: @json($suppliersJson), // <-- load semua supplier di awal
                 form: {
                     supplier_id: null,
                     no_faktur: '',
@@ -256,14 +325,16 @@
                     this.form.no_faktur = @json($noFakturPreview);
                 },
 
-
-                async searchSupplier() {
-                    if (this.supplierQuery.length < 2) {
+                searchSupplier() {
+                    const q = this.supplierQuery.toLowerCase();
+                    if (q.length < 2) {
                         this.supplierResults = [];
                         return;
                     }
-                    const res = await fetch(`/supplier/search?q=${encodeURIComponent(this.supplierQuery)}`);
-                    this.supplierResults = await res.json();
+                    this.supplierResults = this.allSuppliers.filter(s =>
+                        s.nama_supplier.toLowerCase().includes(q) ||
+                        (s.kontak && s.kontak.toLowerCase().includes(q))
+                    ).slice(0, 20); // batasi hasil biar gak kepanjangan
                 },
 
                 selectSupplier(s) {
@@ -285,16 +356,20 @@
                     });
                 },
 
-                async searchItem(idx) {
-                    const q = this.form.items[idx].query;
+                allItems: @json($itemsJson),
+
+                searchItem(idx) {
+                    const q = this.form.items[idx].query.toLowerCase();
                     if (!q || q.length < 2) {
                         this.form.items[idx].results = [];
                         return;
                     }
-                    const res = await fetch(`{{ route('items.search') }}?q=${encodeURIComponent(q)}`);
-                    const data = await res.json();
-                    this.form.items[idx].results = data;
+                    this.form.items[idx].results = this.allItems.filter(r =>
+                        r.nama_item.toLowerCase().includes(q) ||
+                        r.kode_item.toLowerCase().includes(q)
+                    ).slice(0, 20); // batasi max 20 hasil
                 },
+
 
                 selectItem(idx, item) {
                     this.form.items[idx].item_id = item.id;

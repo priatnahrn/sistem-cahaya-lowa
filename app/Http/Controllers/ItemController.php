@@ -50,9 +50,10 @@ class ItemController extends Controller
     {
         $item = Item::with(['kategori', 'satuans', 'primarySatuan'])->findOrFail($id);
         $kategori_items = KategoriItem::orderBy('nama_kategori')->get();
+        $item_gudangs = ItemGudang::where('item_id', $id)->first();
         $gudangs = Gudang::orderBy('nama_gudang')->get();
 
-        return view('auth.items.show', compact('item', 'kategori_items', 'gudangs'));
+        return view('auth.items.show', compact('item', 'kategori_items', 'gudangs', 'item_gudangs'));
     }
 
     /**
@@ -63,8 +64,10 @@ class ItemController extends Controller
     public function store(Request $request)
     {
         $rules = [
+            'kode_item'        => 'nullable|string|max:50|unique:items,kode_item',
             'nama_item'        => 'required|string|max:191',
             'kategori_item_id' => 'required|exists:kategori_items,id',
+            'stok_minimal'     => 'nullable|numeric|min:0',
             'foto'             => 'nullable|image|max:5120',
             'satuans'          => 'required|array|min:1',
             'satuans.*.nama_satuan' => 'required|string|max:100',
@@ -82,26 +85,28 @@ class ItemController extends Controller
         try {
             // 📌 Ambil kategori
             $kategori = KategoriItem::findOrFail($validated['kategori_item_id']);
-            $namaKategori = strtoupper($kategori->nama_kategori); // contoh: BESI DAN BAJA
+            $namaKategori = strtoupper($kategori->nama_kategori);
 
-            // 📌 Ambil 3 huruf (ambil setiap kata, gabung 3 pertama)
-            $words = preg_split('/\s+/', $namaKategori);
-            $prefix = '';
-            foreach ($words as $w) {
-                $prefix .= Str::substr($w, 0, 1);
+            // 📌 Tentukan kode item (pakai input user atau auto-generate)
+            if (!empty($validated['kode_item'])) {
+                $kodeItem = strtoupper($validated['kode_item']);
+            } else {
+                $words = preg_split('/\s+/', $namaKategori);
+                $prefix = '';
+                foreach ($words as $w) {
+                    $prefix .= Str::substr($w, 0, 1);
+                }
+                $prefix = Str::substr($prefix, 0, 3);
+                $prefix = strtoupper($prefix);
+
+                $length = rand(8, 11);
+                $randomNumber = '';
+                for ($i = 0; $i < $length; $i++) {
+                    $randomNumber .= mt_rand(0, 9);
+                }
+
+                $kodeItem = $prefix . '-' . $randomNumber;
             }
-            $prefix = Str::substr($prefix, 0, 3); // maksimal 3 huruf
-            $prefix = strtoupper($prefix); // BBJ
-
-            // 📌 Generate angka random 11–13 digit
-            $length = rand(8, 11);
-            $randomNumber = '';
-            for ($i = 0; $i < $length; $i++) {
-                $randomNumber .= mt_rand(0, 9);
-            }
-
-            // 📌 Format kode item
-            $kodeItem = $prefix . '-' . $randomNumber;
 
             // 📌 Upload foto
             $fotoPath = null;
@@ -128,6 +133,7 @@ class ItemController extends Controller
                 'kategori_item_id' => $validated['kategori_item_id'],
                 'foto_path'        => $fotoPath,
             ]);
+
             // 📌 Simpan satuans
             $satuanIds = [];
             foreach ($validated['satuans'] as $idx => $s) {
@@ -156,20 +162,18 @@ class ItemController extends Controller
                 Satuan::where('id', reset($satuanIds))->update(['is_base' => true]);
             }
 
-            // 📌 Stok awal di semua gudang
+            // 📌 Stok awal di semua gudang (tanpa satuan_id)
             $gudangs = Gudang::all();
             $batch = [];
             foreach ($gudangs as $g) {
-                foreach ($satuanIds as $satuanId) {
-                    $batch[] = [
-                        'item_id'    => $item->id,
-                        'gudang_id'  => $g->id,
-                        'satuan_id'  => $satuanId,
-                        'stok'       => 0,
-                        'created_at' => now(),
-                        'updated_at' => now(),
-                    ];
-                }
+                $batch[] = [
+                    'item_id'     => $item->id,
+                    'gudang_id'   => $g->id,
+                    'stok_minimal' => $validated['stok_minimal'],
+                    'stok'        => 0,
+                    'created_at'  => now(),
+                    'updated_at'  => now(),
+                ];
             }
             if (!empty($batch)) {
                 ItemGudang::insert($batch);
@@ -182,10 +186,10 @@ class ItemController extends Controller
         } catch (\Throwable $e) {
             DB::rollBack();
 
-            // 🛠️ Biar gampang debug, langsung dump error
             dd('Error Store Item:', $e->getMessage(), $e->getFile(), $e->getLine());
         }
     }
+
 
 
 

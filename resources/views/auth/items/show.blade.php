@@ -63,6 +63,14 @@
                             class="w-full px-3 py-2 rounded-lg border border-slate-200 focus:ring-1 focus:ring-[#344579] focus:border-[#344579]" />
                     </div>
 
+                    {{-- stok_minimal --}}
+                    <div>
+                        <label class="block text-sm text-slate-600 mb-1">Stok Minimal <span
+                                class="text-rose-600">*</span></label>
+                        <input name="stok_minimal" x-model="form.stok_minimal"
+                            class="w-full px-3 py-2 rounded-lg border border-slate-200 focus:ring-1 focus:ring-[#344579] focus:border-[#344579]" />
+                    </div>
+
                     {{-- Kategori Item --}}
                     <div>
                         <label class="block text-sm text-slate-600 mb-1">Kategori Item <span
@@ -243,6 +251,7 @@
                 form: {
                     kode_item: '{!! old('kode_item', $item->kode_item) !!}',
                     nama_item: '{{ old('nama_item', $item->nama_item) }}',
+                    stok_minimal: '{{ old('stok_minimal', $item_gudangs->stok_minimal) }}',
                     kategori_item_id: '{{ old('kategori_item_id', $item->kategori_item_id) }}',
                     fotoPreview: null,
                     fotoFileName: '{{ $item->foto_path ? basename($item->foto_path) : '' }}',

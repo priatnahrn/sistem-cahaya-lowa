@@ -42,15 +42,15 @@
                         <label class="block text-sm text-slate-600 mb-1">
                             Kode Item
                         </label>
-                        <input type="text"
+                        <input type="text" name="kode_item" id="kode_item"
                             class="w-full px-3 py-2 rounded-lg border border-slate-200 bg-white text-slate-500"
-                            value="" placeholder="Kode item">
+                            value="{{ old('kode_item') }}" placeholder="Kode item">
                         <p class="text-xs text-slate-400 mt-1">
-                            Bila tidak diisi, kode item akan dibuat otomatis berdasarkan kategori yang dipilih dan akan
-                            muncul setelah
-                            disimpan.
+                            Bila tidak diisi, kode item akan dibuat otomatis berdasarkan kategori yang dipilih
+                            dan akan muncul setelah disimpan.
                         </p>
                     </div>
+
 
                     {{-- nama item --}}
                     <div>
@@ -58,6 +58,14 @@
                                 class="text-rose-600">*</span></label>
                         <input name="nama_item" x-model="form.nama_item"
                             class="w-full px-3 py-2 rounded-lg border border-slate-200" placeholder="Nama item" />
+                    </div>
+
+                    {{-- stok minimal item --}}
+                    <div>
+                        <label class="block text-sm text-slate-600 mb-1">Stok Minimal <span
+                                class="text-rose-600">*</span></label>
+                        <input name="stok_minimal" x-model="form.stok_minimal"
+                            class="w-full px-3 py-2 rounded-lg border border-slate-200" placeholder="Stok minimal" />
                     </div>
 
                     {{-- kategori item --}}
@@ -157,7 +165,8 @@
 
                             {{-- Harga Retail --}}
                             <div class="col-span-3">
-                                <label class="block text-sm text-slate-600 mb-1">Harga Retail <span class="text-rose-600">*</span></label>
+                                <label class="block text-sm text-slate-600 mb-1">Harga Retail <span
+                                        class="text-rose-600">*</span></label>
                                 <div class="relative">
                                     <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-sm">Rp</span>
                                     <input type="text"
@@ -166,20 +175,6 @@
                                         @input="updateHarga(idx, 'harga_retail', $event.target.value)" />
                                     <input type="hidden" :name="`satuans[${idx}][harga_retail]`"
                                         :value="s.harga_retail">
-                                </div>
-                            </div>
-
-                            {{-- Harga Partai Kecil --}}
-                            <div class="col-span-3">
-                                <label class="block text-sm text-slate-600 mb-1">Harga Partai Kecil</label>
-                                <div class="relative">
-                                    <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-sm">Rp</span>
-                                    <input type="text"
-                                        class="pl-10 pr-3 w-full border border-slate-200 rounded-lg py-2 text-sm text-right"
-                                        :value="formatRupiah(s.partai_kecil)"
-                                        @input="updateHarga(idx, 'partai_kecil', $event.target.value)" />
-                                    <input type="hidden" :name="`satuans[${idx}][partai_kecil]`"
-                                        :value="s.partai_kecil">
                                 </div>
                             </div>
 
@@ -196,6 +191,20 @@
                                         :value="s.harga_grosir">
                                 </div>
                             </div>
+
+                            {{-- Harga Partai Kecil --}}
+                            <div class="col-span-3">
+                                <label class="block text-sm text-slate-600 mb-1">Harga Partai Kecil</label>
+                                <div class="relative">
+                                    <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-sm">Rp</span>
+                                    <input type="text"
+                                        class="pl-10 pr-3 w-full border border-slate-200 rounded-lg py-2 text-sm text-right"
+                                        :value="formatRupiah(s.partai_kecil)"
+                                        @input="updateHarga(idx, 'partai_kecil', $event.target.value)" />
+                                    <input type="hidden" :name="`satuans[${idx}][partai_kecil]`"
+                                        :value="s.partai_kecil">
+                                </div>
+                            </div>
                         </div>
                     </template>
                 </div>
@@ -204,8 +213,8 @@
 
             {{-- BATAL & SIMPAN --}}
             <div class="flex justify-end gap-4 mt-4">
-                <a href="{{ route('items.index') }}" 
-                   class="px-4 py-2 rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50">
+                <a href="{{ route('items.index') }}"
+                    class="px-4 py-2 rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50">
                     Batal
                 </a>
                 <button type="submit" :disabled="!canSubmit()"

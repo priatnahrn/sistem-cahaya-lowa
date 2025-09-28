@@ -442,7 +442,7 @@
                                 case 'kosong':
                                     if (stock !== 0) return false;
                                     break;
-                                case 'rendah':
+                                case 'minimal':
                                     if (stock >= 10) return false;
                                     break;
                             }

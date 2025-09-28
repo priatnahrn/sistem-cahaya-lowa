@@ -16,7 +16,8 @@ return new class extends Migration
             $table->string('kode_item', 50)->unique();  
             $table->string('barcode')->unique();
             $table->string('barcode_path')->nullable();         
-            $table->string('nama_item');               
+            $table->string('nama_item');
+                           
             $table->foreignId('kategori_item_id')
                 ->constrained('kategori_items')
                 ->onDelete('cascade');                 
