@@ -220,7 +220,7 @@
                         class="px-4 py-2 rounded-lg w-full cursor-pointer"
                         :class="canSubmit() ?
                             'bg-[#344579] text-white hover:bg-[#2d3e6f]' :
-                            'bg-slate-300 text-slate-500 cursor-not-allowed'">
+                            'bg-slate-300 text-white cursor-not-allowed'">
                         Simpan Perubahan
                     </button>
 

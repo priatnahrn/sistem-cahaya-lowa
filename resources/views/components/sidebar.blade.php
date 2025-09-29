@@ -146,7 +146,7 @@
                         </span>
                     </a>
 
-                    <a href=""
+                    <a href="{{ route('retur-pembelian.index') }}"
                         class="block px-3 py-2 rounded-md text-[13px] transition {{ $is('retur-pembelian.*') ? 'bg-white text-[#344579] font-semibold' : 'text-white/80 hover:bg-white/5' }}">
                         <span class="flex items-center gap-3">
                             <span

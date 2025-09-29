@@ -309,14 +309,31 @@ class PembelianController extends Controller
             DB::commit();
 
             return response()->json([
+                'success' => true,
                 'message' => "Pembelian berhasil diperbarui",
                 'id'      => $pembelian->id,
-            ]);
+            ], 200);
         } catch (\Throwable $e) {
             DB::rollBack();
             Log::error('Gagal update pembelian', ['error' => $e]);
             return response()->json(['error' => 'Gagal update pembelian: ' . $e->getMessage()], 500);
         }
+    }
+
+    public function getItems($id)
+    {
+        $pembelian = Pembelian::with(['supplier', 'items.item'])
+            ->findOrFail($id);
+
+        return response()->json([
+            'supplier' => $pembelian->supplier->nama_supplier,
+            'items' => $pembelian->items->map(fn($it) => [
+                'id' => $it->id,
+                'nama_item' => $it->item->nama_item,
+                'jumlah' => $it->jumlah,
+                'harga_beli' => $it->harga_beli,
+            ])
+        ]);
     }
 
     /**
