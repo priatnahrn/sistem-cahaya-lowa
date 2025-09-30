@@ -57,8 +57,7 @@
 
             <div class="flex items-center gap-3">
                 <div class="relative">
-                    <i
-                        class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                    <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
                     <input type="text" placeholder="Cari pelanggan..." x-model="q"
                         class="w-64 pl-10 pr-3 py-2 rounded-lg border border-slate-200 text-slate-600 placeholder-slate-400
                               focus:outline-none focus:ring-2 focus:ring-[#344579]/20 focus:border-[#344579]">
@@ -68,8 +67,7 @@
                     class="px-4 py-2 rounded-lg border border-slate-200 text-slate-700 hover:bg-[#2e3e6a] hover:text-white"
                     :class="{ 'bg-[#344579] text-white': hasActiveFilters() }">
                     <i class="fa-solid fa-filter mr-2"></i> Filter
-                    <span x-show="hasActiveFilters()"
-                        class="ml-1 bg-white text-[#344579] px-1.5 py-0.5 rounded text-xs">
+                    <span x-show="hasActiveFilters()" class="ml-1 bg-white text-[#344579] px-1.5 py-0.5 rounded text-xs">
                         <span x-text="activeFiltersCount()"></span>
                     </span>
                 </button>
@@ -77,9 +75,8 @@
         </div>
 
         {{-- FILTER --}}
-        <div x-show="showFilter" x-collapse x-transition
-            class="bg-white border border-slate-200 rounded-xl px-6 py-4">
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div x-show="showFilter" x-collapse x-transition class="bg-white border border-slate-200 rounded-xl px-6 py-4">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
                 {{-- Filter Nama --}}
                 <div>
                     <label class="block text-sm font-medium text-slate-700 mb-2">Nama Pelanggan</label>
@@ -103,7 +100,32 @@
                         class="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm text-slate-700
                                focus:outline-none focus:ring-2 focus:ring-[#344579]/20 focus:border-[#344579]">
                 </div>
+
+                {{-- Filter Level --}}
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-2">Level</label>
+                    <div class="relative">
+                        <select x-model="filters.level"
+                            class="w-full px-3 py-2 rounded-lg border border-slate-200 
+                   appearance-none pr-8 bg-white text-sm text-slate-700
+                   focus:outline-none focus:ring-2 focus:ring-[#344579]/20 focus:border-[#344579]">
+                            <option value="">-- Semua Level --</option>
+                            <option value="retail">Retail</option>
+                            <option value="partai_kecil">Partai Kecil</option>
+                            <option value="grosir">Grosir</option>
+                        </select>
+
+                        {{-- Custom Arrow --}}
+                        <div class="absolute inset-y-0 right-3 flex items-center pointer-events-none">
+                            <svg class="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                                xmlns="http://www.w3.org/2000/svg">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                            </svg>
+                        </div>
+                    </div>
+                </div>
             </div>
+
 
             {{-- Filter Actions --}}
             <div class="flex items-center justify-between mt-4 pt-4 border-t border-slate-200">
@@ -134,18 +156,29 @@
                             <th class="px-4 py-3 cursor-pointer" @click="toggleSort('nama_pelanggan')">
                                 Nama Pelanggan
                                 <i class="fa-solid"
-                                    :class="sortBy === 'nama_pelanggan' ? (sortDir==='asc' ? 'fa-arrow-up ml-2' : 'fa-arrow-down ml-2') : 'fa-sort ml-2'"></i>
+                                    :class="sortBy === 'nama_pelanggan' ? (sortDir==='asc' ? 'fa-arrow-up ml-2' :
+                                        'fa-arrow-down ml-2'): 'fa-sort ml-2'"></i>
                             </th>
                             <th class="px-4 py-3 cursor-pointer" @click="toggleSort('kontak')">
                                 Kontak
                                 <i class="fa-solid"
-                                    :class="sortBy === 'kontak' ? (sortDir==='asc' ? 'fa-arrow-up ml-2' : 'fa-arrow-down ml-2') : 'fa-sort ml-2'"></i>
+                                    :class="sortBy === 'kontak' ? (sortDir==='asc' ? 'fa-arrow-up ml-2' :
+                                        'fa-arrow-down ml-2'): 'fa-sort ml-2'"></i>
                             </th>
                             <th class="px-4 py-3 cursor-pointer" @click="toggleSort('alamat')">
                                 Alamat
                                 <i class="fa-solid"
-                                    :class="sortBy === 'alamat' ? (sortDir==='asc' ? 'fa-arrow-up ml-2' : 'fa-arrow-down ml-2') : 'fa-sort ml-2'"></i>
+                                    :class="sortBy === 'alamat' ? (sortDir==='asc' ? 'fa-arrow-up ml-2' :
+                                        'fa-arrow-down ml-2'): 'fa-sort ml-2'"></i>
                             </th>
+                            {{-- Tambah kolom Level --}}
+                            <th class="px-4 py-3 cursor-pointer" @click="toggleSort('level')">
+                                Level
+                                <i class="fa-solid"
+                                    :class="sortBy === 'level' ? (sortDir==='asc' ? 'fa-arrow-up ml-2' :
+                                        'fa-arrow-down ml-2'): 'fa-sort ml-2'"></i>
+                            </th>
+
                             <th class="px-2 py-3"></th>
                         </tr>
                     </thead>
@@ -159,6 +192,22 @@
                                 </td>
                                 <td class="px-4 py-3" x-text="r.kontak"></td>
                                 <td class="px-4 py-3" x-text="r.alamat"></td>
+                                {{-- Kolom Level --}}
+                                <td class="px-4 py-3">
+                                    <template x-if="r.level">
+                                        <span
+                                            :class="{
+                                                'px-2 py-1 rounded text-xs font-medium': true,
+                                                'bg-blue-100 text-blue-700': r.level === 'retail',
+                                                'bg-yellow-100 text-yellow-700': r.level === 'partai_kecil',
+                                                'bg-green-100 text-green-700': r.level === 'grosir'
+                                            }"
+                                            x-text="r.level_label"></span>
+                                    </template>
+                                    <template x-if="!r.level">
+                                        <span class="text-slate-400">-</span>
+                                    </template>
+                                </td>
                                 <td class="px-2 py-3 text-right relative">
                                     <button type="button" @click="toggleActions(r.id)"
                                         class="px-2 py-1 rounded hover:bg-slate-100">
@@ -253,22 +302,37 @@
 
     @php
         $pelanggansJson = $pelanggans
-            ->map(fn($p) => [
-                'id' => $p->id,
-                'nama_pelanggan' => $p->nama_pelanggan,
-                'kontak' => $p->kontak,
-                'alamat' => $p->alamat,
-                'url' => route('pelanggan.show', $p->id),
-            ])
+            ->map(
+                fn($p) => [
+                    'id' => $p->id,
+                    'nama_pelanggan' => $p->nama_pelanggan,
+                    'kontak' => $p->kontak,
+                    'alamat' => $p->alamat,
+                    'level' => $p->level, // simpan kode level (retail, partai_kecil, grosir)
+                    'level_label' => match ($p->level) {
+                        'retail' => 'Retail',
+                        'partai_kecil' => 'Partai Kecil',
+                        'grosir' => 'Grosir',
+                        default => null,
+                    },
+                    'url' => route('pelanggan.show', $p->id),
+                ],
+            )
             ->toArray();
     @endphp
+
 
     <script>
         function pelangganPage() {
             return {
                 showFilter: false,
                 q: '',
-                filters: { nama: '', kontak: '' },
+                filters: {
+                    nama: '',
+                    kontak: '',
+                    alamat: '',
+                    level: ''
+                },
                 pageSize: 10,
                 currentPage: 1,
                 maxPageButtons: 7,
@@ -282,23 +346,33 @@
                 init() {},
 
                 hasActiveFilters() {
-                    return this.filters.nama || this.filters.kontak;
+                    return this.filters.nama || this.filters.kontak || this.filters.alamat || this.filters.level;
                 },
                 activeFiltersCount() {
                     let c = 0;
                     if (this.filters.nama) c++;
                     if (this.filters.kontak) c++;
                     if (this.filters.alamat) c++;
+                    if (this.filters.level) c++;
                     return c;
                 },
 
                 filteredList() {
                     const q = this.q.trim().toLowerCase();
                     let list = this.data.filter(r => {
-                        if (q && !(`${r.nama_pelanggan} ${r.kontak} ${r.alamat}`.toLowerCase().includes(q))) return false;
-                        if (this.filters.nama && !r.nama_pelanggan.toLowerCase().includes(this.filters.nama.toLowerCase())) return false;
-                        if (this.filters.kontak && !r.kontak.toLowerCase().includes(this.filters.kontak.toLowerCase())) return false;
-                        if (this.filters.alamat && !r.alamat.toLowerCase().includes(this.filters.alamat.toLowerCase())) return false;
+                        if (q && !(`${r.nama_pelanggan} ${r.kontak} ${r.alamat}`.toLowerCase().includes(q)))
+                            return false;
+                        if (this.filters.nama && !r.nama_pelanggan.toLowerCase().includes(this.filters.nama
+                                .toLowerCase()))
+                            return false;
+                        if (this.filters.kontak && !r.kontak.toLowerCase().includes(this.filters.kontak
+                                .toLowerCase()))
+                            return false;
+                        if (this.filters.alamat && !r.alamat.toLowerCase().includes(this.filters.alamat
+                                .toLowerCase()))
+                            return false;
+                        if (this.filters.level && r.level !== this.filters.level)
+                            return false;
                         return true;
                     });
 
@@ -306,15 +380,31 @@
                     list.sort((a, b) => {
                         const va = (a[this.sortBy] ?? '').toString().toLowerCase();
                         const vb = (b[this.sortBy] ?? '').toString().toLowerCase();
-                        const an = parseFloat(va), bn = parseFloat(vb);
+                        const an = parseFloat(va),
+                            bn = parseFloat(vb);
                         if (!isNaN(an) && !isNaN(bn)) return (an - bn) * dir;
                         return va.localeCompare(vb) * dir;
                     });
                     return list;
                 },
 
-                filteredTotal() { return this.filteredList().length; },
-                totalPages() { return Math.max(1, Math.ceil(this.filteredTotal() / this.pageSize)); },
+                resetFilters() {
+                    this.filters = {
+                        nama: '',
+                        kontak: '',
+                        alamat: '',
+                        level: ''
+                    };
+                    this.q = '';
+                    this.currentPage = 1;
+                },
+
+                filteredTotal() {
+                    return this.filteredList().length;
+                },
+                totalPages() {
+                    return Math.max(1, Math.ceil(this.filteredTotal() / this.pageSize));
+                },
                 pagedData() {
                     const start = (this.currentPage - 1) * this.pageSize;
                     return this.filteredList().slice(start, start + this.pageSize);
@@ -327,13 +417,24 @@
                     this.currentPage = n;
                     this.openActionId = null;
                 },
-                prev() { if (this.currentPage > 1) this.currentPage--; this.openActionId = null; },
-                next() { if (this.currentPage < this.totalPages()) this.currentPage++; this.openActionId = null; },
+                prev() {
+                    if (this.currentPage > 1) this.currentPage--;
+                    this.openActionId = null;
+                },
+                next() {
+                    if (this.currentPage < this.totalPages()) this.currentPage++;
+                    this.openActionId = null;
+                },
                 pagesToShow() {
-                    const total = this.totalPages(), max = this.maxPageButtons, cur = this.currentPage;
-                    if (total <= max) return Array.from({ length: total }, (_, i) => i + 1);
+                    const total = this.totalPages(),
+                        max = this.maxPageButtons,
+                        cur = this.currentPage;
+                    if (total <= max) return Array.from({
+                        length: total
+                    }, (_, i) => i + 1);
                     const side = Math.floor((max - 3) / 2);
-                    const left = Math.max(2, cur - side), right = Math.min(total - 1, cur + side);
+                    const left = Math.max(2, cur - side),
+                        right = Math.min(total - 1, cur + side);
                     const pages = [1];
                     if (left > 2) pages.push('...');
                     for (let i = left; i <= right; i++) pages.push(i);
@@ -342,15 +443,29 @@
                     return pages;
                 },
 
-                toggleActions(id) { this.openActionId = (this.openActionId === id) ? null : id; },
+                toggleActions(id) {
+                    this.openActionId = (this.openActionId === id) ? null : id;
+                },
                 toggleSort(field) {
                     if (this.sortBy === field) this.sortDir = (this.sortDir === 'asc') ? 'desc' : 'asc';
-                    else { this.sortBy = field; this.sortDir = 'asc'; }
+                    else {
+                        this.sortBy = field;
+                        this.sortDir = 'asc';
+                    }
                     this.currentPage = 1;
                 },
 
-                confirmDelete(item) { this.openActionId = null; this.deleteItem = { ...item }; this.showDeleteModal = true; },
-                closeDelete() { this.showDeleteModal = false; this.deleteItem = {}; },
+                confirmDelete(item) {
+                    this.openActionId = null;
+                    this.deleteItem = {
+                        ...item
+                    };
+                    this.showDeleteModal = true;
+                },
+                closeDelete() {
+                    this.showDeleteModal = false;
+                    this.deleteItem = {};
+                },
                 doDelete() {
                     const idx = this.data.findIndex(d => d.id === this.deleteItem.id);
                     if (idx !== -1) this.data.splice(idx, 1);
@@ -358,11 +473,7 @@
                     this.closeDelete();
                 },
 
-                resetFilters() {
-                    this.filters = { nama: '', kontak: '', alamat: '' };
-                    this.q = '';
-                    this.currentPage = 1;
-                }
+
             }
         }
     </script>

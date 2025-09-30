@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\{Pembelian, ItemPembelian, Item, Gudang, ItemGudang, Satuan, Supplier};
+use App\Models\{Pembelian, ItemPembelian, Item, Gudang, ItemGudang, Satuan, Supplier, TagihanPembelian};
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\{Auth, DB, Log};
 use Illuminate\Validation\Rule;
@@ -75,7 +75,6 @@ class PembelianController extends Controller
      */
     public function store(Request $request)
     {
-
         $validated = $request->validate([
             'supplier_id'        => 'nullable|exists:suppliers,id',
             'tanggal'            => 'required|date',
@@ -85,7 +84,7 @@ class PembelianController extends Controller
             'items'              => 'required|array|min:1',
             'items.*.item_id'    => 'required|exists:items,id',
             'items.*.gudang_id'  => 'required|exists:gudangs,id',
-            'items.*.satuan_id'  => 'required|exists:satuans,id', // pastikan tidak null
+            'items.*.satuan_id'  => 'required|exists:satuans,id',
             'items.*.jumlah'     => 'required|numeric|min:1',
             'items.*.harga'      => 'required|numeric|min:0',
         ]);
@@ -111,6 +110,7 @@ class PembelianController extends Controller
             // ===== Hitung subtotal dan total =====
             $subTotal       = collect($validated['items'])->sum(fn($i) => $i['jumlah'] * $i['harga']);
             $biayaTransport = $validated['biaya_transport'] ?? 0;
+            $grandTotal     = $subTotal + $biayaTransport;
 
             // ===== Simpan pembelian =====
             $pembelian = Pembelian::create([
@@ -121,7 +121,7 @@ class PembelianController extends Controller
                 'biaya_transport' => $biayaTransport,
                 'status'          => $validated['status'],
                 'sub_total'       => $subTotal,
-                'total'           => $subTotal + $biayaTransport,
+                'total'           => $grandTotal,
                 'created_by'      => Auth::id(),
                 'updated_by'      => Auth::id(),
             ]);
@@ -143,41 +143,64 @@ class PembelianController extends Controller
                     'total'            => $it['jumlah'] * $it['harga'],
                 ]);
 
-
-                // Cek apakah item sudah ada di gudang
+                // Update stok per gudang
                 $itemGudang = ItemGudang::where('item_id', $it['item_id'])
                     ->where('gudang_id', $it['gudang_id'])
                     ->where('satuan_id', $it['satuan_id'])
                     ->first();
 
                 if ($itemGudang) {
-                    // Update stok satuan
                     $itemGudang->increment('stok', $it['jumlah']);
                 } else {
-                    // Buat stok baru
                     $itemGudang = ItemGudang::create([
                         'item_id'   => $it['item_id'],
                         'gudang_id' => $it['gudang_id'],
                         'satuan_id' => $it['satuan_id'],
                         'stok'      => $it['jumlah'],
-                        'total_stok' => 0, // nanti dihitung ulang
+                        'total_stok' => 0,
                     ]);
                 }
 
-                // ====== Hitung ulang total stok base unit untuk item + gudang ini ======
-                // Ambil semua stok per satuan di gudang ini
+                // Hitung ulang total stok base unit
                 $stokGudang = ItemGudang::where('item_id', $it['item_id'])
                     ->where('gudang_id', $it['gudang_id'])
                     ->with('satuan')
                     ->get();
 
-                // Hitung total dalam base unit
                 $totalStok = $stokGudang->sum(fn($row) => $row->stok * $row->satuan->jumlah);
 
-                // Update semua baris item_gudang untuk item+gudang tersebut
                 ItemGudang::where('item_id', $it['item_id'])
                     ->where('gudang_id', $it['gudang_id'])
                     ->update(['total_stok' => $totalStok]);
+            }
+
+            // ===== Buat Tagihan kalau status unpaid =====
+            if ($pembelian->status == 'unpaid') {
+                // Generate nomor tagihan TBddmmyyXXX
+                $lastTagihan = DB::table('tagihan_pembelians')
+                    ->whereDate('tanggal', $validated['tanggal'])
+                    ->where('no_tagihan', 'like', "TB{$today}%")
+                    ->orderByDesc('no_tagihan')
+                    ->lockForUpdate()
+                    ->first();
+
+                $nextTagihan = $lastTagihan
+                    ? (int) substr($lastTagihan->no_tagihan, -3) + 1
+                    : 1;
+
+                $noTagihan = "TB{$today}" . str_pad($nextTagihan, 3, '0', STR_PAD_LEFT);
+
+                TagihanPembelian::create([
+                    'pembelian_id' => $pembelian->id,
+                    'no_tagihan'   => $noTagihan,
+                    'tanggal'      => $validated['tanggal'] . ' ' . now()->format('H:i:s'),
+                    'jumlah_bayar' => 0,
+                    'sisa'         => $grandTotal,
+                    'total'        => $grandTotal,
+                    'catatan'      => $validated['deskripsi'] ?? null,
+                    'created_by'   => Auth::id(),
+                    'updated_by'   => Auth::id(),
+                ]);
             }
 
             DB::commit();
@@ -193,6 +216,7 @@ class PembelianController extends Controller
             ], 500);
         }
     }
+
 
 
     /**

@@ -8,6 +8,7 @@ use App\Http\Controllers\PembelianController;
 use App\Http\Controllers\PenjualanController;
 use App\Http\Controllers\ReturPembelianController;
 use App\Http\Controllers\SupplierController;
+use App\Http\Controllers\TagihanPembelianController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Auth;
@@ -36,10 +37,25 @@ Route::middleware('auth')->group(function () {
         Route::get('/create', [PenjualanController::class, 'create'])->name('penjualan.create');
         Route::post('/store', [PenjualanController::class, 'store'])->name('penjualan.store');
         Route::get('/{id}', [PenjualanController::class, 'show'])->name('penjualan.show');
+        Route::get('/items/search', [PenjualanController::class, 'searchItems']);
         Route::put('/{id}/update', [PenjualanController::class, 'update'])->name('penjualan.update');
         Route::get('/{id}/last-price', [PenjualanController::class, 'getLastPrice'])->name('penjualan.last_price');
         Route::delete('/{id}/delete', [PenjualanController::class, 'destroy'])->name('penjualan.destroy');
     });
+    
+    
+    Route::get('/items/barcode/{barcode}', [PenjualanController::class, 'getItemByBarcode']);
+    Route::get('/items/stock', [PenjualanController::class, 'getStock']);
+    Route::get('/items/price', [PenjualanController::class, 'getPrice']);
+
+    Route::prefix('pembelian/tagihan')->group(function () {
+        Route::get('/', [TagihanPembelianController::class, 'index'])->name('tagihan.pembelian.index');
+        Route::get('/{id}', [TagihanPembelianController::class, 'show'])->name('tagihan.pembelian.show')->whereNumber('id');
+        Route::get('/{id}/edit', [TagihanPembelianController::class, 'edit'])->name('tagihan.pembelian.edit')->whereNumber('id');
+        Route::put('/{id}', [TagihanPembelianController::class, 'update'])->name('tagihan.pembelian.update')->whereNumber('id');
+        Route::delete('/{id}', [TagihanPembelianController::class, 'destroy'])->name('tagihan.pembelian.destroy')->whereNumber('id');
+    });
+
 
     // 📌 Retur Pembelian
     Route::prefix('pembelian/retur-pembelian')->group(function () {
@@ -50,6 +66,7 @@ Route::middleware('auth')->group(function () {
         Route::put('/{id}', [ReturPembelianController::class, 'update'])->name('retur-pembelian.update');
         Route::delete('/{id}', [ReturPembelianController::class, 'destroy'])->name('retur-pembelian.destroy');
     });
+
 
     // 📌 Pembelian
     Route::prefix('pembelian')->group(function () {
@@ -107,9 +124,6 @@ Route::middleware('auth')->group(function () {
             Route::delete('/{id}', [KategoriItemController::class, 'destroy'])->name('destroy');
         });
 
-        // route dinamis item setelah categories
-        Route::get('/by-barcode/{kode}', [ItemController::class, 'findByBarcode'])->name('scan');
-        Route::get('{id}/prices', [ItemController::class, 'getPrices'])->name('prices');
         Route::get('/{id}', [ItemController::class, 'show'])->name('show');
         Route::put('/{id}/update', [ItemController::class, 'update'])->name('update');
         Route::delete('/{id}', [ItemController::class, 'destroy'])->name('destroy');

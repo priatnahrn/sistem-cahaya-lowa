@@ -10,7 +10,7 @@ class PelangganController extends Controller
 {
     public function index()
     {
-       $auth = Auth::user();
+        $auth = Auth::user();
         if (!$auth) {
             return response()->json(['message' => 'Unauthorized'], 401);
         }
@@ -20,6 +20,7 @@ class PelangganController extends Controller
 
     public function create()
     {
+
         return view('auth.pelanggan.create');
     }
 
@@ -36,7 +37,7 @@ class PelangganController extends Controller
             ->orWhere('kontak', 'like', "%{$q}%")
             ->orderBy('nama_pelanggan')
             ->limit(15)
-            ->get(['id', 'nama_pelanggan', 'kontak']);
+            ->get(['id', 'nama_pelanggan', 'kontak', 'level']);
 
         return response()->json($results);
     }
@@ -52,12 +53,25 @@ class PelangganController extends Controller
             'nama_pelanggan' => 'required|string|max:255',
             'kontak' => 'nullable|string|max:100',
             'alamat' => 'nullable|string',
+            'level' => 'required|in:retail,partai_kecil,grosir',
         ]);
 
         try {
-            Pelanggan::create($validated);
-            return redirect()->route('pelanggan.index')->with('success', 'Pelanggan berhasil dibuat.');
+            $pelanggan = Pelanggan::create($validated);
+
+            // Kalau request minta JSON (AJAX dari Alpine)
+            if ($request->wantsJson()) {
+                return response()->json($pelanggan, 201);
+            }
+
+            // Kalau request biasa (form Laravel klasik)
+            return redirect()->route('pelanggan.index')
+                ->with('success', 'Pelanggan berhasil dibuat.');
         } catch (\Exception $e) {
+            if ($request->wantsJson()) {
+                return response()->json(['message' => 'Terjadi kesalahan saat menyimpan data.'], 500);
+            }
+
             return back()->withErrors(['error' => 'Terjadi kesalahan saat menyimpan data.'])->withInput();
         }
     }
@@ -91,6 +105,7 @@ class PelangganController extends Controller
             'nama_pelanggan' => 'required|string|max:255',
             'kontak' => 'nullable|string|max:100',
             'alamat' => 'nullable|string',
+            'level' => 'required|in:retail,partai_kecil,grosir',
         ]);
 
         try {
@@ -107,7 +122,7 @@ class PelangganController extends Controller
         if (!$auth) {
             return response()->json(['message' => 'Unauthorized'], 401);
         }
-       
+
         try {
             $pelanggan = Pelanggan::find($id);
             if (!$pelanggan) {

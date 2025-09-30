@@ -5,186 +5,279 @@
 @section('content')
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
-    <div x-data="penjualanCreatePage()" x-init="init()" class="space-y-6">
+    {{-- Alpine cloak fix (agar elemen dengan x-cloak hidden sebelum Alpine jalan) --}}
+    <style>
+        [x-cloak] {
+            display: none !important;
+        }
+    </style>
 
-        {{-- breadcrumb --}}
+    {{-- Root Alpine Component --}}
+    <div x-data="penjualanCreatePage()" x-init="init()" data-no-faktur="{{ $noFakturPreview }}"
+        data-tanggal="{{ now()->toDateString() }}" class="space-y-6">
+
+        {{-- Breadcrumb Navigasi --}}
         <div class="flex items-center gap-3">
             <a href="{{ route('penjualan.index') }}" class="text-slate-500 hover:underline text-sm">Penjualan</a>
             <div class="text-sm text-slate-400">/</div>
-            <div class="inline-flex items-center text-sm">
-                <span class="px-3 py-1 rounded-md bg-[#E9F3FF] text-[#1D4ED8] border border-[#BFDBFE] font-medium">
-                    Tambah Penjualan Baru
-                </span>
-            </div>
+            <span class="px-3 py-1 rounded-md bg-blue-50 text-blue-700 border border-blue-200 font-medium text-sm">
+                Tambah Penjualan Baru
+            </span>
         </div>
 
-        {{-- input scanner (hidden, fokus otomatis) --}}
-        <input type="text" id="barcodeInput" x-ref="barcodeInput" @keydown.enter.prevent="handleBarcode($event)"
-            class="absolute opacity-0 pointer-events-none">
+        {{-- Hidden Input untuk Scanner Barcode --}}
+        <input type="text" x-ref="barcodeInput" @keydown.enter.prevent="handleBarcode($event)" @blur="refocusScanner"
+            class="absolute opacity-0 pointer-events-none" autocomplete="off">
 
-        {{-- info card --}}
-        <div class="bg-white border border-slate-200 rounded-xl px-6 py-4 shadow-sm">
+        {{-- Card Utama --}}
+        <div class="bg-white border border-slate-200 rounded-xl px-6 py-4">
             <div class="space-y-4">
-                {{-- pelanggan --}}
-                <div>
-                    <label class="block text-sm text-slate-500 mb-2">Pelanggan</label>
-                    <div class="relative flex items-center gap-3">
-                        <div class="flex-1 relative">
-                            <i
-                                class="fa-solid fa-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
-                            <input type="text" x-model="pelangganQuery" @input.debounce.300ms="searchPelanggan"
-                                placeholder="Cari pelanggan (ketik minimal 2 huruf)"
-                                class="w-full pl-12 pr-4 py-2 rounded-lg border border-slate-200 text-slate-600 placeholder-slate-400">
-                            <input type="hidden" name="pelanggan_id" :value="form.pelanggan_id">
 
-                            <ul x-show="pelangganQuery.length >= 2 && !form.pelanggan_id" x-cloak
-                                class="absolute z-50 left-0 right-0 mt-1 bg-white border border-slate-200 rounded-lg shadow text-sm max-h-56 overflow-auto">
-                                <template x-if="pelangganResults.length === 0">
-                                    <li class="px-3 py-2 text-gray-500 italic">Data pelanggan tidak ditemukan</li>
-                                </template>
-                                <template x-for="p in pelangganResults" :key="p.id">
-                                    <li @click="selectPelanggan(p)" class="px-3 py-2 cursor-pointer hover:bg-gray-100">
-                                        <div class="font-medium" x-text="p.nama_pelanggan"></div>
-                                        <small class="text-gray-500 block" x-text="p.kontak ?? ''"></small>
-                                    </li>
-                                </template>
-                            </ul>
+                {{-- Input Pelanggan dengan Search + Dropdown --}}
+                <div @click.away="openResults = false">
+                    <label class="block text-sm font-medium text-slate-700 mb-2">Pelanggan</label>
+                    <div class="relative">
+                        {{-- Icon Search --}}
+                        <i class="fa-solid fa-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
+
+                        {{-- Input Search Pelanggan --}}
+                        <input type="text" x-model="pelangganQuery"
+                            @input.debounce.300ms="
+                                if (pelangganQuery.length >= 2) {
+                                    searchPelanggan(); 
+                                    openResults = true;
+                                } else {
+                                    // reset state pelanggan jika input kosong
+                                    form.pelanggan_id = null;
+                                    selectedPelangganLevel = null;
+                                    selectedPelangganNames = '';
+                                    form.is_walkin = false;
+                                    pelangganResults = [];
+                                    openResults = false;
+                                    updateAllItemPrices();
+                                }
+                            "
+                            @blur="if (!form.pelanggan_id && pelangganQuery && pelangganResults.length === 0) {
+                                selectedPelangganNames = 'Customer';
+                                selectedPelangganLevel = null;
+                                form.pelanggan_id = null;
+                                form.is_walkin = true;
+                            }"
+                            @focus="openResults = (pelangganQuery.length >= 2)"
+                            placeholder="Cari pelanggan (ketik minimal 2 huruf) atau biarkan kosong untuk umum"
+                            class="w-full pl-12 pr-10 py-2.5 rounded-lg border border-slate-300 
+                                   focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition">
+
+                        {{-- Dropdown Hasil Pencarian --}}
+                        <div x-show="openResults && pelangganQuery.length >= 2" x-cloak
+                            class="absolute z-50 left-0 right-0 mt-1 bg-white border border-slate-200 
+                                    rounded-lg shadow-lg text-sm max-h-56 overflow-auto">
+
+                            {{-- Loading State --}}
+                            <template x-if="pelangganLoading">
+                                <div class="px-4 py-3 text-gray-500 text-center">
+                                    <i class="fa-solid fa-spinner fa-spin mr-2"></i> Mencari pelanggan...
+                                </div>
+                            </template>
+
+                            {{-- Jika hasil ada --}}
+                            <template x-if="!pelangganLoading && pelangganResults.length > 0">
+                                <ul>
+                                    <template x-for="p in pelangganResults" :key="p.id">
+                                        <li @click="selectPelanggan(p); openResults = false"
+                                            class="px-4 py-3 cursor-pointer hover:bg-blue-50 transition border-b last:border-b-0">
+                                            <div class="font-medium text-slate-800" x-text="p.nama_pelanggan"></div>
+                                            <div class="flex items-center gap-2 mt-1">
+                                                <small class="text-slate-500" x-text="p.kontak || '-'"></small>
+                                                <span class="px-2 py-0.5 rounded text-xs bg-slate-100"
+                                                    x-text="formatLevel(p.level) || '-'"></span>
+                                            </div>
+                                        </li>
+                                    </template>
+                                </ul>
+                            </template>
+
+                            {{-- Jika hasil kosong --}}
+                            <template x-if="!pelangganLoading && pelangganResults.length === 0">
+                                <div class="px-4 py-3">
+                                    <div class="text-gray-500 italic mb-3 text-center">
+                                        <i class="fa-solid fa-user-slash mr-1"></i>
+                                        Pelanggan "<span x-text="pelangganQuery"></span>" tidak ditemukan
+                                    </div>
+                                    {{-- Tombol Tambah Pelanggan Baru (buka modal) --}}
+                                    <button type="button" @click="openTambahPelanggan(); openResults = false"
+                                        class="w-full px-4 py-2 bg-[#334976] hover:bg-[#2d3d6d] text-white rounded-lg transition font-medium">
+                                        <i class="fa-solid fa-user-plus mr-2"></i> Tambah Pelanggan Baru
+                                    </button>
+                                </div>
+                            </template>
                         </div>
+                    </div>
 
-                        {{-- tombol tambah pelanggan --}}
-                        <button type="button" @click="openTambahPelanggan()"
-                            class="px-3 py-2 rounded border border-slate-200 text-sm">Tambah Pelanggan</button>
+                    {{-- Badge info pelanggan yang dipilih --}}
+                    <div x-show="form.pelanggan_id || selectedPelangganNames === 'Customer'"
+                        class="mt-2 flex items-center gap-2">
+                        <i class="fa-solid fa-check-circle text-green-600"></i>
+                        <span class="font-normal text-green-600 text-sm"
+                            x-text="selectedPelangganNames || 'Customer'"></span>
+                        <span class="ml-1 text-xs px-2 py-0.5 rounded font-medium"
+                            :class="{
+                                'bg-blue-100 text-blue-700': selectedPelangganLevel === 'retail',
+                                'bg-yellow-100 text-yellow-700': selectedPelangganLevel === 'partai_kecil',
+                                'bg-green-100 text-green-700': selectedPelangganLevel === 'grosir'
+                            }"
+                            x-text="selectedPelangganLevel ? formatLevel(selectedPelangganLevel) : '-'">
+                        </span>
                     </div>
                 </div>
 
-                {{-- mode antar/ambil + nomor faktur & tanggal --}}
+                {{-- Mode Pengambilan, Nomor Faktur, Tanggal --}}
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {{-- Mode --}}
                     <div>
-                        <label class="block text-sm text-slate-500 mb-2">Mode Pengambilan</label>
-                        <select x-model="form.mode" @change="onModeChange" class="w-full px-3 py-2 border rounded">
-                            <option value="ambil">Ambil Sendiri</option>
-                            <option value="antar">Antar Barang</option>
-                        </select>
+                        <label class="block text-sm font-medium text-slate-700 mb-2">Mode Pengambilan</label>
+                        <div class="relative">
+                            <select name="mode" x-model="form.mode"
+                                class="w-full px-3 py-2.5 rounded-lg border border-slate-200 
+                                           appearance-none pr-8 bg-white ">
+                                <option value="ambil">🏃 Ambil Sendiri</option>
+                                <option value="antar">🚚 Antar Barang</option>
+                            </select>
+
+                            {{-- Custom arrow --}}
+                            <div class="absolute inset-y-0 right-3 flex items-center pointer-events-none">
+                                <svg class="w-4 h-4 text-slate-500" fill="none" stroke="currentColor"
+                                    viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M19 9l-7 7-7-7" />
+                                </svg>
+                            </div>
+                        </div>
                     </div>
 
+                    {{-- Nomor Faktur --}}
                     <div>
-                        <label class="block text-sm text-slate-500 mb-2">Nomor Faktur</label>
+                        <label class="block text-sm font-medium text-slate-700 mb-2">Nomor Faktur</label>
                         <input type="text" x-model="form.no_faktur" readonly
-                            class="w-full px-3 py-2 border rounded bg-slate-50">
+                            class="w-full px-3 py-2.5 border border-slate-300 rounded-lg bg-slate-50 text-slate-600">
                     </div>
 
+                    {{-- Tanggal --}}
                     <div>
-                        <label class="block text-sm text-slate-500 mb-2">Tanggal</label>
-                        <input type="date" x-model="form.tanggal" class="w-full px-3 py-2 border rounded">
+                        <label class="block text-sm font-medium text-slate-700 mb-2">Tanggal</label>
+                        <input type="date" x-model="form.tanggal"
+                            class="w-full px-3 py-2.5 border border-slate-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200">
                     </div>
                 </div>
 
+                {{-- Deskripsi --}}
                 <div>
-                    <label class="block text-sm text-slate-500 mb-2">Deskripsi (opsional)</label>
-                    <input type="text" x-model="form.deskripsi" class="w-full px-3 py-2 border rounded">
+                    <label class="block text-sm font-medium text-slate-700 mb-2">Deskripsi (opsional)</label>
+                    <input type="text" x-model="form.deskripsi" placeholder="Catatan tambahan untuk transaksi ini..."
+                        class="w-full px-3 py-2.5 border border-slate-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200">
                 </div>
             </div>
         </div>
 
-        <!-- Input simulasi scanner -->
-        <div class="mb-4">
-            <label class="block text-sm text-slate-500 mb-2">Simulasi Scan Barcode</label>
-            <input type="text" placeholder="Ketik kode barcode lalu tekan Enter"
-                @keydown.enter.prevent="handleBarcode($event)" class="w-80 px-3 py-2 border rounded" />
+        {{-- 🔎 Simulasi Scanner Manual --}}
+        <div class="bg-amber-50 border border-amber-200 rounded-xl px-6 py-4">
+            <div class="flex items-start gap-3">
+                <div class="text-amber-600 mt-0.5">
+                    <i class="fa-solid fa-barcode text-2xl"></i>
+                </div>
+                <div class="flex-1">
+                    <h3 class="font-semibold text-amber-900 mb-1">Simulasi Scanner Barcode</h3>
+                    <p class="text-sm text-amber-700 mb-3">
+                        Scanner aktif di background. Coba scan barcode atau ketik manual di kotak di bawah:
+                    </p>
+                    <input type="text" placeholder="Ketik/Scan barcode lalu tekan Enter (contoh: 8991102001014)"
+                        @keydown.enter.prevent="handleBarcode($event)"
+                        class="w-full px-4 py-2.5 border-2 border-amber-300 rounded-lg 
+                              focus:border-amber-500 focus:ring-2 focus:ring-amber-200 font-mono" />
+                    <p class="text-xs text-amber-600 mt-2">
+                        💡 Tips: Barcode dummy ada di seeder (8991102001014, 8996001600030, dll)
+                    </p>
+                </div>
+            </div>
         </div>
 
-        {{-- daftar item --}}
+        {{-- 📦 Tabel Items --}}
         <div class="bg-white border border-slate-200 rounded-xl overflow-hidden">
+            <div class="px-6 py-4 bg-slate-50 border-b border-slate-200">
+                <h3 class="font-semibold text-slate-800">Daftar Item Penjualan</h3>
+            </div>
+
             <div class="overflow-x-auto">
                 <table class="min-w-full text-sm">
                     <thead class="bg-slate-50 border-b border-slate-200">
                         <tr class="text-slate-600">
-                            <th class="px-4 py-3 w-12 text-center">#</th>
-                            <th class="px-4 py-3">Item</th>
-                            <th class="px-4 py-3 w-40 text-center">Gudang</th>
-                            <th class="px-4 py-3 w-28 text-center">Jumlah</th>
-                            <th class="px-4 py-3 w-32 text-center">Satuan</th>
-                            <th class="px-4 py-3 w-40 text-right">Harga</th>
-                            <th class="px-4 py-3 w-40 text-right">Total</th>
+                            <th class="px-4 py-3 w-12 text-center font-medium">#</th>
+                            <th class="px-4 py-3 text-left font-medium">Item</th>
+                            <th class="px-4 py-3 w-40 text-center font-medium">Gudang</th>
+                            <th class="px-4 py-3 w-28 text-center font-medium">Jumlah</th>
+                            <th class="px-4 py-3 w-32 text-center font-medium">Satuan</th>
+                            <th class="px-4 py-3 w-40 text-right font-medium">Harga</th>
+                            <th class="px-4 py-3 w-40 text-right font-medium">Total</th>
                             <th class="px-2 py-3 w-12"></th>
                         </tr>
                     </thead>
                     <tbody>
+                        {{-- Loop Item --}}
                         <template x-for="(item, idx) in form.items" :key="idx">
-                            <tr class="hover:bg-slate-50 text-slate-700 border-b border-slate-100">
-                                <td class="px-4 py-3 text-center" x-text="idx+1"></td>
+                            <tr class="hover:bg-slate-50 text-slate-700 border-b border-slate-100 transition">
+                                <td class="px-4 py-3 text-center font-medium" x-text="idx+1"></td>
+
+                                {{-- Nama Item --}}
+                                <td class="px-4 py-3" x-text="item.query"></td>
+
+                                {{-- Gudang --}}
+                                <!-- Dropdown Gudang -->
+                                {{-- Gudang --}}
                                 <td class="px-4 py-3">
-                                    <div class="relative">
-                                        <i
-                                            class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
-                                        <input type="text" x-model="item.query" @input.debounce.300ms="searchItem(idx)"
-                                            placeholder="Cari item (manual, min 2 huruf)"
-                                            class="w-full pl-10 pr-3 py-2 rounded-lg border">
-                                        <ul x-show="item.query.length >= 2 && !item.item_id" x-cloak
-                                            class="absolute z-50 left-0 right-0 mt-1 bg-white border rounded shadow text-sm max-h-56 overflow-auto">
-                                            <template x-if="item.results.length === 0">
-                                                <li class="px-3 py-2 text-gray-500 italic">Data item tidak ditemukan</li>
-                                            </template>
-                                            <template x-for="r in item.results" :key="r.id">
-                                                <li @click="selectItem(idx, r)"
-                                                    class="px-3 py-2 cursor-pointer hover:bg-gray-100">
-                                                    <div class="font-medium" x-text="r.nama_item"></div>
-                                                    <small class="text-gray-500 block" x-text="r.kode_item ?? ''"></small>
-                                                </li>
-                                            </template>
-                                        </ul>
-                                    </div>
-                                </td>
-
-                                <td class="px-4 py-3 text-center">
-                                    <select x-model.number="item.gudang_id" @change="onGudangChange(idx)"
-                                        class="w-full border rounded px-3 py-2">
-                                        <option value="">Pilih</option>
-                                        @foreach ($gudangs as $g)
-                                            <option value="{{ $g->id }}">{{ $g->nama_gudang }}</option>
-                                        @endforeach
+                                    <select x-model="item.gudang_id" @change="updateSatuanOptions(idx)"
+                                        class="w-full border border-slate-300 rounded-lg px-3 py-2">
+                                        <template x-for="g in getDistinctGudangs(item)" :key="g.gudang_id">
+                                            <option :value="g.gudang_id" x-text="g.nama_gudang"></option>
+                                        </template>
                                     </select>
-                                </td>
 
-                                <td class="px-4 py-3 text-center">
-                                    <input type="number" min="0" x-model.number="item.jumlah" @input="recalc"
-                                        class="mx-auto w-20 text-center border rounded px-2 py-2">
-                                    <div class="text-xs mt-1"
-                                        :class="(item.jumlah > (item.stok ?? 0)) ? 'text-rose-600 font-bold' : 'text-slate-400'">
-                                        Stok: <span x-text="item.stok ?? 0"></span> <span
-                                            x-text="item.satuan_nama ?? ''"></span>
+                                    {{-- Stok info --}}
+                                    <div class="mt-1 text-xs"
+                                        :class="item.stok > 0 ? 'text-slate-500' : 'text-rose-600 font-semibold'">
+                                        Stok tersedia:
+                                        <span x-text="formatStok(item.stok)"></span>
                                     </div>
                                 </td>
 
-                                <td class="px-4 py-3 text-center">
-                                    <select x-model.number="item.satuan_id" @change="onSatuanChange(idx)"
-                                        class="w-full border rounded px-3 py-2">
-                                        <option value="">Pilih</option>
-                                        <template x-for="s in item.satuans" :key="s.id">
-                                            <option :value="s.id" x-text="s.nama_satuan"></option>
+
+
+
+                                {{-- Jumlah --}}
+                                <td class="px-4 py-3">
+                                    <input type="number" min="1" x-model.number="item.jumlah" @input="recalc"
+                                        class="w-20 text-center border border-slate-300 rounded-lg px-2 py-2">
+                                </td>
+
+                                {{-- Satuan --}}
+                                <td class="px-4 py-3">
+                                    <select x-model="item.satuan_id" @change="updateStockAndPrice(idx)"
+                                        class="w-full border border-slate-300 rounded-lg px-3 py-2">
+                                        <template x-for="s in item.filteredSatuans" :key="s.satuan_id">
+                                            <option :value="s.satuan_id" x-text="s.nama_satuan"></option>
                                         </template>
                                     </select>
                                 </td>
 
-                                <td class="px-4 py-3">
-                                    <div class="relative">
-                                        <span
-                                            class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-sm">Rp</span>
-                                        <input type="text" :value="formatRupiah(item.harga)"
-                                            @input="updateHarga(idx,$event.target.value)"
-                                            class="pl-10 pr-3 w-full border rounded py-2 text-right" />
-                                    </div>
+
+                                {{-- Harga --}}
+                                <td class="px-4 py-3 text-right" x-text="formatRupiah(item.harga)"></td>
+
+                                {{-- Total --}}
+                                <td class="px-4 py-3 text-right font-semibold text-slate-800">
+                                    Rp <span x-text="formatRupiah(item.jumlah * item.harga)"></span>
                                 </td>
 
-                                <td class="px-4 py-3 text-right">
-                                    <div class="relative">
-                                        <span
-                                            class="absolute left-0 top-1/2 -translate-y-1/2 text-slate-500 text-sm">Rp</span>
-                                        <span class="pl-6"
-                                            x-text="formatRupiah((item.jumlah||0) * (item.harga||0))"></span>
-                                    </div>
-                                </td>
-
+                                {{-- Delete --}}
                                 <td class="px-2 py-3 text-center">
                                     <button type="button" @click="removeItem(idx)"
                                         class="text-rose-600 hover:text-rose-800">
@@ -196,301 +289,262 @@
                     </tbody>
                 </table>
             </div>
-
-            <div class="m-4">
-                <button type="button" @click="addItem"
-                    class="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded border-2 border-dashed bg-slate-50">
-                    <i class="fa-solid fa-plus"></i> Tambah Item Baru
-                </button>
-            </div>
         </div>
 
-        {{-- ringkasan --}}
-        <div class="flex flex-col md:flex-row md:justify-end gap-4">
-            <div class="w-full md:w-96 bg-gradient-to-b from-white to-slate-50 border rounded-2xl p-6">
-                <div class="flex justify-between items-center mb-4">
-                    <div class="text-slate-600">Sub Total</div>
-                    <div class="font-normal text-slate-700">Rp <span x-text="formatRupiah(subTotal)"></span></div>
-                </div>
+        {{-- Modal Tambah Pelanggan Baru --}}
+        <div x-show="showModalTambahPelanggan" x-cloak
+            class="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50">
 
-                <div class="flex justify-between items-center mb-4">
-                    <div class="text-slate-600">Biaya Transportasi</div>
-                    <div class="relative w-40">
-                        <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-sm">Rp</span>
-                        <input type="text" :value="formatRupiah(form.biaya_transport)"
-                            @input="updateTransport($event.target.value)" :disabled="form.mode === 'ambil'"
-                            class="pl-10 pr-3 w-full border rounded px-2 py-2 text-right" />
+            <div class="bg-white rounded-lg shadow-lg w-full max-w-md p-6">
+                <h2 class="text-lg font-semibold mb-4">Tambah Pelanggan Baru</h2>
+
+                {{-- Form isi data pelanggan --}}
+                <div class="space-y-3">
+                    <div>
+                        <label class="block text-sm text-slate-600 mb-1">Nama Pelanggan</label>
+                        <input type="text" x-model="newPelanggan.nama_pelanggan"
+                            class="w-full px-3 py-2 border rounded-lg border-slate-300">
+                    </div>
+                    <div>
+                        <label class="block text-sm text-slate-600 mb-1">Kontak</label>
+                        <input type="text" x-model="newPelanggan.kontak"
+                            class="w-full px-3 py-2 border rounded-lg border-slate-300">
+                    </div>
+                    <div>
+                        <label class="block text-sm text-slate-600 mb-1">Alamat</label>
+                        <textarea x-model="newPelanggan.alamat" class="w-full px-3 py-2 border rounded-lg border-slate-300"></textarea>
+                    </div>
+                    <div>
+                        <label class="block text-sm text-slate-600 mb-1">Level</label>
+                        <select x-model="newPelanggan.level" class="w-full px-3 py-2 border rounded-lg border-slate-300">
+                            <option value="retail">Retail</option>
+                            <option value="partai_kecil">Partai Kecil</option>
+                            <option value="grosir">Grosir</option>
+                        </select>
                     </div>
                 </div>
 
-                <div class="border-t pt-4 mt-4"></div>
-
-                <div class="flex justify-between items-center mb-4">
-                    <div class="text-slate-700 font-bold">TOTAL PENJUALAN</div>
-                    <div class="text-[#344579] text-xl font-extrabold tracking-wide">Rp <span
-                            x-text="formatRupiah(totalPembayaran)"></span></div>
-                </div>
-
-                <div class="mt-5 flex gap-3 justify-end">
-                    <a href="{{ route('penjualan.index') }}" class="px-4 py-2 rounded-lg border text-slate-600">Batal</a>
-                    <button type="button" @click="save" :disabled="!isValid()"
-                        class="px-4 py-2 rounded-lg w-full text-white"
-                        :class="isValid() ? 'bg-[#344579]' : 'bg-gray-300'">Simpan</button>
+                {{-- Tombol Aksi Modal --}}
+                <div class="mt-5 flex justify-end gap-2">
+                    <button type="button" @click="showModalTambahPelanggan=false"
+                        class="px-4 py-2 rounded-lg border border-slate-300">Batal</button>
+                    <button type="button" @click="savePelangganBaru"
+                        class="px-4 py-2 rounded-lg bg-blue-600 text-white">Simpan</button>
                 </div>
             </div>
         </div>
     </div>
 
+    {{-- Alpine Component --}}
     <script>
         function penjualanCreatePage() {
             return {
+                // === STATE ===
                 pelangganQuery: '',
                 pelangganResults: [],
+                pelangganLoading: false,
+                openResults: false,
 
-                subTotal: 0,
-                totalPembayaran: 0,
                 form: {
                     pelanggan_id: null,
-                    mode: 'ambil', // 'ambil' or 'antar'
-                    no_faktur: '{{ $noFakturPreview ?? date('dmY') . '-001' }}',
-                    tanggal: '{{ date('Y-m-d') }}',
+                    mode: 'ambil',
+                    no_faktur: '',
+                    tanggal: '',
                     deskripsi: '',
                     biaya_transport: 0,
+                    is_walkin: false,
                     items: []
                 },
 
-                // modal state
-                tambahPelangganModal: false,
+                selectedPelangganLevel: null,
+                selectedPelangganNames: '',
+
+                showModalTambahPelanggan: false,
                 newPelanggan: {
                     nama_pelanggan: '',
                     kontak: '',
                     alamat: '',
                     level: 'retail'
                 },
-                tambahPelangganErrors: {},
 
-                // keep track of selected pelanggan level
-                selectedPelangganLevel: null,
+                subTotal: 0,
 
-                allowAnonymous: true, // jika mau izinkan customer default tanpa pilih pelanggan
-
+                // === INIT ===
                 init() {
-                    this.addItem();
+                    this.form.no_faktur = this.$el.getAttribute('data-no-faktur') || '';
+                    this.form.tanggal = this.$el.getAttribute('data-tanggal') || '';
+                    this.subTotal = 0;
+                    this.form.items = [];
                     this.recalc();
-                    this.$nextTick(() => {
-                        if (this.$refs.barcodeInput) this.$refs.barcodeInput.focus();
+                },
+
+                // === GUDANG & SATUAN ===
+                getDistinctGudangs(item) {
+                    const seen = new Set();
+                    return item.gudangs.filter(g => {
+                        if (seen.has(g.gudang_id)) return false;
+                        seen.add(g.gudang_id);
+                        return true;
                     });
                 },
 
-                /* === PELANGGAN === */
+                updateSatuanOptions(idx) {
+                    const item = this.form.items[idx];
+                    item.filteredSatuans = item.gudangs.filter(g => g.gudang_id == item.gudang_id);
+
+                    if (item.filteredSatuans.length > 0) {
+                        item.satuan_id = item.filteredSatuans[0].satuan_id;
+                        this.updateStockAndPrice(idx);
+                    }
+                },
+
+                updateStockAndPrice(idx) {
+                    const item = this.form.items[idx];
+                    const selected = item.gudangs.find(
+                        g => g.gudang_id == item.gudang_id && g.satuan_id == item.satuan_id
+                    );
+                    if (selected) {
+                        item.stok = selected.stok;
+                        item.harga = selected.harga_retail; // bisa diatur sesuai level pelanggan
+                    }
+                },
+
+                // === PELANGGAN ===
                 async searchPelanggan() {
                     if (this.pelangganQuery.length < 2) {
                         this.pelangganResults = [];
                         return;
                     }
+
+                    this.pelangganLoading = true;
                     try {
                         const res = await fetch(`/pelanggan/search?q=${encodeURIComponent(this.pelangganQuery)}`);
-                        this.pelangganResults = await res.json();
-                    } catch (e) {
-                        console.error(e);
-                        this.pelangganResults = [];
+                        const data = await res.json();
+                        this.pelangganResults = data;
+                    } catch (err) {
+                        console.error("Error search pelanggan:", err);
+                    } finally {
+                        this.pelangganLoading = false;
                     }
                 },
 
                 selectPelanggan(p) {
                     this.form.pelanggan_id = p.id;
+                    this.selectedPelangganNames = p.nama_pelanggan;
+                    this.selectedPelangganLevel = p.level;
+                    this.form.is_walkin = false;
                     this.pelangganQuery = p.nama_pelanggan;
-                    this.pelangganResults = [];
+                    this.openResults = false;
                     this.updateAllItemPrices();
                 },
 
+                formatLevel(level) {
+                    if (!level) return '';
+                    return level.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase());
+                },
+
                 openTambahPelanggan() {
-                    this.tambahPelangganModal = true;
+                    this.showModalTambahPelanggan = true;
                     this.newPelanggan = {
                         nama_pelanggan: '',
                         kontak: '',
                         alamat: '',
                         level: 'retail'
                     };
-                    this.tambahPelangganErrors = {};
+                },
 
-                    this.$nextTick(() => {
-                        const nama = prompt('Nama Pelanggan (wajib):');
-                        if (!nama) return;
-                        const kontak = prompt('Kontak (opsional):') || '';
-                        const level = prompt('Level (retail/partai_kecil/grosir) [retail]:') || 'retail';
-
-                        fetch('/pelanggan', {
+                async savePelangganBaru() {
+                    try {
+                        const res = await fetch('/pelanggan/store', {
                             method: 'POST',
                             headers: {
                                 'Content-Type': 'application/json',
-                                'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content
+                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
                             },
-                            body: JSON.stringify({
-                                nama_pelanggan: nama,
-                                kontak: kontak,
-                                alamat: '',
-                                level: level
-                            })
-                        }).then(async r => {
-                            if (r.status === 201) {
-                                const js = await r.json();
-                                this.form.pelanggan_id = js.pelanggan.id;
-                                this.pelangganQuery = js.pelanggan.nama_pelanggan;
-                                this.updateAllItemPrices();
-                                alert('Pelanggan berhasil ditambahkan dan dipilih.');
-                            } else if (r.status === 422) {
-                                const js = await r.json();
-                                alert('Validasi gagal: ' + JSON.stringify(js.errors));
-                            } else {
-                                const t = await r.text();
-                                console.error(t);
-                                alert('Gagal menambah pelanggan');
-                            }
-                        }).catch(e => {
-                            console.error(e);
-                            alert('Error saat menambah pelanggan');
+                            body: JSON.stringify(this.newPelanggan)
                         });
-                    });
-                },
 
-                onModeChange() {
-                    if (this.form.mode === 'ambil') {
-                        this.form.biaya_transport = 0;
+                        if (!res.ok) throw new Error('Gagal simpan pelanggan');
+                        const saved = await res.json();
+
+                        this.form.pelanggan_id = saved.id;
+                        this.selectedPelangganNames = saved.nama_pelanggan;
+                        this.selectedPelangganLevel = saved.level;
+                        this.form.is_walkin = false;
+
+                        this.showModalTambahPelanggan = false;
+                        this.updateAllItemPrices();
+                    } catch (err) {
+                        alert("Gagal menyimpan pelanggan baru");
+                        console.error(err);
                     }
-                    this.updateAllItemPrices();
                 },
 
-                /* === ITEMS (manual input) === */
-                addItem() {
-                    this.form.items.push({
-                        item_id: null,
-                        query: '',
-                        results: [],
-                        gudang_id: '{{ $gudangs->first()->id ?? '' }}',
-                        satuan_id: '',
-                        satuans: [],
-                        jumlah: 1,
-                        harga: 0,
-                        price_tiers: null,
-                        stok: 0,
-                        satuan_nama: ''
-                    });
-                },
+                // === ITEMS / SCANNER ===
+                async handleBarcode(e) {
+                    const code = e.target.value.trim();
+                    if (!code) return;
 
-                async searchItem(idx) {
-                    const q = this.form.items[idx].query;
-                    if (!q || q.length < 2) {
-                        this.form.items[idx].results = [];
-                        return;
-                    }
                     try {
-                        const res = await fetch(`/items/search?q=${encodeURIComponent(q)}`);
+                        const res = await fetch(`/items/barcode/${encodeURIComponent(code)}`);
+                        if (!res.ok) {
+                            alert(`Item dengan kode "${code}" tidak ditemukan. Tambahkan manual.`);
+                            return;
+                        }
                         const data = await res.json();
-                        this.form.items[idx].results = data;
-                    } catch (e) {
-                        console.error(e);
-                        this.form.items[idx].results = [];
-                    }
-                },
+                        console.log("Item ditemukan:", data);
 
-                async selectItem(idx, item) {
-                    const row = this.form.items[idx];
-                    row.item_id = item.id;
-                    row.query = item.nama_item;
-                    row.results = [];
-                    row.satuans = item.satuans || [];
-
-                    if (item.satuan_default) row.satuan_id = item.satuan_default;
-                    else if (row.satuans.length) row.satuan_id = row.satuans[0].id;
-
-                    await this.fetchPricesForItem(idx);
-                    await this.fetchStockForItem(idx);
-                    this.recalc();
-                },
-
-                async onGudangChange(idx) {
-                    await this.fetchStockForItem(idx);
-                },
-
-                async onSatuanChange(idx) {
-                    await this.fetchPricesForItem(idx);
-                    await this.fetchStockForItem(idx);
-                },
-
-                async fetchPricesForItem(idx) {
-                    const it = this.form.items[idx];
-                    if (!it.item_id || !it.satuan_id) return;
-                    try {
-                        const res = await fetch(`/items/${it.item_id}/prices?satuan_id=${it.satuan_id}`);
-                        if (!res.ok) return;
-                        const json = await res.json();
-                        it.price_tiers = {
-                            harga_retail: Number(json.harga_retail || 0),
-                            partai_kecil: Number(json.partai_kecil || 0),
-                            harga_grosir: Number(json.harga_grosir || 0),
-                            last_purchase: Number(json.last_purchase_price || 0)
-                        };
-                        it.harga = this.resolvePriceForItem(it);
-                    } catch (e) {
-                        console.error(e);
-                    }
-                },
-
-                async fetchStockForItem(idx) {
-                    const it = this.form.items[idx];
-                    if (!it.item_id || !it.gudang_id || !it.satuan_id) {
-                        it.stok = 0;
-                        it.satuan_nama = '';
-                        return;
-                    }
-                    try {
-                        const res = await fetch(
-                            `/items/${it.item_id}/stock?gudang_id=${it.gudang_id}&satuan_id=${it.satuan_id}`);
-                        if (!res.ok) return;
-                        const json = await res.json();
-                        it.stok = Number(json.stok || 0);
-                        it.satuan_nama = json.satuan || '';
-                    } catch (e) {
-                        console.error(e);
-                        it.stok = 0;
-                        it.satuan_nama = '';
-                    }
-                },
-
-                resolvePriceForItem(it) {
-                    const t = it.price_tiers || {};
-                    const level = this.selectedPelangganLevel || 'retail';
-                    if (level === 'retail') return Number(t.harga_retail || t.partai_kecil || t.harga_grosir || 0);
-
-                    if (this.form.mode === 'antar') {
-                        return Number(t.harga_grosir || t.partai_kecil || t.harga_retail || 0);
-                    } else {
-                        return Number(t.partai_kecil || t.harga_retail || t.harga_grosir || 0);
-                    }
-                },
-
-                updateAllItemPrices() {
-                    if (this.form.pelanggan_id) {
-                        fetch(`/pelanggan/search?q=${encodeURIComponent(this.pelangganQuery)}`)
-                            .then(r => r.json())
-                            .then(list => {
-                                const p = list.find(x => x.id == this.form.pelanggan_id);
-                                if (p) this.selectedPelangganLevel = p.level || 'retail';
-                                else this.selectedPelangganLevel = 'retail';
-                            }).finally(() => {
-                                this.form.items.forEach((it, idx) => {
-                                    if (it.price_tiers) it.harga = this.resolvePriceForItem(it);
-                                });
-                                this.recalc();
+                        const existing = this.form.items.find(i => i.item_id === data.id);
+                        if (existing) {
+                            existing.jumlah += 1;
+                        } else {
+                            this.form.items.push({
+                                item_id: data.id,
+                                query: data.nama_item,
+                                gudang_id: data.gudangs.length ? data.gudangs[0].gudang_id : '',
+                                gudangs: data.gudangs,
+                                satuan_id: '', // kosong dulu
+                                filteredSatuans: [], // filter nanti
+                                jumlah: 1,
+                                harga: 0,
+                                stok: 0,
                             });
-                    } else {
-                        this.selectedPelangganLevel = 'retail';
-                        this.form.items.forEach((it, idx) => {
-                            if (it.price_tiers) it.harga = this.resolvePriceForItem(it);
-                        });
+
+                            // ambil index terakhir item
+                            const idx = this.form.items.length - 1;
+                            this.updateSatuanOptions(idx); // ⬅️ auto sync satuan sesuai gudang default
+                        }
+
                         this.recalc();
+                        e.target.value = '';
+                    } catch (err) {
+                        console.error("Error handleBarcode:", err);
                     }
+                },
+
+
+                // === TOTAL ===
+                recalc() {
+                    this.subTotal = this.form.items.reduce((sum, i) => sum + (i.jumlah * i.harga), 0);
+                },
+
+                formatRupiah(val) {
+                    if (!val) return '0';
+                    return new Intl.NumberFormat('id-ID').format(val);
+                },
+
+                formatStok(val) {
+                    if (val == null || val === '') return '0';
+                    const num = parseFloat(val);
+                    // Cek kalau bilangan bulat
+                    if (Number.isInteger(num)) {
+                        return num.toString();
+                    }
+                    // Kalau desimal → pakai koma
+                    return num.toLocaleString('id-ID', {
+                        minimumFractionDigits: 0,
+                        maximumFractionDigits: 2
+                    }).replace('.', ',');
                 },
 
                 removeItem(idx) {
@@ -498,146 +552,42 @@
                     this.recalc();
                 },
 
-                /* === BARCODE SCANNER === */
-                async handleBarcode(e) {
-                    const kode = e.target.value.trim();
-                    if (!kode) return;
+                addItem() {
+                    this.form.items.push({
+                        item_id: null,
+                        query: '',
+                        gudang_id: '',
+                        gudangs: [],
+                        satuan_id: '',
+                        satuans: [],
+                        jumlah: 1,
+                        harga: 0,
+                        stok: 0,
+                    });
+                },
+
+                updateAllItemPrices() {
+                    this.form.items.forEach((i, idx) => this.fetchPriceForItem(idx));
+                },
+
+                async fetchPriceForItem(idx) {
+                    const item = this.form.items[idx];
+                    if (!item || !item.satuan_id) return;
 
                     try {
-                        const res = await fetch(`/items/by-barcode/${kode}`);
-                        if (!res.ok) {
-                            alert('Item tidak ditemukan untuk barcode: ' + kode);
-                            e.target.value = '';
-                            return;
-                        }
-                        const item = await res.json();
-
-                        let existing = this.form.items.find(it => it.item_id === item.id);
-                        if (existing) {
-                            existing.jumlah += 1;
-                            this.recalc();
-                            e.target.value = '';
-                            return;
-                        }
-
-                        this.form.items.push({
-                            item_id: item.id,
-                            query: item.nama_item,
-                            results: [],
-                            gudang_id: '{{ $gudangs->first()->id ?? '' }}',
-                            satuan_id: item.satuan_default ?? (item.satuans?.[0]?.id ?? ''),
-                            satuans: item.satuans || [],
-                            jumlah: 1,
-                            harga: 0,
-                            price_tiers: null,
-                            stok: 0,
-                            satuan_nama: ''
-                        });
-
-                        const idx = this.form.items.length - 1;
-                        await this.fetchPricesForItem(idx);
-                        await this.fetchStockForItem(idx);
+                        const res = await fetch(
+                            `/items/price?satuan_id=${item.satuan_id}&level=${this.selectedPelangganLevel || 'retail'}&is_walkin=${this.form.is_walkin}`
+                        );
+                        const data = await res.json();
+                        item.harga = data.harga;
                         this.recalc();
-
-                        e.target.value = '';
                     } catch (err) {
-                        console.error(err);
-                        alert('Gagal mengambil item barcode');
-                    }
-                },
-
-                /* === UTIL === */
-                updateHarga(idx, val) {
-                    let num = String(val).replace(/[^0-9]/g, '');
-                    this.form.items[idx].harga = parseInt(num) || 0;
-                    this.recalc();
-                },
-
-                updateTransport(val) {
-                    let num = String(val).replace(/[^0-9]/g, '');
-                    this.form.biaya_transport = parseInt(num) || 0;
-                    this.recalc();
-                },
-
-                recalc() {
-                    this.subTotal = this.form.items.reduce((sum, i) =>
-                        sum + (Number(i.jumlah || 0) * Number(i.harga || 0)), 0);
-                    this.totalPembayaran = this.subTotal + (Number(this.form.biaya_transport || 0));
-                },
-
-                formatRupiah(n) {
-                    return new Intl.NumberFormat('id-ID', {
-                        minimumFractionDigits: 0
-                    }).format(n || 0);
-                },
-
-                /* === VALIDASI + SAVE === */
-                isValid() {
-                    if (!this.form.pelanggan_id && !this.allowAnonymous) {
-                        return false;
-                    }
-                    for (let it of this.form.items) {
-                        if (!it.item_id || !it.gudang_id || !it.satuan_id) return false;
-                        if (!it.jumlah || Number(it.jumlah) <= 0) return false;
-                        if (!it.harga || Number(it.harga) <= 0) return false;
-                        if ((it.stok || 0) < Number(it.jumlah)) return false;
-                    }
-                    return true;
-                },
-
-                async save() {
-                    if (!this.isValid()) {
-                        alert(
-                            'Form belum valid. Pastikan pelanggan dipilih atau izinkan anonymous, semua item valid dan stok mencukupi.'
-                            );
-                        return;
-                    }
-
-                    const payload = {
-                        pelanggan_id: this.form.pelanggan_id || null,
-                        no_faktur: this.form.no_faktur,
-                        tanggal: this.form.tanggal,
-                        deskripsi: this.form.deskripsi,
-                        biaya_transport: Number(this.form.biaya_transport || 0),
-                        sub_total: this.subTotal,
-                        total: this.totalPembayaran,
-                        status_bayar: 'belum lunas',
-                        status_kirim: '-',
-                        items: this.form.items.map(i => ({
-                            item_id: i.item_id,
-                            gudang_id: i.gudang_id,
-                            satuan_id: i.satuan_id,
-                            jumlah: Number(i.jumlah),
-                            harga: Number(i.harga),
-                        }))
-                    };
-
-                    try {
-                        const res = await fetch("{{ route('penjualan.store') }}", {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'Accept': 'application/json',
-                                'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content
-                            },
-                            body: JSON.stringify(payload)
-                        });
-
-                        if (res.ok) {
-                            alert('Penjualan berhasil disimpan');
-                            window.location.href = "{{ route('penjualan.index') }}";
-                        } else {
-                            const js = await res.json().catch(() => null);
-                            alert('Gagal menyimpan: ' + (js?.message || 'Cek console'));
-                            console.error(await res.text());
-                        }
-                    } catch (e) {
-                        console.error(e);
-                        alert('Terjadi kesalahan saat menyimpan.');
+                        console.error("Error fetchPriceForItem:", err);
                     }
                 }
             }
         }
     </script>
+
 
 @endsection

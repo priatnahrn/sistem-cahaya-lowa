@@ -111,10 +111,17 @@
             </div>
 
 
-            @php $openPembelian = $open(['pembelian.*','pemesanan.*','retur-pembelian.*','tagihan.*']); @endphp
+            @php
+                $openPembelian = $open([
+                    'pembelian.*',
+                    'pemesanan.*',
+                    'pembelian.retur-pembelian.*',
+                    'pembelian.tagihan.*',
+                ]);
+            @endphp
+
             <div x-data="{ open: {{ $openPembelian ? 'true' : 'false' }} }" class="mt-2 flex flex-col">
 
-                {{-- Menu Utama Pembelian --}}
                 {{-- Menu Utama Pembelian --}}
                 <button @click="open = true; window.location.href='{{ route('pembelian.index') }}';"
                     class="w-full flex items-center gap-3 px-3 py-[10px] rounded-md transition text-white/85 hover:bg-white/5"
@@ -128,6 +135,8 @@
 
                 {{-- Submenu --}}
                 <div x-show="open && !collapsed" x-transition class="mt-1 pl-6 space-y-1">
+
+                    {{-- Pemesanan --}}
                     <a href=""
                         class="block px-3 py-2 rounded-md text-[13px] transition {{ $is('pemesanan.*') ? 'bg-white text-[#344579] font-semibold' : 'text-white/80 hover:bg-white/5' }}">
                         <span class="flex items-center gap-3">
@@ -137,29 +146,32 @@
                         </span>
                     </a>
 
-                    <a href=""
-                        class="block px-3 py-2 rounded-md text-[13px] transition {{ $is('pembelian.*') ? 'bg-white text-[#344579] font-semibold' : 'text-white/80 hover:bg-white/5' }}">
+                    {{-- Daftar Pembelian --}}
+                    <a href="{{ route('pembelian.index') }}"
+                        class="block px-3 py-2 rounded-md text-[13px] transition {{ $is('pembelian.index') ? 'bg-white text-[#344579] font-semibold' : 'text-white/80 hover:bg-white/5' }}">
                         <span class="flex items-center gap-3">
                             <span
-                                class="inline-block w-[3px] h-5 rounded {{ $is('pembelian.*') ? 'bg-white' : 'bg-transparent' }}"></span>
+                                class="inline-block w-[3px] h-5 rounded {{ $is('pembelian.index') ? 'bg-white' : 'bg-transparent' }}"></span>
                             <span>Daftar Pembelian</span>
                         </span>
                     </a>
 
+                    {{-- Retur Pembelian --}}
                     <a href="{{ route('retur-pembelian.index') }}"
-                        class="block px-3 py-2 rounded-md text-[13px] transition {{ $is('retur-pembelian.*') ? 'bg-white text-[#344579] font-semibold' : 'text-white/80 hover:bg-white/5' }}">
+                        class="block px-3 py-2 rounded-md text-[13px] transition {{ $is('pembelian.retur-pembelian.*') ? 'bg-white text-[#344579] font-semibold' : 'text-white/80 hover:bg-white/5' }}">
                         <span class="flex items-center gap-3">
                             <span
-                                class="inline-block w-[3px] h-5 rounded {{ $is('retur-pembelian.*') ? 'bg-white' : 'bg-transparent' }}"></span>
+                                class="inline-block w-[3px] h-5 rounded {{ $is('pembelian.retur-pembelian.*') ? 'bg-white' : 'bg-transparent' }}"></span>
                             <span>Retur Pembelian</span>
                         </span>
                     </a>
 
-                    <a href=""
-                        class="block px-3 py-2 rounded-md text-[13px] transition {{ $is('tagihan.*') ? 'bg-white text-[#344579] font-semibold' : 'text-white/80 hover:bg-white/5' }}">
+                    {{-- Tagihan Pembelian --}}
+                    <a href="{{ route('tagihan.pembelian.index') }}"
+                        class="block px-3 py-2 rounded-md text-[13px] transition {{ $is('pembelian.tagihan.*') ? 'bg-white text-[#344579] font-semibold' : 'text-white/80 hover:bg-white/5' }}">
                         <span class="flex items-center gap-3">
                             <span
-                                class="inline-block w-[3px] h-5 rounded {{ $is('tagihan.*') ? 'bg-white' : 'bg-transparent' }}"></span>
+                                class="inline-block w-[3px] h-5 rounded {{ $is('pembelian.tagihan.*') ? 'bg-white' : 'bg-transparent' }}"></span>
                             <span>Daftar Tagihan</span>
                         </span>
                     </a>

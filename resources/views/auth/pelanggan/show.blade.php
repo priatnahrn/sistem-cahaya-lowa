@@ -3,21 +3,25 @@
 @section('title','Detail Pelanggan')
 
 @section('content')
-<div class="space-y-6 w-full" x-data="{ 
+<div class="space-y-6 w-full" 
+     x-data="{ 
         original: {
             nama_pelanggan: '{{ $pelanggan->nama_pelanggan }}',
             kontak: '{{ $pelanggan->kontak ?? '' }}',
-            alamat: '{{ $pelanggan->alamat ?? '' }}'
+            alamat: '{{ $pelanggan->alamat ?? '' }}',
+            level: '{{ $pelanggan->level ?? '' }}',
         },
         form: {
             nama_pelanggan: '{{ $pelanggan->nama_pelanggan }}',
             kontak: '{{ $pelanggan->kontak ?? '' }}',
-            alamat: '{{ $pelanggan->alamat ?? '' }}'
+            alamat: '{{ $pelanggan->alamat ?? '' }}',
+            level: '{{ $pelanggan->level ?? '' }}',
         },
         get isChanged() {
             return this.form.nama_pelanggan !== this.original.nama_pelanggan ||
                    this.form.kontak !== this.original.kontak ||
-                   this.form.alamat !== this.original.alamat;
+                   this.form.alamat !== this.original.alamat ||
+                   this.form.level !== this.original.level;
         }
     }">
 
@@ -34,7 +38,7 @@
 
     {{-- DETAIL CARD --}}
     <div class="bg-white border border-slate-200 rounded-xl p-6 w-full">
-        <form :action="'{{ route('pelanggan.update', $pelanggan->id) }}'" method="POST" class="space-y-4 w-full">
+        <form action="{{ route('pelanggan.update', $pelanggan->id) }}" method="POST" class="space-y-4 w-full">
             @csrf
             @method('PUT')
 
@@ -67,6 +71,32 @@
                           class="w-full px-3 py-2 rounded-lg border border-slate-200"
                           placeholder="Alamat lengkap (mis: Jl. Sudirman No. 10, Jakarta)"></textarea>
                 @error('alamat')
+                    <p class="text-rose-600 text-sm mt-1">{{ $message }}</p>
+                @enderror
+            </div>
+
+            {{-- Level --}}
+            <div>
+                <label class="block text-sm text-slate-600 mb-1">Level</label>
+                <div class="relative">
+                    <select name="level" x-model="form.level"
+                        class="w-full px-3 py-2 rounded-lg border border-slate-200 
+                               appearance-none pr-8 bg-white">
+                        <option value="">-- Pilih Level --</option>
+                        <option value="retail">Retail</option>
+                        <option value="partai_kecil">Partai Kecil</option>
+                        <option value="grosir">Grosir</option>
+                    </select>
+                    {{-- Custom Arrow --}}
+                    <div class="absolute inset-y-0 right-3 flex items-center pointer-events-none">
+                        <svg class="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" 
+                             viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                                  d="M19 9l-7 7-7-7"></path>
+                        </svg>
+                    </div>
+                </div>
+                @error('level')
                     <p class="text-rose-600 text-sm mt-1">{{ $message }}</p>
                 @enderror
             </div>

@@ -16,7 +16,6 @@ use Illuminate\Support\Facades\Log;
 
 class PenjualanController extends Controller
 {
-    //
     public function index()
     {
         $penjualans = Penjualan::with('pelanggan')->orderBy('tanggal', 'desc')->paginate(10);
@@ -29,7 +28,7 @@ class PenjualanController extends Controller
         $gudangs = Gudang::orderBy('nama_gudang')->get();
         $items = Item::orderBy('nama_item')->get();
 
-        // preview no faktur (sama seperti yang sudah Anda punya)
+        // preview no faktur
         $today = now()->format('dmy');
         $last = DB::table('penjualans')
             ->whereDate('tanggal', now()->toDateString())
@@ -55,8 +54,8 @@ class PenjualanController extends Controller
             'no_faktur'    => 'required|string|max:191',
             'tanggal'      => 'required|date',
             'deskripsi'    => 'nullable|string',
-            'is_walkin'    => 'nullable|boolean', // frontend must send 1/0
-            'force_walkin' => 'nullable|boolean', // optional override
+            'is_walkin'    => 'nullable|boolean',
+            'force_walkin' => 'nullable|boolean',
             'biaya_transport' => 'nullable|numeric',
             'sub_total'    => 'required|numeric',
             'total'        => 'required|numeric',
@@ -89,7 +88,7 @@ class PenjualanController extends Controller
             ]);
 
             foreach ($data['items'] as $it) {
-                // server-side resolve price for security:
+                // server-side resolve price for security
                 $satuan = Satuan::find($it['satuan_id']);
                 $hargaRetail = (float) ($satuan->harga_retail ?? 0);
                 $partaiKecil = (float) ($satuan->partai_kecil ?? 0);
@@ -105,11 +104,10 @@ class PenjualanController extends Controller
                     }
                 }
 
-                // optionally you can force server price resolution (recommended):
                 $finalHarga = $resolved;
 
                 // create item_penjualan
-                $itemPenjualan = ItemPenjualan::create([
+                ItemPenjualan::create([
                     'penjualan_id' => $penjualan->id,
                     'item_id' => $it['item_id'],
                     'gudang_id' => $it['gudang_id'],
@@ -130,7 +128,6 @@ class PenjualanController extends Controller
                     $ig->stok = max(0, ($ig->stok ?? 0) - $it['jumlah']);
                     $ig->save();
                 } else {
-                    // Jika tidak ada record, buat dengan stok 0 (atau - jumlah tergantung kebijakan).
                     ItemGudang::create([
                         'item_id' => $it['item_id'],
                         'gudang_id' => $it['gudang_id'],
@@ -152,5 +149,165 @@ class PenjualanController extends Controller
             Log::error('Penjualan store error: ' . $e->getMessage(), ['payload' => $request->all()]);
             return response()->json(['message' => 'Gagal menyimpan penjualan', 'error' => $e->getMessage()], 500);
         }
+    }
+
+    /**
+     * API: Search items by nama or kode
+     */
+    public function searchItems(Request $request)
+    {
+        $query = $request->get('q', '');
+
+        if (strlen($query) < 2) {
+            return response()->json([]);
+        }
+
+        $items = Item::where(function ($q) use ($query) {
+            $q->where('nama_item', 'like', "%{$query}%")
+                ->orWhere('kode_item', 'like', "%{$query}%");
+        })
+            ->with('satuans')
+            ->limit(15)
+            ->get()
+            ->map(function ($item) {
+                // Get all satuans for this item
+                $satuans = Satuan::whereIn('id', function ($q) use ($item) {
+                    $q->select('satuan_id')
+                        ->from('item_gudangs')
+                        ->where('item_id', $item->id);
+                })->get();
+
+                return [
+                    'id' => $item->id,
+                    'nama_item' => $item->nama_item,
+                    'kode_item' => $item->kode_item,
+                    'barcode' => $item->barcode,
+                    'satuan_default' => $item->satuan_id,
+                    'satuans' => $satuans->map(fn($s) => [
+                        'id' => $s->id,
+                        'nama_satuan' => $s->nama_satuan,
+                        'harga_retail' => $s->harga_retail ?? 0,
+                        'partai_kecil' => $s->partai_kecil ?? 0,
+                        'harga_grosir' => $s->harga_grosir ?? 0,
+                    ])
+                ];
+            });
+
+        return response()->json($items);
+    }
+
+    /**
+     * API: Get item by barcode (untuk scanner)
+     */
+    public function getItemByBarcode($barcode)
+    {
+        $item = Item::where('barcode', $barcode)
+            ->orWhere('kode_item', $barcode)
+            ->first();
+
+        if (!$item) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Item tidak ditemukan'
+            ], 404);
+        }
+
+        // Ambil semua gudang & stok yang terkait item ini
+        $gudangs = ItemGudang::where('item_id', $item->id)
+            ->with('gudang', 'satuan')
+            ->get()
+            ->map(function ($ig) {
+                return [
+                    'gudang_id'   => $ig->gudang_id,
+                    'nama_gudang' => $ig->gudang->nama_gudang ?? '-',
+                    'satuan_id'   => $ig->satuan_id,
+                    'nama_satuan' => $ig->satuan->nama_satuan ?? '-',
+                    'stok'        => $ig->stok ?? 0,
+                    'harga_retail'   => $ig->satuan->harga_retail ?? 0,
+                    'partai_kecil'   => $ig->satuan->partai_kecil ?? 0,
+                    'harga_grosir'   => $ig->satuan->harga_grosir ?? 0,
+                ];
+            });
+
+        return response()->json([
+            'id' => $item->id,
+            'nama_item' => $item->nama_item,
+            'kode_item' => $item->kode_item,
+            'barcode' => $item->barcode,
+            'satuan_default' => $item->satuan_id,
+            'gudangs' => $gudangs, // <---- Tambahkan ini
+        ]);
+    }
+
+    /**
+     * API: Get stock for specific item, gudang, satuan
+     */
+    public function getStock(Request $request)
+    {
+        $itemId = $request->get('item_id');
+        $gudangId = $request->get('gudang_id');
+        $satuanId = $request->get('satuan_id');
+
+        if (!$itemId || !$gudangId || !$satuanId) {
+            return response()->json([
+                'jumlah' => 0,
+                'satuan_nama' => ''
+            ]);
+        }
+
+        $ig = ItemGudang::where('item_id', $itemId)
+            ->where('gudang_id', $gudangId)
+            ->where('satuan_id', $satuanId)
+            ->first();
+
+        $satuan = Satuan::find($satuanId);
+
+        return response()->json([
+            'jumlah' => $ig ? ($ig->stok ?? 0) : 0,
+            'satuan_nama' => $satuan ? $satuan->nama_satuan : ''
+        ]);
+    }
+
+    /**
+     * API: Get price for item based on satuan and level
+     */
+    public function getPrice(Request $request)
+    {
+        $satuanId = $request->get('satuan_id');
+        $level = $request->get('level', 'retail'); // retail, partai_kecil, grosir
+        $isWalkin = $request->get('is_walkin', false);
+
+        if (!$satuanId) {
+            return response()->json(['harga' => 0]);
+        }
+
+        $satuan = Satuan::find($satuanId);
+        if (!$satuan) {
+            return response()->json(['harga' => 0]);
+        }
+
+        $hargaRetail = (float) ($satuan->harga_retail ?? 0);
+        $partaiKecil = (float) ($satuan->partai_kecil ?? 0);
+        $hargaGrosir = (float) ($satuan->harga_grosir ?? 0);
+
+        // Logic sama seperti di store
+        if ($isWalkin) {
+            $harga = $partaiKecil ?: $hargaRetail ?: $hargaGrosir;
+        } else {
+            if ($level === 'grosir') {
+                $harga = $hargaGrosir ?: $partaiKecil ?: $hargaRetail;
+            } elseif ($level === 'partai_kecil') {
+                $harga = $partaiKecil ?: $hargaRetail ?: $hargaGrosir;
+            } else {
+                $harga = $hargaRetail ?: $partaiKecil ?: $hargaGrosir;
+            }
+        }
+
+        return response()->json([
+            'harga' => $harga,
+            'harga_retail' => $hargaRetail,
+            'partai_kecil' => $partaiKecil,
+            'harga_grosir' => $hargaGrosir,
+        ]);
     }
 }

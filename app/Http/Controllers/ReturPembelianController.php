@@ -175,12 +175,6 @@ class ReturPembelianController extends Controller
     {
         $retur = ReturPembelian::with('items')->findOrFail($id);
 
-        if ($retur->status !== 'pending') {
-            return response()->json([
-                'message' => 'Retur sudah diproses, tidak bisa diupdate.'
-            ], 422);
-        }
-
         $request->validate([
             'tanggal' => 'required|date',
             'catatan' => 'nullable|string',
@@ -254,6 +248,10 @@ class ReturPembelianController extends Controller
                     $itemGudang->save();
                 }
             }
+
+            Pembelian::where('id', $retur->pembelian_id)->update([
+                'status' => 'return',
+            ]);
 
             DB::commit();
 
