@@ -13,7 +13,8 @@
     </style>
 
     {{-- Root Alpine Component --}}
-    <div x-data="penjualanCreatePage()" x-init="init()" data-no-faktur="{{ $noFakturPreview }}"
+    <div x-data="penjualanCreatePage()" x-init="init();
+    $watch('form.mode', () => watchMode())" data-no-faktur="{{ $noFakturPreview }}"
         data-tanggal="{{ now()->toDateString() }}" class="space-y-6">
 
         {{-- Breadcrumb Navigasi --}}
@@ -26,8 +27,9 @@
         </div>
 
         {{-- Hidden Input untuk Scanner Barcode --}}
-        <input type="text" x-ref="barcodeInput" @keydown.enter.prevent="handleBarcode($event)" @blur="refocusScanner"
+        <input type="text" x-ref="barcodeInput" @keydown.enter.prevent="handleBarcode($event)"
             class="absolute opacity-0 pointer-events-none" autocomplete="off">
+
 
         {{-- Card Utama --}}
         <div class="bg-white border border-slate-200 rounded-xl px-6 py-4">
@@ -201,9 +203,9 @@
             </div>
         </div>
 
-        {{-- 📦 Tabel Items --}}
+        {{-- === TABEL ITEM === --}}
         <div class="bg-white border border-slate-200 rounded-xl overflow-hidden">
-            <div class="px-6 py-4 bg-slate-50 border-b border-slate-200">
+            <div class="px-6 py-4 bg-slate-50 border-b border-slate-200 flex justify-between items-center">
                 <h3 class="font-semibold text-slate-800">Daftar Item Penjualan</h3>
             </div>
 
@@ -211,27 +213,52 @@
                 <table class="min-w-full text-sm">
                     <thead class="bg-slate-50 border-b border-slate-200">
                         <tr class="text-slate-600">
-                            <th class="px-4 py-3 w-12 text-center font-medium">#</th>
-                            <th class="px-4 py-3 text-left font-medium">Item</th>
-                            <th class="px-4 py-3 w-40 text-center font-medium">Gudang</th>
-                            <th class="px-4 py-3 w-28 text-center font-medium">Jumlah</th>
-                            <th class="px-4 py-3 w-32 text-center font-medium">Satuan</th>
-                            <th class="px-4 py-3 w-40 text-right font-medium">Harga</th>
-                            <th class="px-4 py-3 w-40 text-right font-medium">Total</th>
+                            <th class="px-4 py-3 w-12 text-center">#</th>
+                            <th class="px-4 py-3">Item</th>
+                            <th class="px-4 py-3 w-40 text-center">Gudang</th>
+                            <th class="px-4 py-3 w-28 text-center">Jumlah</th>
+                            <th class="px-4 py-3 w-32 text-center">Satuan</th>
+                            <th class="px-4 py-3 w-40 text-right">Harga</th>
+                            <th class="px-4 py-3 w-40 text-right">Total</th>
                             <th class="px-2 py-3 w-12"></th>
                         </tr>
                     </thead>
                     <tbody>
-                        {{-- Loop Item --}}
                         <template x-for="(item, idx) in form.items" :key="idx">
                             <tr class="hover:bg-slate-50 text-slate-700 border-b border-slate-100 transition">
+                                {{-- # --}}
                                 <td class="px-4 py-3 text-center font-medium" x-text="idx+1"></td>
 
-                                {{-- Nama Item --}}
-                                <td class="px-4 py-3" x-text="item.query"></td>
+                                {{-- Nama Item (manual search) --}}
+                                <td class="px-4 py-3">
+                                    <div class="relative" x-data="{ open: false }">
+                                        <i
+                                            class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                                        <input type="text" x-model="item.query"
+                                            @input.debounce.300ms="searchItem(idx); open=true" @focus="open=true"
+                                            @click.away="open=false" placeholder="Cari item..."
+                                            class="w-full pl-10 pr-8 py-2 rounded-lg border border-slate-200 text-sm" />
 
-                                {{-- Gudang --}}
-                                <!-- Dropdown Gudang -->
+                                        {{-- Dropdown hasil search --}}
+                                        <div x-show="open && item.query.length >= 2 && !item.item_id" x-cloak
+                                            class="absolute z-30 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                                            <div class="p-2">
+                                                <div x-show="item.results.length === 0"
+                                                    class="px-3 py-2 text-sm text-slate-400 text-center italic">
+                                                    Tidak ada item ditemukan
+                                                </div>
+                                                <template x-for="r in item.results" :key="r.id">
+                                                    <div @click="selectItem(idx, r); open=false"
+                                                        class="px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 cursor-pointer rounded">
+                                                        <div class="font-medium" x-text="r.nama_item"></div>
+                                                        <div class="text-xs text-slate-500" x-text="r.kode_item"></div>
+                                                    </div>
+                                                </template>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </td>
+
                                 {{-- Gudang --}}
                                 <td class="px-4 py-3">
                                     <select x-model="item.gudang_id" @change="updateSatuanOptions(idx)"
@@ -240,22 +267,17 @@
                                             <option :value="g.gudang_id" x-text="g.nama_gudang"></option>
                                         </template>
                                     </select>
-
-                                    {{-- Stok info --}}
+                                    {{-- Info stok --}}
                                     <div class="mt-1 text-xs"
                                         :class="item.stok > 0 ? 'text-slate-500' : 'text-rose-600 font-semibold'">
-                                        Stok tersedia:
-                                        <span x-text="formatStok(item.stok)"></span>
+                                        Stok tersedia: <span x-text="formatStok(item.stok)"></span>
                                     </div>
                                 </td>
 
-
-
-
                                 {{-- Jumlah --}}
-                                <td class="px-4 py-3">
+                                <td class="px-4 py-3 text-center">
                                     <input type="number" min="1" x-model.number="item.jumlah" @input="recalc"
-                                        class="w-20 text-center border border-slate-300 rounded-lg px-2 py-2">
+                                        class="w-20 text-center border border-slate-300 rounded-lg px-2 py-2" />
                                 </td>
 
                                 {{-- Satuan --}}
@@ -268,9 +290,17 @@
                                     </select>
                                 </td>
 
-
                                 {{-- Harga --}}
-                                <td class="px-4 py-3 text-right" x-text="formatRupiah(item.harga)"></td>
+                                <td class="px-4 py-3 text-right">
+                                    <div class="relative">
+                                        <span
+                                            class="absolute left-2 top-1/2 -translate-y-1/2 text-slate-500 text-sm">Rp</span>
+                                        <input type="text" :value="formatRupiah(item.harga)"
+                                            @input="updateManualPrice(idx, $event.target.value)"
+                                            class="pl-7 pr-2 w-full text-right border border-slate-300 rounded-lg px-3 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-200" />
+                                    </div>
+                                </td>
+
 
                                 {{-- Total --}}
                                 <td class="px-4 py-3 text-right font-semibold text-slate-800">
@@ -287,9 +317,78 @@
                             </tr>
                         </template>
                     </tbody>
+
                 </table>
             </div>
+
+            {{-- Button Tambah Item Manual --}}
+            <div class="m-4">
+                <button type="button" @click="addItemManual"
+                    class="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded border-2 border-dashed border-slate-200 bg-slate-50 text-slate-600">
+                    <i class="fa-solid fa-plus"></i> Tambah Item Baru
+                </button>
+            </div>
         </div>
+
+
+        {{-- === RINGKASAN PENJUALAN === --}}
+        <div class="flex flex-col md:flex-row md:justify-end gap-4 mt-8">
+            <div class="w-full md:w-96 bg-gradient-to-b from-white to-slate-50 border border-slate-200 rounded-2xl p-6">
+                {{-- Sub Total --}}
+                <div class="flex justify-between items-center mb-4">
+                    <div class="text-slate-600">Sub Total</div>
+                    <div class="font-normal text-slate-700">
+                        Rp <span x-text="formatRupiah(subTotal)"></span>
+                    </div>
+                </div>
+
+                {{-- Biaya Transportasi (hanya jika antar) --}}
+                <div x-show="form.mode === 'antar'" class="mb-4">
+                    <div class="flex justify-between items-center mb-2">
+                        <div class="text-slate-600">Biaya Transportasi</div>
+                    </div>
+                    <div class="relative">
+                        <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-sm">Rp</span>
+                        <input type="text" :value="formatRupiah(form.biaya_transport)"
+                            @input="updateTransport($event.target.value)" placeholder="0"
+                            class="pl-10 pr-3 w-full border border-slate-300 rounded-lg px-3 py-2.5 text-right focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-500" />
+                    </div>
+                </div>
+
+                <div class="border-t border-slate-200 pt-4 mt-4"></div>
+
+                {{-- TOTAL PENJUALAN --}}
+                <div class="flex justify-between items-center mb-6">
+                    <div class="text-slate-700 font-bold text-lg">TOTAL PENJUALAN</div>
+                    <div class="text-blue-700 text-2xl font-extrabold tracking-wide">
+                        Rp <span x-text="formatRupiah(totalPembayaran)"></span>
+                    </div>
+                </div>
+
+                {{-- Info Status --}}
+                <div x-show="form.items.length === 0"
+                    class="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-700">
+                    <i class="fa-solid fa-info-circle mr-1"></i> Belum ada item yang ditambahkan
+                </div>
+
+                {{-- Tombol Aksi --}}
+                <div class="flex gap-3">
+                    <a href="{{ route('penjualan.index') }}"
+                        class="px-5 py-2.5 rounded-lg border border-slate-300 text-slate-600 hover:bg-slate-50 transition">
+                        Batal
+                    </a>
+                    <button @click="save" type="button" :disabled="!isValid()"
+                        class="flex-1 px-5 py-2.5 rounded-lg text-white font-medium transition"
+                        :class="isValid() ?
+                            'bg-blue-600 hover:bg-blue-700 cursor-pointer shadow-sm hover:shadow-md' :
+                            'bg-gray-300 cursor-not-allowed opacity-60'">
+                        <i class="fa-solid fa-save mr-2"></i>
+                        Simpan Penjualan
+                    </button>
+                </div>
+            </div>
+        </div>
+
 
         {{-- Modal Tambah Pelanggan Baru --}}
         <div x-show="showModalTambahPelanggan" x-cloak
@@ -335,6 +434,31 @@
         </div>
     </div>
 
+    @php
+        $itemsJson = $items
+            ->map(
+                fn($i) => [
+                    'id' => $i->id,
+                    'kode_item' => $i->kode_item,
+                    'nama_item' => $i->nama_item,
+                    'gudangs' => $i->gudangItems
+                        ->map(
+                            fn($ig) => [
+                                'gudang_id' => $ig->gudang?->id,
+                                'nama_gudang' => $ig->gudang?->nama_gudang,
+                                'satuan_id' => $ig->satuan?->id,
+                                'nama_satuan' => $ig->satuan?->nama_satuan,
+                                'stok' => $ig->stok,
+                                'harga_retail' => $ig->harga_retail ?? 0,
+                            ],
+                        )
+                        ->toArray(),
+                ],
+            )
+            ->toArray();
+    @endphp
+
+
     {{-- Alpine Component --}}
     <script>
         function penjualanCreatePage() {
@@ -368,18 +492,124 @@
                 },
 
                 subTotal: 0,
+                totalPembayaran: 0,
+
+                allItems: [],
 
                 // === INIT ===
                 init() {
                     this.form.no_faktur = this.$el.getAttribute('data-no-faktur') || '';
                     this.form.tanggal = this.$el.getAttribute('data-tanggal') || '';
                     this.subTotal = 0;
+                    this.totalPembayaran = 0;
                     this.form.items = [];
+
+                    this.allItems = @json($itemsJson ?? []);
+
+                    setTimeout(() => {
+                        if (this.$refs.barcodeInput) {
+                            this.$refs.barcodeInput.focus();
+                        }
+                    }, 100);
+
+                    this.recalc();
+                },
+
+                watchMode() {
+                    if (this.form.mode === 'ambil') {
+                        this.form.biaya_transport = 0;
+                    }
+                    this.updateAllItemPrices();
+                    this.recalc();
+                },
+
+                // === Helper Harga ===
+                getPriceFromSelected(selected, level, is_walkin, mode) {
+                    if (!selected) return 0;
+
+                    // Customer umum (walk-in)
+                    if (!level || is_walkin) return Number(selected.harga_retail || 0);
+
+                    level = level.toString().toLowerCase();
+
+                    if (level === 'retail') {
+                        return Number(selected.harga_retail || 0);
+                    }
+
+                    if (level === 'partai_kecil') {
+                        if (mode === 'antar') {
+                            // partai kecil + antar → grosir
+                            return Number(selected.harga_grosir ?? selected.partai_kecil ?? selected.harga_retail ?? 0);
+                        } else {
+                            // partai kecil + ambil → partai kecil
+                            return Number(selected.partai_kecil ?? selected.harga_retail ?? 0);
+                        }
+                    }
+
+                    if (level === 'grosir') {
+                        if (mode === 'ambil') {
+                            // grosir + ambil → partai kecil
+                            return Number(selected.partai_kecil ?? selected.harga_retail ?? 0);
+                        } else {
+                            // grosir + antar → grosir
+                            return Number(selected.harga_grosir ?? selected.partai_kecil ?? selected.harga_retail ?? 0);
+                        }
+                    }
+
+                    // default fallback
+                    return Number(selected.harga_retail || 0);
+                },
+
+
+                // === Manual Add ===
+                addItemManual() {
+                    this.form.items.push({
+                        item_id: null,
+                        query: '',
+                        results: [],
+                        gudang_id: '',
+                        gudangs: [],
+                        satuan_id: '',
+                        filteredSatuans: [],
+                        jumlah: 1,
+                        harga: 0,
+                        stok: 0,
+                        harga_manual: false
+                    });
+                },
+
+                searchItem(idx) {
+                    const q = this.form.items[idx].query.toLowerCase();
+                    if (!q || q.length < 2) {
+                        this.form.items[idx].results = [];
+                        return;
+                    }
+                    this.form.items[idx].results = this.allItems.filter(r =>
+                        r.nama_item.toLowerCase().includes(q) || r.kode_item.toLowerCase().includes(q)
+                    ).slice(0, 20);
+                },
+
+                selectItem(idx, item) {
+                    const row = this.form.items[idx];
+                    row.item_id = item.id;
+                    row.query = item.nama_item;
+                    row.results = [];
+                    row.gudangs = item.gudangs || [];
+                    row.harga_manual = false;
+
+                    if (row.gudangs.length > 0) {
+                        row.gudang_id = row.gudangs[0].gudang_id;
+                        this.updateSatuanOptions(idx);
+                    } else {
+                        console.warn('Item tidak memiliki gudang:', item);
+                    }
+
                     this.recalc();
                 },
 
                 // === GUDANG & SATUAN ===
                 getDistinctGudangs(item) {
+                    if (!item.gudangs || item.gudangs.length === 0) return [];
                     const seen = new Set();
                     return item.gudangs.filter(g => {
                         if (seen.has(g.gudang_id)) return false;
@@ -390,11 +620,20 @@
 
                 updateSatuanOptions(idx) {
                     const item = this.form.items[idx];
+                    if (!item.gudangs || item.gudangs.length === 0) {
+                        item.filteredSatuans = [];
+                        return;
+                    }
+
                     item.filteredSatuans = item.gudangs.filter(g => g.gudang_id == item.gudang_id);
 
                     if (item.filteredSatuans.length > 0) {
                         item.satuan_id = item.filteredSatuans[0].satuan_id;
                         this.updateStockAndPrice(idx);
+                    } else {
+                        item.satuan_id = '';
+                        item.stok = 0;
+                        if (!item.harga_manual) item.harga = 0;
                     }
                 },
 
@@ -403,10 +642,35 @@
                     const selected = item.gudangs.find(
                         g => g.gudang_id == item.gudang_id && g.satuan_id == item.satuan_id
                     );
+
                     if (selected) {
-                        item.stok = selected.stok;
-                        item.harga = selected.harga_retail; // bisa diatur sesuai level pelanggan
+                        item.stok = selected.stok || 0;
+                        const level = (this.selectedPelangganLevel || '').toString().toLowerCase();
+                        const computedPrice = this.getPriceFromSelected(
+                            selected,
+                            level,
+                            this.form.is_walkin,
+                            this.form.mode
+                        );
+
+                        if (!item.harga_manual) {
+                            item.harga = computedPrice;
+                        }
+                    } else {
+                        item.stok = 0;
+                        if (!item.harga_manual) item.harga = 0;
                     }
+
+                    this.recalc();
+                },
+
+                updateAllItemPrices() {
+                    this.form.items.forEach((item, idx) => {
+                        this.updateStockAndPrice(idx);
+                        if (!item.harga_manual && item.satuan_id) {
+                            this.fetchPriceForItem(idx);
+                        }
+                    });
                 },
 
                 // === PELANGGAN ===
@@ -423,6 +687,7 @@
                         this.pelangganResults = data;
                     } catch (err) {
                         console.error("Error search pelanggan:", err);
+                        this.pelangganResults = [];
                     } finally {
                         this.pelangganLoading = false;
                     }
@@ -431,7 +696,7 @@
                 selectPelanggan(p) {
                     this.form.pelanggan_id = p.id;
                     this.selectedPelangganNames = p.nama_pelanggan;
-                    this.selectedPelangganLevel = p.level;
+                    this.selectedPelangganLevel = (p.level || 'retail').toString().toLowerCase();
                     this.form.is_walkin = false;
                     this.pelangganQuery = p.nama_pelanggan;
                     this.openResults = false;
@@ -454,6 +719,11 @@
                 },
 
                 async savePelangganBaru() {
+                    if (!this.newPelanggan.nama_pelanggan) {
+                        alert('Nama pelanggan wajib diisi');
+                        return;
+                    }
+
                     try {
                         const res = await fetch('/pelanggan/store', {
                             method: 'POST',
@@ -469,11 +739,13 @@
 
                         this.form.pelanggan_id = saved.id;
                         this.selectedPelangganNames = saved.nama_pelanggan;
-                        this.selectedPelangganLevel = saved.level;
+                        this.selectedPelangganLevel = (saved.level || 'retail').toString().toLowerCase();
                         this.form.is_walkin = false;
 
                         this.showModalTambahPelanggan = false;
                         this.updateAllItemPrices();
+
+                        alert('Pelanggan berhasil ditambahkan!');
                     } catch (err) {
                         alert("Gagal menyimpan pelanggan baru");
                         console.error(err);
@@ -489,58 +761,108 @@
                         const res = await fetch(`/items/barcode/${encodeURIComponent(code)}`);
                         if (!res.ok) {
                             alert(`Item dengan kode "${code}" tidak ditemukan. Tambahkan manual.`);
+                            e.target.value = '';
                             return;
                         }
                         const data = await res.json();
-                        console.log("Item ditemukan:", data);
 
-                        const existing = this.form.items.find(i => i.item_id === data.id);
-                        if (existing) {
-                            existing.jumlah += 1;
+                        const existingIdx = this.form.items.findIndex(i => i.item_id === data.id);
+
+                        if (existingIdx !== -1) {
+                            this.form.items[existingIdx].jumlah += 1;
                         } else {
                             this.form.items.push({
                                 item_id: data.id,
                                 query: data.nama_item,
                                 gudang_id: data.gudangs.length ? data.gudangs[0].gudang_id : '',
                                 gudangs: data.gudangs,
-                                satuan_id: '', // kosong dulu
-                                filteredSatuans: [], // filter nanti
+                                satuan_id: '',
+                                filteredSatuans: [],
                                 jumlah: 1,
                                 harga: 0,
                                 stok: 0,
+                                results: [],
+                                harga_manual: false
                             });
 
-                            // ambil index terakhir item
                             const idx = this.form.items.length - 1;
-                            this.updateSatuanOptions(idx); // ⬅️ auto sync satuan sesuai gudang default
+                            this.updateSatuanOptions(idx);
                         }
 
                         this.recalc();
                         e.target.value = '';
+
+                        setTimeout(() => {
+                            if (this.$refs.barcodeInput) {
+                                this.$refs.barcodeInput.focus();
+                            }
+                        }, 50);
+
                     } catch (err) {
                         console.error("Error handleBarcode:", err);
+                        alert('Terjadi kesalahan saat memproses barcode');
+                        e.target.value = '';
                     }
                 },
 
+                // === HARGA MANUAL ===
+                updateManualPrice(idx, val) {
+                    const clean = val.replace(/[^0-9]/g, '');
+                    this.form.items[idx].harga = parseInt(clean) || 0;
+                    this.form.items[idx].harga_manual = true;
+                    this.recalc();
+                },
+
+                resetManualPrice(idx) {
+                    const item = this.form.items[idx];
+                    if (!item) return;
+                    item.harga_manual = false;
+                    this.updateStockAndPrice(idx);
+                },
+
+                async fetchPriceForItem(idx) {
+                    const item = this.form.items[idx];
+                    if (!item || !item.satuan_id) return;
+
+                    try {
+                        const level = (this.selectedPelangganLevel || 'retail').toString().toLowerCase();
+                        const res = await fetch(
+                            `/items/price?satuan_id=${item.satuan_id}&level=${encodeURIComponent(level)}&is_walkin=${this.form.is_walkin ? 1 : 0}`
+                        );
+                        if (!res.ok) return;
+                        const data = await res.json();
+                        if (!item.harga_manual) {
+                            item.harga = data.harga || item.harga || 0;
+                            this.recalc();
+                        }
+                    } catch (err) {
+                        console.error("Error fetchPriceForItem:", err);
+                    }
+                },
 
                 // === TOTAL ===
                 recalc() {
-                    this.subTotal = this.form.items.reduce((sum, i) => sum + (i.jumlah * i.harga), 0);
+                    this.subTotal = this.form.items.reduce((sum, i) => {
+                        const jumlah = parseFloat(i.jumlah) || 0;
+                        const harga = parseFloat(i.harga) || 0;
+                        return sum + (jumlah * harga);
+                    }, 0);
+
+                    const transport = this.form.mode === 'antar' ? (parseFloat(this.form.biaya_transport) || 0) : 0;
+                    this.totalPembayaran = this.subTotal + transport;
                 },
 
                 formatRupiah(val) {
-                    if (!val) return '0';
-                    return new Intl.NumberFormat('id-ID').format(val);
+                    const num = parseFloat(val) || 0;
+                    return new Intl.NumberFormat('id-ID').format(num);
                 },
 
                 formatStok(val) {
                     if (val == null || val === '') return '0';
                     const num = parseFloat(val);
-                    // Cek kalau bilangan bulat
                     if (Number.isInteger(num)) {
                         return num.toString();
                     }
-                    // Kalau desimal → pakai koma
                     return num.toLocaleString('id-ID', {
                         minimumFractionDigits: 0,
                         maximumFractionDigits: 2
@@ -552,37 +874,91 @@
                     this.recalc();
                 },
 
-                addItem() {
-                    this.form.items.push({
-                        item_id: null,
-                        query: '',
-                        gudang_id: '',
-                        gudangs: [],
-                        satuan_id: '',
-                        satuans: [],
-                        jumlah: 1,
-                        harga: 0,
-                        stok: 0,
+                updateTransport(val) {
+                    const clean = val.replace(/[^0-9]/g, '');
+                    this.form.biaya_transport = parseInt(clean) || 0;
+                    this.recalc();
+                },
+
+                // === VALIDASI & SIMPAN ===
+                isValid() {
+                    if (this.form.items.length === 0) return false;
+                    return this.form.items.every(i => {
+                        return i.item_id &&
+                            i.gudang_id &&
+                            i.satuan_id &&
+                            i.jumlah > 0 &&
+                            i.harga >= 0;
                     });
                 },
 
-                updateAllItemPrices() {
-                    this.form.items.forEach((i, idx) => this.fetchPriceForItem(idx));
-                },
+                async save() {
+                    if (!this.isValid()) {
+                        alert('Mohon lengkapi semua data item penjualan.');
+                        return;
+                    }
 
-                async fetchPriceForItem(idx) {
-                    const item = this.form.items[idx];
-                    if (!item || !item.satuan_id) return;
+                    // Validasi stok
+                    for (let i = 0; i < this.form.items.length; i++) {
+                        const item = this.form.items[i];
+                        if (item.jumlah > item.stok) {
+                            alert(
+                                `Stok tidak cukup untuk item: ${item.query}\nStok tersedia: ${this.formatStok(item.stok)}\nJumlah diminta: ${item.jumlah}`
+                            );
+                            return;
+                        }
+                    }
 
+                    // === SESUAIKAN ENUM DENGAN MIGRATION ===
+                    let statusKirim = this.form.mode === 'antar' ? 'pending' : '-';
+                    let statusBayar = 'unpaid';
+
+                    const payload = {
+                        pelanggan_id: this.form.pelanggan_id,
+                        no_faktur: this.form.no_faktur,
+                        tanggal: this.form.tanggal,
+                        deskripsi: this.form.deskripsi,
+                        is_walkin: this.form.is_walkin,
+                        biaya_transport: this.form.biaya_transport,
+                        sub_total: this.subTotal,
+                        total: this.totalPembayaran,
+                        mode: this.form.mode, // kirim juga ke backend biar konsisten
+                        status_kirim: statusKirim,
+                        status_bayar: statusBayar,
+                        items: this.form.items.map(i => ({
+                            item_id: i.item_id,
+                            gudang_id: i.gudang_id,
+                            satuan_id: i.satuan_id,
+                            jumlah: parseFloat(i.jumlah),
+                            harga: parseFloat(i.harga),
+                            total: parseFloat(i.jumlah) * parseFloat(i.harga)
+                        }))
+                    };
+
+                    console.log('Payload yang akan dikirim:', payload);
+                    
                     try {
-                        const res = await fetch(
-                            `/items/price?satuan_id=${item.satuan_id}&level=${this.selectedPelangganLevel || 'retail'}&is_walkin=${this.form.is_walkin}`
-                        );
-                        const data = await res.json();
-                        item.harga = data.harga;
-                        this.recalc();
+                        const res = await fetch('/penjualan/store', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                            },
+                            body: JSON.stringify(payload)
+                        });
+
+                        const result = await res.json();
+
+                        if (!res.ok) {
+                            alert('Gagal menyimpan penjualan: ' + (result.message || 'Unknown error'));
+                            return;
+                        }
+
+                        alert('Penjualan berhasil disimpan!');
+                        window.location.href = '/penjualan';
                     } catch (err) {
-                        console.error("Error fetchPriceForItem:", err);
+                        console.error('Error save:', err);
+                        alert('Terjadi kesalahan saat menyimpan penjualan.');
                     }
                 }
             }

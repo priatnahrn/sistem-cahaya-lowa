@@ -135,16 +135,19 @@
                                 {{-- Satuan --}}
                                 <td class="px-4 py-3 text-center">
                                     <div class="relative">
-                                        <select x-model="item.satuan_id"
+                                        <select x-model.number="item.satuan_id"
                                             class="w-full border border-gray-300 rounded-lg px-3 py-2 pr-8 text-sm appearance-none">
                                             <template x-for="s in item.satuans" :key="s.id">
-                                                <option :value="s.id" x-text="s.nama_satuan"></option>
+                                                <option :value="s.id" :selected="item.satuan_id === s.id"
+                                                    x-text="s.nama_satuan"></option>
                                             </template>
                                         </select>
+
                                         <i
                                             class="fa-solid fa-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"></i>
                                     </div>
                                 </td>
+
                                 {{-- Harga --}}
                                 <td class="px-4 py-3">
                                     <div class="relative">
@@ -225,6 +228,8 @@
                     </button>
 
                 </div>
+
+
             </div>
         </div>
     </div>
@@ -239,32 +244,38 @@
                 originalForm: {},
 
                 form: {
-                    supplier_id: {{ Js::from($pembelian->supplier_id) }},
+                    supplier_id: {{ (int) $pembelian->supplier_id }},
                     no_faktur: {{ Js::from($pembelian->no_faktur) }},
                     tanggal: {{ Js::from($pembelian->tanggal->format('Y-m-d')) }},
                     lunas: {{ Js::from($pembelian->status === 'paid') }},
                     deskripsi: {{ Js::from($pembelian->deskripsi) }},
-                    biaya_transport: {{ Js::from($pembelian->biaya_transport) }},
+                    biaya_transport: {{ (int) $pembelian->biaya_transport }},
                     items: [
                         @foreach ($pembelian->items as $it)
                             {
-                                item_id: {{ Js::from($it->item_id) }},
+                                item_id: {{ (int) $it->item_id }},
                                 query: {{ Js::from($it->item->nama_item) }},
                                 results: [],
-                                gudang_id: {{ Js::from($it->gudang_id) }},
-                                satuan_id: {{ Js::from($it->satuan_id) }},
-                                satuans: {{ Js::from($it->item->satuans) }},
-                                jumlah: {{ Js::from($it->jumlah) }},
-                                harga: {{ Js::from($it->harga_beli) }}
+                                gudang_id: {{ (int) $it->gudang_id }},
+                                satuan_id: {{ (int) $it->satuan_id }}, // ✅ integer
+                                satuans: {!! $it->item->satuans->map(
+                                    fn($s) => [
+                                        'id' => (int) $s->id,
+                                        'nama_satuan' => $s->nama_satuan,
+                                    ],
+                                ) !!},
+                                jumlah: {{ (float) $it->jumlah }},
+                                harga: {{ (int) $it->harga_beli }}
                             },
                         @endforeach
                     ]
                 },
 
                 init() {
-                    // simpan snapshot form awal
                     this.originalForm = JSON.parse(JSON.stringify(this.form));
+                    console.log("Init Items:", JSON.parse(JSON.stringify(this.form.items)));
                 },
+
 
                 // === VALIDASI & CEK PERUBAHAN ===
                 isFormValid() {
@@ -281,6 +292,8 @@
 
                 isFormChanged() {
                     return JSON.stringify(this.form) !== JSON.stringify(this.originalForm);
+
+                    console.log("Init items:", this.form.items);
                 },
 
                 canSubmit() {
@@ -319,14 +332,26 @@
                     this.form.items[idx].item_id = item.id;
                     this.form.items[idx].query = item.nama_item;
                     this.form.items[idx].results = [];
-                    this.form.items[idx].satuans = item.satuans || [];
 
-                    if (item.satuan_default) {
-                        this.form.items[idx].satuan_id = item.satuan_default;
-                    } else if (item.satuans && item.satuans.length > 0) {
-                        this.form.items[idx].satuan_id = item.satuans[0].id;
+                    // mapping satuan jadi integer
+                    this.form.items[idx].satuans = (item.satuans || []).map(s => ({
+                        id: Number(s.id),
+                        nama_satuan: s.nama_satuan
+                    }));
+
+                    // ❌ jangan override kalau sudah punya satuan_id
+                    if (!this.form.items[idx].satuan_id) {
+                        if (item.satuan_default) {
+                            this.form.items[idx].satuan_id = Number(item.satuan_default);
+                        } else if (item.satuans && item.satuans.length > 0) {
+                            this.form.items[idx].satuan_id = Number(item.satuans[0].id);
+                        }
                     }
+
+                    // 🔍 Debug cek apakah udah bener
+                    console.log("SelectItem:", this.form.items[idx].satuan_id, this.form.items[idx].satuans);
                 },
+
 
                 addItem() {
                     this.form.items.push({

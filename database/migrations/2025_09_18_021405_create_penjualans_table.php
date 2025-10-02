@@ -15,13 +15,14 @@ return new class extends Migration
             $table->id();
             $table->string('no_faktur')->unique();
             $table->dateTime('tanggal');
-            $table->foreignId('pelanggan_id')->constrained('pelanggans')->onDelete('cascade');
+            $table->foreignId('pelanggan_id')->nullable()->constrained('pelanggans')->onDelete('cascade');
             $table->text('deskripsi')->nullable();
+            $table->string('harga_jual')->nullable();
             $table->decimal('sub_total', 15, 2);
             $table->decimal('biaya_transport', 15, 2)->default(0);
             $table->decimal('total', 15, 2);
             $table->enum('status_bayar', ['paid', 'unpaid', 'return'])->default('unpaid');
-            $table->enum('status_kirim', ['-', 'pending', 'process', 'done'])->default('-');
+            $table->enum('mode', ['ambil', 'antar'])->default('ambil');
             $table->foreignId('created_by')->nullable()->constrained('users')->nullOnDelete();
             $table->foreignId('updated_by')->nullable()->constrained('users')->nullOnDelete();
             $table->timestamps();

@@ -5,6 +5,7 @@ use App\Http\Controllers\ItemController;
 use App\Http\Controllers\KategoriItemController;
 use App\Http\Controllers\PelangganController;
 use App\Http\Controllers\PembelianController;
+use App\Http\Controllers\PengirimanController;
 use App\Http\Controllers\PenjualanController;
 use App\Http\Controllers\ReturPembelianController;
 use App\Http\Controllers\SupplierController;
@@ -41,6 +42,15 @@ Route::middleware('auth')->group(function () {
         Route::put('/{id}/update', [PenjualanController::class, 'update'])->name('penjualan.update');
         Route::get('/{id}/last-price', [PenjualanController::class, 'getLastPrice'])->name('penjualan.last_price');
         Route::delete('/{id}/delete', [PenjualanController::class, 'destroy'])->name('penjualan.destroy');
+    });
+
+    Route::prefix('pengiriman')->group(function () {
+        Route::get('/', [PengirimanController::class, 'index'])->name('pengiriman.index');
+        Route::get('/create', [PengirimanController::class, 'create'])->name('pengiriman.create');
+        Route::post('/store', [PengirimanController::class, 'store'])->name('pengiriman.store');
+        Route::get('/{id}', [PengirimanController::class, 'show'])->name('pengiriman.show');
+        Route::put('/{id}/update', [PengirimanController::class, 'update'])->name('pengiriman.update');
+        Route::delete('/{id}/delete', [PengirimanController::class, 'destroy'])->name('pengiriman.destroy');
     });
     
     

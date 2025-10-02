@@ -15,10 +15,21 @@ class Penjualan extends Model
         'biaya_transport',
         'total',
         'status_bayar',
-        'status_kirim',
+        'mode',
         'created_by',
         'updated_by',
     ];
+
+    protected $casts = [
+        'tanggal' => 'datetime',  // ← Ini akan auto-convert ke Carbon
+        'sub_total' => 'decimal:2',
+        'biaya_transport' => 'decimal:2',
+        'total' => 'decimal:2',
+    ];
+    public function items()
+    {
+        return $this->hasMany(ItemPenjualan::class, 'penjualan_id');
+    }
 
     public function pelanggan()
     {
@@ -30,4 +41,13 @@ class Penjualan extends Model
         return $this->hasMany(ItemPenjualan::class);
     }
 
+    public function createdBy()
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
+
+    public function updatedBy()
+    {
+        return $this->belongsTo(User::class, 'updated_by');
+    }
 }

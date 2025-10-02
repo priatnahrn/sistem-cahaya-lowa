@@ -77,7 +77,7 @@
 
                     {{-- Daftar Pengiriman --}}
                     @php $on = $is('daftar-pengiriman.*'); @endphp
-                    <a href=""
+                    <a href="{{ route('pengiriman.index') }}"
                         class="block px-3 py-2 rounded-md text-[13px] transition {{ $on ? 'bg-white text-[#344579] font-semibold' : 'text-white/80 hover:bg-white/5' }}">
                         <span class="flex items-center gap-3">
                             <span

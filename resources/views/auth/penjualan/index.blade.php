@@ -121,8 +121,8 @@
                             <th class="px-4 py-3 w-[60px]">No.</th>
                             <th class="px-4 py-3 cursor-pointer" @click="toggleSort('no_faktur')">No Faktur <i
                                     class="fa-solid" :class="sortIcon('no_faktur')"></i></th>
-                            <th class="px-4 py-3 cursor-pointer" @click="toggleSort('tanggal')">Tanggal <i
-                                    class="fa-solid" :class="sortIcon('tanggal')"></i></th>
+                            <th class="px-4 py-3 cursor-pointer" @click="toggleSort('tanggal')">Tanggal <i class="fa-solid"
+                                    :class="sortIcon('tanggal')"></i></th>
                             <th class="px-4 py-3 cursor-pointer" @click="toggleSort('pelanggan')">Pelanggan <i
                                     class="fa-solid" :class="sortIcon('pelanggan')"></i></th>
                             <th class="px-4 py-3 text-right cursor-pointer" @click="toggleSort('total')">Total <i
@@ -141,14 +141,16 @@
                                 <td class="px-4 py-3 text-green-600" x-text="r.pelanggan"></td>
                                 <td class="px-4 py-3 text-right" x-text="formatRupiah(r.total)"></td>
                                 <td class="px-4 py-3">
-                                    <span class="inline-flex items-center gap-2 text-xs font-medium px-2.5 py-1 rounded-full"
+                                    <span
+                                        class="inline-flex items-center gap-2 text-xs font-medium px-2.5 py-1 rounded-full"
                                         :class="badgeClass(r.status)">
                                         <span class="w-2 h-2 rounded-full" :class="dotClass(r.status)"></span>
                                         <span x-text="statusLabel(r.status)"></span>
                                     </span>
                                 </td>
                                 <td class="px-4 py-3">
-                                    <span class="inline-flex items-center gap-2 text-xs font-medium px-2.5 py-1 rounded-full"
+                                    <span
+                                        class="inline-flex items-center gap-2 text-xs font-medium px-2.5 py-1 rounded-full"
                                         :class="badgeKirim(r.status_kirim)">
                                         <span class="w-2 h-2 rounded-full" :class="dotKirim(r.status_kirim)"></span>
                                         <span x-text="r.status_kirim"></span>
@@ -165,7 +167,8 @@
                                         class="absolute right-2 mt-2 w-44 bg-white shadow rounded-md border border-slate-200 z-20">
                                         <ul class="py-1">
                                             <li>
-                                                <a :href="r.url" class="block px-4 py-2 hover:bg-slate-50 text-left">
+                                                <a :href="r.url"
+                                                    class="block px-4 py-2 hover:bg-slate-50 text-left">
                                                     <i class="fa-solid fa-eye mr-2"></i> Detail
                                                 </a>
                                             </li>
@@ -247,14 +250,45 @@
     @php
         $penjualansJson = $penjualans
             ->map(function ($p) {
+                // Map status_bayar dari ENUM database ke label yang user-friendly
+                $statusBayarMap = [
+                    'paid' => 'lunas',
+                    'unpaid' => 'belum',
+                    'return' => 'retur',
+                ];
+
+                // Map status_kirim dari ENUM database
+                $statusKirimMap = [
+                    '-' => '-',
+                    'pending' => 'Perlu Dikirim',
+                    'process' => 'Dalam Pengiriman',
+                    'done' => 'Diterima',
+                ];
+
+                // Perbaiki format tanggal
+                $tanggal = null;
+                if ($p->tanggal) {
+                    if ($p->tanggal instanceof \Carbon\Carbon) {
+                        $tanggal = $p->tanggal->timezone('Asia/Makassar')->format('Y-m-d H:i:s');
+                    } else {
+                        try {
+                            $tanggal = \Carbon\Carbon::parse($p->tanggal)
+                                ->timezone('Asia/Makassar')
+                                ->format('Y-m-d H:i:s');
+                        } catch (\Exception $e) {
+                            $tanggal = $p->tanggal;
+                        }
+                    }
+                }
+
                 return [
                     'id' => $p->id,
                     'no_faktur' => $p->no_faktur,
-                    'tanggal' => $p->tanggal ? $p->tanggal->format('Y-m-d H:i:s') : null,
+                    'tanggal' => $tanggal,
                     'pelanggan' => optional($p->pelanggan)->nama_pelanggan ?? '-',
                     'total' => (float) ($p->total ?? 0),
-                    'status' => $p->status ?? 'belum',
-                    'status_kirim' => $p->status_kirim ?? '-',
+                    'status' => $statusBayarMap[$p->status_bayar] ?? 'belum',
+                    'status_kirim' => $statusKirimMap[$p->status_kirim] ?? '-',
                     'url' => route('penjualan.show', $p->id),
                     'items' => $p->items
                         ->map(fn($it) => optional($it->item)->nama_item ?? ($it->item_id ?? ''))
@@ -264,7 +298,6 @@
             })
             ->toArray();
     @endphp
-
     <script>
         function penjualanPage() {
             return {
@@ -289,7 +322,11 @@
                 init() {},
 
                 formatRupiah(n) {
-                    return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(n || 0);
+                    return new Intl.NumberFormat('id-ID', {
+                        style: 'currency',
+                        currency: 'IDR',
+                        maximumFractionDigits: 0
+                    }).format(n || 0);
                 },
 
                 fmtTanggal(iso) {
@@ -307,16 +344,22 @@
                 filteredList() {
                     const q = this.q.trim().toLowerCase();
                     let list = this.data.filter(r => {
-                        if (q && !(`${r.no_faktur} ${r.pelanggan} ${r.items}`.toLowerCase().includes(q))) return false;
-                        if (this.filters.no_faktur && !r.no_faktur.toLowerCase().includes(this.filters.no_faktur.toLowerCase())) return false;
-                        if (this.filters.pelanggan && !r.pelanggan.toLowerCase().includes(this.filters.pelanggan.toLowerCase())) return false;
-                        if (this.filters.tanggal && r.tanggal && r.tanggal.split(' ')[0] !== this.filters.tanggal) return false;
-                        if (this.filters.status && r.status !== this.filters.status) return false;
+                        if (q && !(`${r.no_faktur} ${r.pelanggan} ${r.items}`.toLowerCase().includes(q)))
+                            return false;
+                        if (this.filters.no_faktur && !r.no_faktur.toLowerCase().includes(this.filters.no_faktur
+                                .toLowerCase()))
+                            return false;
+                        if (this.filters.pelanggan && !r.pelanggan.toLowerCase().includes(this.filters.pelanggan
+                                .toLowerCase()))
+                            return false;
+                        if (this.filters.tanggal && r.tanggal && r.tanggal.split(' ')[0] !== this.filters.tanggal)
+                            return false;
+                        if (this.filters.status && r.status !== this.filters.status)
+                            return false;
                         return true;
                     });
 
                     const dir = this.sortDir === 'asc' ? 1 : -1;
-                    list.sort((a, b) => {
                     list.sort((a, b) => {
                         const va = (a[this.sortBy] ?? '');
                         const vb = (b[this.sortBy] ?? '');
@@ -367,30 +410,35 @@
                     if (this.currentPage > 1) this.currentPage--;
                     this.openActionId = null;
                 },
+
                 next() {
                     if (this.currentPage < this.totalPages()) this.currentPage++;
                     this.openActionId = null;
                 },
 
                 pagesToShow() {
-                    const total = this.totalPages(),
-                        max = this.maxPageButtons,
-                        current = this.currentPage;
-                    if (total <= max) return Array.from({ length: total }, (_, i) => i + 1);
+                    const total = this.totalPages();
+                    const max = this.maxPageButtons;
+                    const current = this.currentPage;
+
+                    if (total <= max) return Array.from({
+                        length: total
+                    }, (_, i) => i + 1);
 
                     const pages = [];
                     const side = Math.floor((max - 3) / 2);
                     const left = Math.max(2, current - side);
                     const right = Math.min(total - 1, current + side);
+
                     pages.push(1);
                     if (left > 2) pages.push('...');
                     for (let i = left; i <= right; i++) pages.push(i);
                     if (right < total - 1) pages.push('...');
                     pages.push(total);
+
                     return pages;
                 },
 
-                // ACTION
                 toggleActions(id) {
                     this.openActionId = (this.openActionId === id) ? null : id;
                 },
@@ -416,19 +464,20 @@
                     this.currentPage = 1;
                 },
 
-                // STATUS BAYAR
                 badgeClass(st) {
                     if (st === 'lunas') return 'bg-green-50 text-green-700 border border-green-200';
                     if (st === 'belum') return 'bg-amber-50 text-amber-700 border border-amber-200';
                     if (st === 'retur') return 'bg-rose-50 text-rose-700 border border-rose-200';
                     return 'bg-slate-50 text-slate-700 border border-slate-200';
                 },
+
                 dotClass(st) {
                     if (st === 'lunas') return 'bg-green-500';
                     if (st === 'belum') return 'bg-amber-500';
                     if (st === 'retur') return 'bg-rose-500';
                     return 'bg-slate-500';
                 },
+
                 statusLabel(st) {
                     if (st === 'lunas') return 'Lunas';
                     if (st === 'belum') return 'Belum Lunas';
@@ -436,13 +485,13 @@
                     return '-';
                 },
 
-                // STATUS KIRIM
                 badgeKirim(st) {
                     if (st === 'Perlu Dikirim') return 'bg-orange-50 text-orange-700 border border-orange-200';
                     if (st === 'Dalam Pengiriman') return 'bg-blue-50 text-blue-700 border border-blue-200';
                     if (st === 'Diterima') return 'bg-green-50 text-green-700 border border-green-200';
                     return 'bg-slate-50 text-slate-600 border border-slate-200';
                 },
+
                 dotKirim(st) {
                     if (st === 'Perlu Dikirim') return 'bg-orange-500';
                     if (st === 'Dalam Pengiriman') return 'bg-blue-500';
@@ -450,10 +499,11 @@
                     return 'bg-slate-500';
                 },
 
-                // DELETE FLOW
                 confirmDelete(item) {
                     this.openActionId = null;
-                    this.deleteItem = { ...item };
+                    this.deleteItem = {
+                        ...item
+                    };
                     this.showDeleteModal = true;
                 },
 
@@ -464,7 +514,7 @@
 
                 async doDelete() {
                     const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
-                    const url = `{{ url('penjualan') }}/${this.deleteItem.id}`;
+                    const url = `{{ url('penjualan') }}/${this.deleteItem.id}/delete`;
 
                     try {
                         const res = await fetch(url, {
@@ -478,16 +528,13 @@
                         if (res.ok) {
                             const idx = this.data.findIndex(d => d.id === this.deleteItem.id);
                             if (idx !== -1) this.data.splice(idx, 1);
+                            alert('Data berhasil dihapus');
                         } else {
-                            const idx2 = this.data.findIndex(d => d.id === this.deleteItem.id);
-                            if (idx2 !== -1) this.data.splice(idx2, 1);
-                            alert('Hapus gagal di server, item dihapus di UI.');
+                            alert('Gagal menghapus data');
                         }
                     } catch (e) {
                         console.error('Delete error', e);
-                        const idx3 = this.data.findIndex(d => d.id === this.deleteItem.id);
-                        if (idx3 !== -1) this.data.splice(idx3, 1);
-                        alert('Terjadi kesalahan koneksi, item dihapus di UI.');
+                        alert('Terjadi kesalahan koneksi');
                     } finally {
                         this.closeDelete();
                         if (this.currentPage > this.totalPages()) this.currentPage = this.totalPages();

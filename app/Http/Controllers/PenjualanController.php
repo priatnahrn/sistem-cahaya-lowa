@@ -7,6 +7,7 @@ use App\Models\Item;
 use App\Models\ItemGudang;
 use App\Models\ItemPenjualan;
 use App\Models\Pelanggan;
+use App\Models\Pengiriman;
 use App\Models\Penjualan;
 use App\Models\Satuan;
 use Illuminate\Http\Request;
@@ -18,7 +19,10 @@ class PenjualanController extends Controller
 {
     public function index()
     {
-        $penjualans = Penjualan::with('pelanggan')->orderBy('tanggal', 'desc')->paginate(10);
+        $penjualans = Penjualan::with(['pelanggan', 'items.item'])
+            ->orderBy('tanggal', 'desc')
+            ->get(); // Gunakan get() karena sudah ada pagination di Alpine.js
+
         return view('auth.penjualan.index', compact('penjualans'));
     }
 
@@ -26,7 +30,10 @@ class PenjualanController extends Controller
     {
         $pelanggans = Pelanggan::orderBy('nama_pelanggan')->get();
         $gudangs = Gudang::orderBy('nama_gudang')->get();
-        $items = Item::orderBy('nama_item')->get();
+        $items = Item::with(['gudangItems.gudang', 'gudangItems.satuan'])
+            ->orderBy('nama_item')
+            ->get();
+
 
         // preview no faktur
         $today = now()->format('dmy');
@@ -50,106 +57,100 @@ class PenjualanController extends Controller
     public function store(Request $request)
     {
         $data = $request->validate([
-            'pelanggan_id' => 'nullable|exists:pelanggans,id',
-            'no_faktur'    => 'required|string|max:191',
-            'tanggal'      => 'required|date',
-            'deskripsi'    => 'nullable|string',
-            'is_walkin'    => 'nullable|boolean',
-            'force_walkin' => 'nullable|boolean',
-            'biaya_transport' => 'nullable|numeric',
-            'sub_total'    => 'required|numeric',
-            'total'        => 'required|numeric',
-            'items'        => 'required|array|min:1',
-            'items.*.item_id' => 'required|exists:items,id',
-            'items.*.gudang_id' => 'required|exists:gudangs,id',
-            'items.*.satuan_id' => 'required|exists:satuans,id',
-            'items.*.jumlah' => 'required|numeric|min:0.01',
-            'items.*.harga' => 'required|numeric|min:0',
-            'items.*.total' => 'required|numeric|min:0',
+            'pelanggan_id'        => 'nullable|exists:pelanggans,id',
+            'no_faktur'           => 'required|string|max:191',
+            'tanggal'             => 'required|date',
+            'deskripsi'           => 'nullable|string',
+            'is_walkin'           => 'nullable|boolean',
+            'biaya_transport'     => 'nullable|numeric|min:0',
+            'sub_total'           => 'required|numeric|min:0',
+            'total'               => 'required|numeric|min:0',
+            'mode'                => 'required|in:ambil,antar',
+            'items'               => 'required|array|min:1',
+            'items.*.item_id'     => 'required|exists:items,id',
+            'items.*.gudang_id'   => 'required|exists:gudangs,id',
+            'items.*.satuan_id'   => 'required|exists:satuans,id',
+            'items.*.jumlah'      => 'required|numeric|min:0.01',
+            'items.*.harga'       => 'required|numeric|min:0',
+            'items.*.total'       => 'required|numeric|min:0',
         ]);
 
         DB::beginTransaction();
         try {
-            $isWalkin = (bool) ($request->input('force_walkin') || $request->input('is_walkin'));
             $pelangganId = $request->input('pelanggan_id');
 
-            // create penjualan
+            // Status default
+            $statusBayar = 'unpaid';
+
+            // Simpan header penjualan
             $penjualan = Penjualan::create([
-                'no_faktur' => $data['no_faktur'],
-                'tanggal' => $data['tanggal'],
-                'pelanggan_id' => $pelangganId,
-                'deskripsi' => $data['deskripsi'] ?? null,
-                'sub_total' => $data['sub_total'],
+                'no_faktur'       => $data['no_faktur'],
+                'tanggal'         => $data['tanggal'] . ' ' . now()->format('H:i:s'),
+                'pelanggan_id'    => $pelangganId,
+                'deskripsi'       => $data['deskripsi'] ?? null,
+                'sub_total'       => $data['sub_total'],
                 'biaya_transport' => $data['biaya_transport'] ?? 0,
-                'total' => $data['total'],
-                'status_bayar' => 'belum lunas',
-                'status_kirim' => '-',
-                'created_by' => Auth::id() ?? null,
+                'total'           => $data['total'],
+                'status_bayar'    => $statusBayar,
+                'mode'            => $data['mode'],
+                'created_by'      => Auth::id(),
             ]);
 
+            // Simpan detail item penjualan + kurangi stok
             foreach ($data['items'] as $it) {
-                // server-side resolve price for security
-                $satuan = Satuan::find($it['satuan_id']);
-                $hargaRetail = (float) ($satuan->harga_retail ?? 0);
-                $partaiKecil = (float) ($satuan->partai_kecil ?? 0);
-                $hargaGrosir = (float) ($satuan->harga_grosir ?? 0);
-
-                if ($isWalkin) {
-                    $resolved = $partaiKecil ?: $hargaRetail ?: $hargaGrosir;
-                } else {
-                    if ($pelangganId) {
-                        $resolved = $hargaGrosir ?: $partaiKecil ?: $hargaRetail;
-                    } else {
-                        $resolved = $hargaRetail ?: $partaiKecil ?: $hargaGrosir;
-                    }
-                }
-
-                $finalHarga = $resolved;
-
-                // create item_penjualan
                 ItemPenjualan::create([
                     'penjualan_id' => $penjualan->id,
-                    'item_id' => $it['item_id'],
-                    'gudang_id' => $it['gudang_id'],
-                    'satuan_id' => $it['satuan_id'],
-                    'jumlah' => $it['jumlah'],
-                    'harga' => $finalHarga,
-                    'total' => $finalHarga * $it['jumlah'],
-                    'created_by' => Auth::id() ?? null,
+                    'item_id'      => $it['item_id'],
+                    'gudang_id'    => $it['gudang_id'],
+                    'satuan_id'    => $it['satuan_id'],
+                    'jumlah'       => $it['jumlah'],
+                    'harga'        => $it['harga'],
+                    'total'        => $it['total'],
+                    'created_by'   => Auth::id(),
                 ]);
 
-                // update stok di ItemGudang
                 $ig = ItemGudang::where('item_id', $it['item_id'])
                     ->where('gudang_id', $it['gudang_id'])
                     ->where('satuan_id', $it['satuan_id'])
+                    ->lockForUpdate()
                     ->first();
 
                 if ($ig) {
                     $ig->stok = max(0, ($ig->stok ?? 0) - $it['jumlah']);
                     $ig->save();
                 } else {
-                    ItemGudang::create([
-                        'item_id' => $it['item_id'],
-                        'gudang_id' => $it['gudang_id'],
-                        'satuan_id' => $it['satuan_id'],
-                        'stok' => 0,
-                    ]);
-                    Log::warning("ItemGudang not found when selling, created empty: item {$it['item_id']} gudang {$it['gudang_id']} satuan {$it['satuan_id']}");
+                    Log::warning("ItemGudang not found: item {$it['item_id']}, gudang {$it['gudang_id']}, satuan {$it['satuan_id']}");
                 }
+            }
+
+            // Kalau mode antar → simpan juga ke daftar pengiriman
+            if ($data['mode'] === 'antar') {
+                Pengiriman::create([
+                    'penjualan_id'  => $penjualan->id,
+                    'tanggal_kirim' => null, // bisa dijadwalkan belakangan
+                    'alamat'        => $penjualan->pelanggan?->alamat ?? null,
+                    'status'        => 'pending',
+                    'created_by'    => Auth::id(),
+                ]);
             }
 
             DB::commit();
 
             return response()->json([
-                'message' => 'Penjualan tersimpan',
-                'id' => $penjualan->id,
+                'message' => 'Penjualan berhasil disimpan',
+                'id'      => $penjualan->id,
             ], 201);
         } catch (\Throwable $e) {
             DB::rollBack();
-            Log::error('Penjualan store error: ' . $e->getMessage(), ['payload' => $request->all()]);
-            return response()->json(['message' => 'Gagal menyimpan penjualan', 'error' => $e->getMessage()], 500);
+            Log::error('Penjualan store error: ' . $e->getMessage());
+
+            return response()->json([
+                'message' => 'Gagal menyimpan penjualan',
+                'error'   => $e->getMessage()
+            ], 500);
         }
     }
+
 
     /**
      * API: Search items by nama or kode
@@ -309,5 +310,166 @@ class PenjualanController extends Controller
             'partai_kecil' => $partaiKecil,
             'harga_grosir' => $hargaGrosir,
         ]);
+    }
+
+
+    public function show($id)
+    {
+        $penjualan = Penjualan::with([
+            'pelanggan',
+            'items' => function ($query) {
+                $query->with([
+                    'item' => function ($q) {
+                        $q->with([
+                            'gudangItems' => function ($gq) {
+                                $gq->with(['gudang', 'satuan']);
+                            }
+                        ]);
+                    },
+                    'gudang',
+                    'satuan'
+                ]);
+            }
+        ])->findOrFail($id);
+
+        // Debug - hapus setelah berhasil
+        Log::info('Penjualan Data:', [
+            'id' => $penjualan->id,
+            'items_count' => $penjualan->items->count(),
+            'first_item' => $penjualan->items->first() ? [
+                'id' => $penjualan->items->first()->id,
+                'item_id' => $penjualan->items->first()->item_id,
+                'item_name' => $penjualan->items->first()->item->nama_item ?? 'NULL',
+                'gudang_items_count' => $penjualan->items->first()->item->gudangItems->count() ?? 0
+            ] : null
+        ]);
+
+        $gudangs = Gudang::all();
+        $items = Item::with(['gudangItems.gudang', 'gudangItems.satuan'])->get();
+
+        return view('auth.penjualan.show', [
+            'penjualan' => $penjualan,
+            'gudangs' => $gudangs,
+            'items' => $items,
+        ]);
+    }
+
+
+    public function update(Request $request, $id)
+    {
+        $penjualan = Penjualan::findOrFail($id);
+
+        $data = $request->validate([
+            'pelanggan_id'        => 'nullable|exists:pelanggans,id',
+            'no_faktur'           => 'required|string',
+            'tanggal'             => 'required|date',
+            'deskripsi'           => 'nullable|string',
+            'biaya_transport'     => 'nullable|numeric|min:0',
+            'mode'                => 'required|in:ambil,antar',
+            'status_bayar'        => 'nullable|in:paid,unpaid,return',
+            'sub_total'           => 'required|numeric|min:0',
+            'total'               => 'required|numeric|min:0',
+            'items'               => 'required|array|min:1',
+            'items.*.id'          => 'nullable|exists:item_penjualans,id',
+            'items.*.item_id'     => 'required|exists:items,id',
+            'items.*.gudang_id'   => 'required|exists:gudangs,id',
+            'items.*.satuan_id'   => 'required|exists:satuans,id',
+            'items.*.jumlah'      => 'required|numeric|min:1',
+            'items.*.harga'       => 'required|numeric|min:0',
+        ]);
+
+        DB::beginTransaction();
+        try {
+            $penjualan->update([
+                'pelanggan_id'    => $data['pelanggan_id'],
+                'no_faktur'       => $data['no_faktur'],
+                'tanggal'         => $data['tanggal'],
+                'deskripsi'       => $data['deskripsi'],
+                'mode'            => $data['mode'],
+                'sub_total'       => $data['sub_total'],
+                'biaya_transport' => $data['biaya_transport'] ?? 0,
+                'total'           => $data['total'],
+                'status_bayar'    => $data['status_bayar'] ?? $penjualan->status_bayar,
+                'updated_by'      => Auth::id(),
+            ]);
+
+            // Collect submitted item IDs
+            $submittedIds = collect($data['items'])->pluck('id')->filter()->toArray();
+
+            // Delete items removed from form
+            $deletedItems = $penjualan->items()->whereNotIn('id', $submittedIds)->get();
+            foreach ($deletedItems as $deleted) {
+                $ig = ItemGudang::where('item_id', $deleted->item_id)
+                    ->where('gudang_id', $deleted->gudang_id)
+                    ->where('satuan_id', $deleted->satuan_id)
+                    ->lockForUpdate()
+                    ->first();
+                if ($ig) {
+                    $ig->stok += $deleted->jumlah;
+                    $ig->save();
+                }
+                $deleted->delete();
+            }
+
+            // Update or Insert items
+            foreach ($data['items'] as $it) {
+                if (!empty($it['id'])) {
+                    $existing = ItemPenjualan::find($it['id']);
+                    if ($existing) {
+                        $oldJumlah = $existing->jumlah;
+                        $existing->update([
+                            'item_id'    => $it['item_id'],
+                            'gudang_id'  => $it['gudang_id'],
+                            'satuan_id'  => $it['satuan_id'],
+                            'jumlah'     => $it['jumlah'],
+                            'harga'      => $it['harga'],
+                            'total'      => $it['jumlah'] * $it['harga'],
+                            'updated_by' => Auth::id(),
+                        ]);
+
+                        $diff = $it['jumlah'] - $oldJumlah;
+                        if ($diff != 0) {
+                            $ig = ItemGudang::where('item_id', $it['item_id'])
+                                ->where('gudang_id', $it['gudang_id'])
+                                ->where('satuan_id', $it['satuan_id'])
+                                ->lockForUpdate()
+                                ->first();
+                            if ($ig) {
+                                $ig->stok = max(0, ($ig->stok ?? 0) - $diff);
+                                $ig->save();
+                            }
+                        }
+                    }
+                } else {
+                    ItemPenjualan::create([
+                        'penjualan_id' => $penjualan->id,
+                        'item_id'      => $it['item_id'],
+                        'gudang_id'    => $it['gudang_id'],
+                        'satuan_id'    => $it['satuan_id'],
+                        'jumlah'       => $it['jumlah'],
+                        'harga'        => $it['harga'],
+                        'total'        => $it['jumlah'] * $it['harga'],
+                        'created_by'   => Auth::id(),
+                    ]);
+
+                    $ig = ItemGudang::where('item_id', $it['item_id'])
+                        ->where('gudang_id', $it['gudang_id'])
+                        ->where('satuan_id', $it['satuan_id'])
+                        ->lockForUpdate()
+                        ->first();
+                    if ($ig) {
+                        $ig->stok = max(0, ($ig->stok ?? 0) - $it['jumlah']);
+                        $ig->save();
+                    }
+                }
+            }
+
+            DB::commit();
+            return response()->json(['message' => 'Penjualan berhasil diperbarui']);
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            Log::error('Update error: ' . $e->getMessage());
+            return response()->json(['message' => 'Gagal update', 'error' => $e->getMessage()], 500);
+        }
     }
 }

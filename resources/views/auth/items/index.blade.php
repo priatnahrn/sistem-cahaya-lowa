@@ -227,26 +227,21 @@
 
                                 <td class="px-4 py-3" x-text="r.kategori"></td>
                                 <td class="px-4 py-3">
-                                    <span x-text="r.stock ?? '-'"></span>
 
-                                    <!-- Kosong -->
+                                    <!-- Total base unit -->
+                                    <span x-text="formatStok(r.stock)"></span>
+
+
+                                    <!-- Status stok -->
                                     <span x-show="r.stock === 0"
-                                        class="ml-2 px-2 py-1 bg-red-100 text-red-700 text-xs rounded">
-                                        Kosong
-                                    </span>
-
-                                    <!-- Perlu Pembelian -->
+                                        class="ml-2 px-2 py-1 bg-red-100 text-red-700 text-xs rounded">Kosong</span>
                                     <span x-show="r.stock > 0 && r.stock <= r.stok_minimal"
-                                        class="ml-2 px-2 py-1 bg-yellow-100 text-yellow-700 text-xs rounded">
-                                        Perlu Pembelian
-                                    </span>
-
-                                    <!-- Aman -->
+                                        class="ml-2 px-2 py-1 bg-yellow-100 text-yellow-700 text-xs rounded">Perlu
+                                        Pembelian</span>
                                     <span x-show="r.stock > r.stok_minimal"
-                                        class="ml-2 px-2 py-1 bg-green-100 text-green-700 text-xs rounded">
-                                        Aman
-                                    </span>
+                                        class="ml-2 px-2 py-1 bg-green-100 text-green-700 text-xs rounded">Aman</span>
                                 </td>
+
 
 
                                 {{-- SATUAN --}}
@@ -363,15 +358,22 @@
                     'kode' => $it->kode_item,
                     'nama' => $it->nama_item,
                     'kategori' => optional($it->kategori)->nama_kategori,
-                    'stock' => $it->gudangItems->sum('total_stok'), // ambil total stok dari relasi
-                    'stok_minimal' => $it->stok_minimal,
+
+                    // total_stok = sum semua gudang dalam base unit
+                    'stock' => (int) $it->gudangItems->sum('total_stok'),
+
+                    'stok_minimal' => (int) ($it->stok_minimal ?? 0),
                     'foto_path' => $it->foto_path,
                     'url' => route('items.show', $it->id),
-                    'satuans' => $it->satuans
+
+                    // ✅ group per satuan_id
+                    'satuans' => $it->gudangItems
+                        ->groupBy('satuan_id')
                         ->map(
-                            fn($s) => [
-                                'id' => $s->id,
-                                'nama_satuan' => $s->nama_satuan,
+                            fn($group) => [
+                                'id' => $group->first()->satuan_id,
+                                'nama_satuan' => $group->first()->satuan->nama_satuan,
+                                'stok' => $group->sum('stok'), // jumlah semua gudang utk satuan ini
                             ],
                         )
                         ->values()
@@ -379,6 +381,7 @@
                 ],
             )
             ->toArray();
+
     @endphp
 
 
@@ -411,6 +414,17 @@
                 // Get unique categories for dropdown
                 getUniqueCategories() {
                     return [...new Set(this.data.map(item => item.kategori).filter(Boolean))].sort();
+                },
+                formatStok(val) {
+                    if (val == null || val === '') return '0';
+                    const num = parseFloat(val);
+                    if (Number.isInteger(num)) {
+                        return num.toString();
+                    }
+                    return num.toLocaleString('id-ID', {
+                        minimumFractionDigits: 0,
+                        maximumFractionDigits: 2
+                    }).replace('.', ',');
                 },
 
 

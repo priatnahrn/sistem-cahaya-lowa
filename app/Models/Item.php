@@ -53,4 +53,9 @@ class Item extends Model
     {
         return $this->hasMany(ItemGudang::class, 'item_id');
     }
+
+    public function penjualans()
+    {
+        return $this->hasMany(ItemPenjualan::class, 'item_id');
+    }
 }
