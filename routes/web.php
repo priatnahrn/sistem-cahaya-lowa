@@ -39,6 +39,7 @@ Route::middleware('auth')->group(function () {
         Route::post('/store', [PenjualanController::class, 'store'])->name('penjualan.store');
         Route::get('/{id}', [PenjualanController::class, 'show'])->name('penjualan.show');
         Route::get('/items/search', [PenjualanController::class, 'searchItems']);
+        Route::get('/{id}/print', [PenjualanController::class, 'print'])->name('penjualan.print');
         Route::put('/{id}/update', [PenjualanController::class, 'update'])->name('penjualan.update');
         Route::get('/{id}/last-price', [PenjualanController::class, 'getLastPrice'])->name('penjualan.last_price');
         Route::delete('/{id}/delete', [PenjualanController::class, 'destroy'])->name('penjualan.destroy');
@@ -52,8 +53,8 @@ Route::middleware('auth')->group(function () {
         Route::put('/{id}/update', [PengirimanController::class, 'update'])->name('pengiriman.update');
         Route::delete('/{id}/delete', [PengirimanController::class, 'destroy'])->name('pengiriman.destroy');
     });
-    
-    
+
+
     Route::get('/items/barcode/{barcode}', [PenjualanController::class, 'getItemByBarcode']);
     Route::get('/items/stock', [PenjualanController::class, 'getStock']);
     Route::get('/items/price', [PenjualanController::class, 'getPrice']);
@@ -114,6 +115,16 @@ Route::middleware('auth')->group(function () {
         Route::delete('/{id}/delete', [SupplierController::class, 'destroy'])->name('supplier.destroy');
     });
 
+    Route::prefix('pelanggan')->group(function () {
+        Route::get('/', [PelangganController::class, 'index'])->name('pelanggan.index');
+        Route::get('/create', [PelangganController::class, 'create'])->name('pelanggan.create');
+        Route::post('/store', [PelangganController::class, 'store'])->name('pelanggan.store');
+        Route::get('/search', [PelangganController::class, 'search'])->name('pelanggan.search');
+        Route::get('/{id}', [PelangganController::class, 'show'])->name('pelanggan.show');
+        Route::put('/{id}/update', [PelangganController::class, 'update'])->name('pelanggan.update');
+        Route::delete('/{id}/delete', [PelangganController::class, 'destroy'])->name('pelanggan.destroy');
+    });
+
 
 
     Route::prefix('items')->name('items.')->group(function () {
@@ -139,16 +150,6 @@ Route::middleware('auth')->group(function () {
         Route::delete('/{id}', [ItemController::class, 'destroy'])->name('destroy');
     });
 
-
-    Route::prefix('pelanggan')->group(function () {
-        Route::get('/', [PelangganController::class, 'index'])->name('pelanggan.index');
-        Route::get('/create', [PelangganController::class, 'create'])->name('pelanggan.create');
-        Route::post('/store', [PelangganController::class, 'store'])->name('pelanggan.store');
-        Route::get('/search', [PelangganController::class, 'search'])->name('pelanggan.search');
-        Route::get('/{id}', [PelangganController::class, 'show'])->name('pelanggan.show');
-        Route::put('/{id}/update', [PelangganController::class, 'update'])->name('pelanggan.update');
-        Route::delete('/{id}/delete', [PelangganController::class, 'destroy'])->name('pelanggan.destroy');
-    });
 
     Route::get('/profil', function () {
         return view('auth.profil.index'); // buat view profil/index.blade.php

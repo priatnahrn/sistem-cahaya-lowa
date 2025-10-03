@@ -23,6 +23,7 @@ return new class extends Migration
             $table->decimal('total', 15, 2);
             $table->enum('status_bayar', ['paid', 'unpaid', 'return'])->default('unpaid');
             $table->enum('mode', ['ambil', 'antar'])->default('ambil');
+            $table->boolean('is_draft')->default(false);
             $table->foreignId('created_by')->nullable()->constrained('users')->nullOnDelete();
             $table->foreignId('updated_by')->nullable()->constrained('users')->nullOnDelete();
             $table->timestamps();

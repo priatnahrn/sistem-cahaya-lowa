@@ -11,9 +11,9 @@ class Pengiriman extends Model
     
     protected $fillable = [
         'penjualan_id',
-        'tanggal_kirim',
-        'alamat',
-        'status',
+        'no_pengiriman',
+        'tanggal_pengiriman',
+        'status_pengiriman',
         'created_by',
     ];
 

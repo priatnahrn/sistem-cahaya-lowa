@@ -128,7 +128,7 @@
                             <th class="px-4 py-3 text-right cursor-pointer" @click="toggleSort('total')">Total <i
                                     class="fa-solid" :class="sortIcon('total')"></i></th>
                             <th class="px-4 py-3">Status Bayar</th>
-                            <th class="px-4 py-3">Status Kirim</th>
+                            <th class="px-4 py-3">Status Pengiriman</th>
                             <th class="px-2 py-3"></th>
                         </tr>
                     </thead>
@@ -149,12 +149,18 @@
                                     </span>
                                 </td>
                                 <td class="px-4 py-3">
-                                    <span
-                                        class="inline-flex items-center gap-2 text-xs font-medium px-2.5 py-1 rounded-full"
-                                        :class="badgeKirim(r.status_kirim)">
-                                        <span class="w-2 h-2 rounded-full" :class="dotKirim(r.status_kirim)"></span>
-                                        <span x-text="r.status_kirim"></span>
-                                    </span>
+                                    <template x-if="r.status_pengiriman !== '-'">
+                                        <span
+                                            class="inline-flex items-center gap-2 text-xs font-medium px-2.5 py-1 rounded-full"
+                                            :class="badgeKirim(r.status_pengiriman)">
+                                            <span class="w-2 h-2 rounded-full"
+                                                :class="dotKirim(r.status_pengiriman)"></span>
+                                            <span x-text="r.status_pengiriman"></span>
+                                        </span>
+                                    </template>
+                                    <template x-if="r.status_pengiriman === '-'">
+                                        <span class="text-slate-400">-</span>
+                                    </template>
                                 </td>
                                 <td class="px-2 py-3 text-right relative">
                                     <button type="button" @click="toggleActions(r.id)"
@@ -250,45 +256,40 @@
     @php
         $penjualansJson = $penjualans
             ->map(function ($p) {
-                // Map status_bayar dari ENUM database ke label yang user-friendly
                 $statusBayarMap = [
                     'paid' => 'lunas',
                     'unpaid' => 'belum',
                     'return' => 'retur',
                 ];
 
-                // Map status_kirim dari ENUM database
                 $statusKirimMap = [
-                    '-' => '-',
-                    'pending' => 'Perlu Dikirim',
-                    'process' => 'Dalam Pengiriman',
-                    'done' => 'Diterima',
+                    'perlu_dikirim' => 'Perlu Diantar',
+                    'dalam_pengiriman' => 'Dalam Pengiriman',
+                    'diterima' => 'Diterima',
                 ];
 
-                // Perbaiki format tanggal
-                $tanggal = null;
-                if ($p->tanggal) {
-                    if ($p->tanggal instanceof \Carbon\Carbon) {
-                        $tanggal = $p->tanggal->timezone('Asia/Makassar')->format('Y-m-d H:i:s');
-                    } else {
-                        try {
-                            $tanggal = \Carbon\Carbon::parse($p->tanggal)
-                                ->timezone('Asia/Makassar')
-                                ->format('Y-m-d H:i:s');
-                        } catch (\Exception $e) {
-                            $tanggal = $p->tanggal;
-                        }
-                    }
+                // format tanggal
+                $tanggal =
+                    $p->tanggal instanceof \Carbon\Carbon
+                        ? $p->tanggal->timezone('Asia/Makassar')->format('Y-m-d H:i:s')
+                        : $p->tanggal ?? null;
+
+                // tentukan status pengiriman
+                $statusPengiriman = '-';
+                if ($p->mode === 'antar') {
+                    $statusPengiriman = $p->pengiriman
+                        ? $statusKirimMap[$p->pengiriman->status_pengiriman] ?? '-'
+                        : 'Perlu Diantar'; // default kalau record pengiriman ada tapi status kosong
                 }
 
                 return [
                     'id' => $p->id,
                     'no_faktur' => $p->no_faktur,
                     'tanggal' => $tanggal,
-                    'pelanggan' => optional($p->pelanggan)->nama_pelanggan ?? '-',
+                    'pelanggan' => optional($p->pelanggan)->nama_pelanggan ?? 'Customer',
                     'total' => (float) ($p->total ?? 0),
                     'status' => $statusBayarMap[$p->status_bayar] ?? 'belum',
-                    'status_kirim' => $statusKirimMap[$p->status_kirim] ?? '-',
+                    'status_pengiriman' => $statusPengiriman, // 👈 ini yg dipakai
                     'url' => route('penjualan.show', $p->id),
                     'items' => $p->items
                         ->map(fn($it) => optional($it->item)->nama_item ?? ($it->item_id ?? ''))
@@ -297,6 +298,7 @@
                 ];
             })
             ->toArray();
+
     @endphp
     <script>
         function penjualanPage() {
@@ -486,18 +488,18 @@
                 },
 
                 badgeKirim(st) {
-                    if (st === 'Perlu Dikirim') return 'bg-orange-50 text-orange-700 border border-orange-200';
+                    if (st === 'Perlu Diantar') return 'bg-orange-50 text-orange-700 border border-orange-200';
                     if (st === 'Dalam Pengiriman') return 'bg-blue-50 text-blue-700 border border-blue-200';
                     if (st === 'Diterima') return 'bg-green-50 text-green-700 border border-green-200';
                     return 'bg-slate-50 text-slate-600 border border-slate-200';
                 },
-
                 dotKirim(st) {
-                    if (st === 'Perlu Dikirim') return 'bg-orange-500';
+                    if (st === 'Perlu Diantar') return 'bg-orange-500';
                     if (st === 'Dalam Pengiriman') return 'bg-blue-500';
                     if (st === 'Diterima') return 'bg-green-500';
                     return 'bg-slate-500';
                 },
+
 
                 confirmDelete(item) {
                     this.openActionId = null;

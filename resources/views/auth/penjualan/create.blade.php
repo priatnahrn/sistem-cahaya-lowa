@@ -373,19 +373,20 @@
 
                 {{-- Tombol Aksi --}}
                 <div class="flex gap-3">
-                    <a href="{{ route('penjualan.index') }}"
-                        class="px-5 py-2.5 rounded-lg border border-slate-300 text-slate-600 hover:bg-slate-50 transition">
-                        Batal
-                    </a>
+                    <button @click="saveDraft" type="button"
+                        class="px-5 py-2.5 rounded-lg border border-yellow-500 text-yellow-500 hover:bg-yellow-500 transition">
+                        Pending
+                    </button>
+
                     <button @click="save" type="button" :disabled="!isValid()"
                         class="flex-1 px-5 py-2.5 rounded-lg text-white font-medium transition"
                         :class="isValid() ?
-                            'bg-blue-600 hover:bg-blue-700 cursor-pointer shadow-sm hover:shadow-md' :
+                            'bg-[#334976] hover:bg-[#2d3f6d] cursor-pointer shadow-sm hover:shadow-md' :
                             'bg-gray-300 cursor-not-allowed opacity-60'">
-                        <i class="fa-solid fa-save mr-2"></i>
-                        Simpan Penjualan
+                        Simpan
                     </button>
                 </div>
+
             </div>
         </div>
 
@@ -432,6 +433,33 @@
                 </div>
             </div>
         </div>
+
+
+        <div x-show="showPrintModal" x-cloak class="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+            <div class="bg-white rounded-lg shadow-lg w-full max-w-md p-6">
+                <h2 class="text-lg font-semibold mb-4">Penjualan Berhasil Disimpan</h2>
+                <p class="text-slate-600 mb-6">Pilih opsi berikut:</p>
+
+                <div class="flex flex-col gap-3">
+                    <a :href="`/penjualan/${savedPenjualanId}/print?type=kecil`" target="_blank"
+                        class="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-center">
+                        <i class="fa-solid fa-receipt mr-2"></i> Print Nota Kecil
+                    </a>
+                    <a :href="`/penjualan/${savedPenjualanId}/print?type=besar`" target="_blank"
+                        class="px-4 py-2 rounded-lg bg-green-600 hover:bg-green-700 text-white text-center">
+                        <i class="fa-solid fa-file-invoice mr-2"></i> Print Nota Besar
+                    </a>
+                    <button @click="window.location.href='/penjualan'"
+                        class="px-4 py-2 rounded-lg border border-slate-300 text-slate-600">
+                        Simpan Saja
+                    </button>
+                </div>
+            </div>
+        </div>
+
+
+
+
     </div>
 
     @php
@@ -449,13 +477,17 @@
                                 'satuan_id' => $ig->satuan?->id,
                                 'nama_satuan' => $ig->satuan?->nama_satuan,
                                 'stok' => $ig->stok,
-                                'harga_retail' => $ig->harga_retail ?? 0,
+                                // 👇 ambil harga langsung dari relasi satuan, sama kayak di update
+                                'harga_retail' => $ig->satuan?->harga_retail ?? 0,
+                                'harga_partai_kecil' => $ig->satuan?->partai_kecil ?? 0,
+                                'harga_grosir' => $ig->satuan?->harga_grosir ?? 0,
                             ],
                         )
                         ->toArray(),
                 ],
             )
             ->toArray();
+
     @endphp
 
 
@@ -496,6 +528,10 @@
 
                 allItems: [],
 
+                savedPenjualanId: null,
+                showPrintModal: false,
+
+
                 // === INIT ===
                 init() {
                     this.form.no_faktur = this.$el.getAttribute('data-no-faktur') || '';
@@ -527,38 +563,27 @@
                 getPriceFromSelected(selected, level, is_walkin, mode) {
                     if (!selected) return 0;
 
-                    // Customer umum (walk-in)
+                    // customer umum → retail
                     if (!level || is_walkin) return Number(selected.harga_retail || 0);
 
-                    level = level.toString().toLowerCase();
+                    level = level.toLowerCase();
 
-                    if (level === 'retail') {
-                        return Number(selected.harga_retail || 0);
+                    if (level === 'grosir') {
+                        return mode === 'ambil' ?
+                            (Number(selected.harga_partai_kecil) || Number(selected.harga_retail) || 0) :
+                            (Number(selected.harga_grosir) || Number(selected.harga_retail) || 0);
                     }
 
                     if (level === 'partai_kecil') {
-                        if (mode === 'antar') {
-                            // partai kecil + antar → grosir
-                            return Number(selected.harga_grosir ?? selected.partai_kecil ?? selected.harga_retail ?? 0);
-                        } else {
-                            // partai kecil + ambil → partai kecil
-                            return Number(selected.partai_kecil ?? selected.harga_retail ?? 0);
-                        }
+                        return mode === 'ambil' ?
+                            (Number(selected.harga_partai_kecil) || Number(selected.harga_retail) || 0) :
+                            (Number(selected.harga_grosir) || Number(selected.harga_retail) || 0);
                     }
 
-                    if (level === 'grosir') {
-                        if (mode === 'ambil') {
-                            // grosir + ambil → partai kecil
-                            return Number(selected.partai_kecil ?? selected.harga_retail ?? 0);
-                        } else {
-                            // grosir + antar → grosir
-                            return Number(selected.harga_grosir ?? selected.partai_kecil ?? selected.harga_retail ?? 0);
-                        }
-                    }
-
-                    // default fallback
+                    // default retail
                     return Number(selected.harga_retail || 0);
                 },
+
 
 
                 // === Manual Add ===
@@ -752,6 +777,7 @@
                     }
                 },
 
+
                 // === ITEMS / SCANNER ===
                 async handleBarcode(e) {
                     const code = e.target.value.trim();
@@ -898,20 +924,13 @@
                         return;
                     }
 
-                    // Validasi stok
                     for (let i = 0; i < this.form.items.length; i++) {
                         const item = this.form.items[i];
                         if (item.jumlah > item.stok) {
-                            alert(
-                                `Stok tidak cukup untuk item: ${item.query}\nStok tersedia: ${this.formatStok(item.stok)}\nJumlah diminta: ${item.jumlah}`
-                            );
+                            alert(`Stok tidak cukup untuk item: ${item.query}`);
                             return;
                         }
                     }
-
-                    // === SESUAIKAN ENUM DENGAN MIGRATION ===
-                    let statusKirim = this.form.mode === 'antar' ? 'pending' : '-';
-                    let statusBayar = 'unpaid';
 
                     const payload = {
                         pelanggan_id: this.form.pelanggan_id,
@@ -922,9 +941,9 @@
                         biaya_transport: this.form.biaya_transport,
                         sub_total: this.subTotal,
                         total: this.totalPembayaran,
-                        mode: this.form.mode, // kirim juga ke backend biar konsisten
-                        status_kirim: statusKirim,
-                        status_bayar: statusBayar,
+                        mode: this.form.mode,
+                        status_bayar: 'unpaid',
+                        is_draft: false,
                         items: this.form.items.map(i => ({
                             item_id: i.item_id,
                             gudang_id: i.gudang_id,
@@ -935,8 +954,6 @@
                         }))
                     };
 
-                    console.log('Payload yang akan dikirim:', payload);
-                    
                     try {
                         const res = await fetch('/penjualan/store', {
                             method: 'POST',
@@ -954,13 +971,17 @@
                             return;
                         }
 
-                        alert('Penjualan berhasil disimpan!');
-                        window.location.href = '/penjualan';
+                        // === Simpan sukses, munculkan popup print ===
+                        this.savedPenjualanId = result.id; // simpan id buat ke route print
+                        this.showPrintModal = true;
+
                     } catch (err) {
                         console.error('Error save:', err);
                         alert('Terjadi kesalahan saat menyimpan penjualan.');
                     }
-                }
+                },
+
+
             }
         }
     </script>
