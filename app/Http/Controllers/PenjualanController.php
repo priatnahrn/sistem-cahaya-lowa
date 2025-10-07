@@ -10,10 +10,12 @@ use App\Models\Pelanggan;
 use App\Models\Pengiriman;
 use App\Models\Penjualan;
 use App\Models\Satuan;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Picqer\Barcode\BarcodeGeneratorSVG;
 
 class PenjualanController extends Controller
 {
@@ -68,19 +70,14 @@ class PenjualanController extends Controller
             'sub_total'       => 'required|numeric|min:0',
             'total'           => 'required|numeric|min:0',
             'mode'            => 'required|in:ambil,antar',
+            'items'           => 'required|array|min:1',
+            'items.*.item_id' => 'required|exists:items,id',
+            'items.*.gudang_id' => 'required|exists:gudangs,id',
+            'items.*.satuan_id' => 'required|exists:satuans,id',
+            'items.*.jumlah'    => 'required|numeric|min:0.01',
+            'items.*.harga'     => 'required|numeric|min:0',
+            'items.*.total'     => 'required|numeric|min:0',
         ];
-
-        if (!$isDraft) {
-            $rules = array_merge($rules, [
-                'items'             => 'required|array|min:1',
-                'items.*.item_id'   => 'required|exists:items,id',
-                'items.*.gudang_id' => 'required|exists:gudangs,id',
-                'items.*.satuan_id' => 'required|exists:satuans,id',
-                'items.*.jumlah'    => 'required|numeric|min:0.01',
-                'items.*.harga'     => 'required|numeric|min:0',
-                'items.*.total'     => 'required|numeric|min:0',
-            ]);
-        }
 
         $data = $request->validate($rules);
 
@@ -100,20 +97,21 @@ class PenjualanController extends Controller
                 'created_by'      => Auth::id(),
             ]);
 
-            // Kalau bukan draft → simpan item + kurangi stok
-            if (!$isDraft && !empty($data['items'])) {
-                foreach ($data['items'] as $it) {
-                    ItemPenjualan::create([
-                        'penjualan_id' => $penjualan->id,
-                        'item_id'      => $it['item_id'],
-                        'gudang_id'    => $it['gudang_id'],
-                        'satuan_id'    => $it['satuan_id'],
-                        'jumlah'       => $it['jumlah'],
-                        'harga'        => $it['harga'],
-                        'total'        => $it['total'],
-                        'created_by'   => Auth::id(),
-                    ]);
+            // 🟢 Simpan semua item, baik draft maupun tidak
+            foreach ($data['items'] as $it) {
+                ItemPenjualan::create([
+                    'penjualan_id' => $penjualan->id,
+                    'item_id'      => $it['item_id'],
+                    'gudang_id'    => $it['gudang_id'],
+                    'satuan_id'    => $it['satuan_id'],
+                    'jumlah'       => $it['jumlah'],
+                    'harga'        => $it['harga'],
+                    'total'        => $it['total'],
+                    'created_by'   => Auth::id(),
+                ]);
 
+                // 🔒 Kurangi stok hanya jika BUKAN draft
+                if (!$isDraft) {
                     $ig = ItemGudang::where('item_id', $it['item_id'])
                         ->where('gudang_id', $it['gudang_id'])
                         ->where('satuan_id', $it['satuan_id'])
@@ -125,28 +123,33 @@ class PenjualanController extends Controller
                         $ig->save();
                     }
                 }
+            }
 
-                if ($data['mode'] === 'antar') {
-                    Pengiriman::create([
-                        'penjualan_id'       => $penjualan->id,
-                        'no_pengiriman'      => $penjualan->no_faktur,
-                        'tanggal_pengiriman' => $data['tanggal'] . ' ' . now()->format('H:i:s'),
-                        'status_pengiriman'  => 'perlu_dikirim',
-                    ]);
-                }
+            // 🚚 Buat pengiriman hanya jika bukan draft & mode antar
+            if (!$isDraft && $data['mode'] === 'antar') {
+                Pengiriman::create([
+                    'penjualan_id'       => $penjualan->id,
+                    'no_pengiriman'      => $penjualan->no_faktur,
+                    'tanggal_pengiriman' => $data['tanggal'] . ' ' . now()->format('H:i:s'),
+                    'status_pengiriman'  => 'perlu_dikirim',
+                ]);
             }
 
             DB::commit();
+
             return response()->json([
-                'message' => $isDraft ? 'Draft penjualan berhasil disimpan' : 'Penjualan berhasil disimpan',
-                'id'      => $penjualan->id,
+                'message' => $isDraft
+                    ? 'Draft penjualan berhasil disimpan (item juga disimpan, stok belum dikurangi).'
+                    : 'Penjualan berhasil disimpan dan stok dikurangi.',
+                'id' => $penjualan->id,
             ], 201);
         } catch (\Throwable $e) {
             DB::rollBack();
             Log::error('Penjualan store error: ' . $e->getMessage());
+
             return response()->json([
                 'message' => 'Gagal menyimpan penjualan',
-                'error'   => $e->getMessage()
+                'error' => $e->getMessage(),
             ], 500);
         }
     }
@@ -357,23 +360,35 @@ class PenjualanController extends Controller
 
     public function print(Request $request, $id)
     {
-        $type = $request->get('type', 'besar'); // default besar
-        $penjualan = Penjualan::with(['pelanggan', 'items.item', 'items.satuan', 'items.gudang'])
-            ->findOrFail($id);
+        $type = $request->get('type', 'kecil'); // default kecil
+        $penjualan = Penjualan::with(['items.item', 'items.satuan', 'createdBy'])->findOrFail($id);
+
+        // === Generate Barcode dari nomor faktur ===
+        $generator = new BarcodeGeneratorSVG();
+        $barcode = $generator->getBarcode($penjualan->no_faktur, $generator::TYPE_CODE_128);
 
         if ($type === 'kecil') {
-            return view('auth.penjualan.print_kecil', compact('penjualan'));
+            // langsung tampilkan halaman HTML thermal
+            return view('auth.penjualan.print_kecil', compact('penjualan', 'barcode'));
         } else {
-            return view('auth.penjualan.print_besar', compact('penjualan'));
+            // untuk nota besar masih bisa pakai PDF kalau mau
+            $pdf = Pdf::loadView('auth.penjualan.print_besar', compact('penjualan', 'barcode'))
+                ->setPaper([0, 0, 595.28, 420.94], 'landscape');
+            return $pdf->stream("nota-besar-{$penjualan->no_faktur}.pdf");
         }
     }
+
+
 
 
     public function update(Request $request, $id)
     {
         $penjualan = Penjualan::findOrFail($id);
-        $isDraft = $request->boolean('is_draft', false);
 
+        // cek apakah request kirim draft atau tidak
+        $isDraftRequest = $request->boolean('is_draft', false);
+
+        // rules dasar
         $rules = [
             'pelanggan_id'    => 'nullable|exists:pelanggans,id',
             'no_faktur'       => 'required|string',
@@ -386,7 +401,8 @@ class PenjualanController extends Controller
             'total'           => 'required|numeric|min:0',
         ];
 
-        if (!$isDraft) {
+        // kalau bukan draft wajib ada item
+        if (!$isDraftRequest) {
             $rules = array_merge($rules, [
                 'items'             => 'required|array|min:1',
                 'items.*.id'        => 'nullable|exists:item_penjualans,id',
@@ -402,6 +418,17 @@ class PenjualanController extends Controller
 
         DB::beginTransaction();
         try {
+            // 🚀 logika finalisasi draft → unpaid
+            if ($penjualan->is_draft) {
+                $data['is_draft'] = 0;
+                $data['status_bayar'] = 'unpaid';
+            } else {
+                // kalau bukan draft, ikuti request
+                $data['is_draft'] = $isDraftRequest;
+                $data['status_bayar'] = $data['status_bayar'] ?? $penjualan->status_bayar;
+            }
+
+            // update header penjualan
             $penjualan->update([
                 'pelanggan_id'    => $data['pelanggan_id'] ?? null,
                 'no_faktur'       => $data['no_faktur'],
@@ -411,22 +438,54 @@ class PenjualanController extends Controller
                 'sub_total'       => $data['sub_total'],
                 'biaya_transport' => $data['biaya_transport'] ?? 0,
                 'total'           => $data['total'],
-                'status_bayar'    => $data['status_bayar'] ?? $penjualan->status_bayar,
-                'is_draft'        => $isDraft,
+                'status_bayar'    => $data['status_bayar'],
+                'is_draft'        => $data['is_draft'],
                 'updated_by'      => Auth::id(),
             ]);
 
-            // Kalau bukan draft → proses item + stok
-            if (!$isDraft && !empty($data['items'])) {
-                // … logika update item lama & tambah baru sama seperti sekarang
+            // kalau bukan draft, update item
+            if (!$data['is_draft'] && !empty($data['items'])) {
+                // hapus item lama
+                $penjualan->items()->delete();
+
+                // insert ulang item baru
+                foreach ($data['items'] as $it) {
+                    $penjualan->items()->create([
+                        'item_id'   => $it['item_id'],
+                        'gudang_id' => $it['gudang_id'],
+                        'satuan_id' => $it['satuan_id'],
+                        'jumlah'    => $it['jumlah'],
+                        'harga'     => $it['harga'],
+                        'total'     => $it['total'],
+                    ]);
+
+                    // update stok di gudang terkait
+                    $gudangItem =  ItemGudang::where('item_id', $it['item_id'])
+                        ->where('gudang_id', $it['gudang_id'])
+                        ->where('satuan_id', $it['satuan_id'])
+                        ->first();
+
+                    if ($gudangItem) {
+                        $gudangItem->decrement('stok', $it['jumlah']);
+                    }
+                }
             }
 
             DB::commit();
-            return response()->json(['message' => $isDraft ? 'Draft diperbarui' : 'Penjualan berhasil diperbarui']);
+
+            return response()->json([
+                'message' => $penjualan->wasChanged('is_draft') && !$penjualan->is_draft
+                    ? 'Draft difinalisasi menjadi Belum Lunas'
+                    : 'Penjualan berhasil diperbarui'
+            ]);
         } catch (\Throwable $e) {
             DB::rollBack();
-            Log::error('Update error: ' . $e->getMessage());
-            return response()->json(['message' => 'Gagal update', 'error' => $e->getMessage()], 500);
+            Log::error('Update Penjualan error: ' . $e->getMessage());
+
+            return response()->json([
+                'message' => 'Gagal update penjualan',
+                'error'   => $e->getMessage(),
+            ], 500);
         }
     }
 }

@@ -16,6 +16,7 @@ class Penjualan extends Model
         'total',
         'status_bayar',
         'mode',
+        'is_draft',
         'created_by',
         'updated_by',
     ];

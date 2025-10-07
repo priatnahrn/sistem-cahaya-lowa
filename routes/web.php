@@ -39,7 +39,10 @@ Route::middleware('auth')->group(function () {
         Route::post('/store', [PenjualanController::class, 'store'])->name('penjualan.store');
         Route::get('/{id}', [PenjualanController::class, 'show'])->name('penjualan.show');
         Route::get('/items/search', [PenjualanController::class, 'searchItems']);
+
+        // Print universal (pakai ?type=kecil / ?type=besar)
         Route::get('/{id}/print', [PenjualanController::class, 'print'])->name('penjualan.print');
+
         Route::put('/{id}/update', [PenjualanController::class, 'update'])->name('penjualan.update');
         Route::get('/{id}/last-price', [PenjualanController::class, 'getLastPrice'])->name('penjualan.last_price');
         Route::delete('/{id}/delete', [PenjualanController::class, 'destroy'])->name('penjualan.destroy');

@@ -14,6 +14,7 @@ return new class extends Migration
         Schema::create('penjualans', function (Blueprint $table) {
             $table->id();
             $table->string('no_faktur')->unique();
+            $table->string('barcode_path')->nullable();
             $table->dateTime('tanggal');
             $table->foreignId('pelanggan_id')->nullable()->constrained('pelanggans')->onDelete('cascade');
             $table->text('deskripsi')->nullable();

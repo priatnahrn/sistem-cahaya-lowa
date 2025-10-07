@@ -41,7 +41,7 @@
         @endif
     </div>
 
-    <div x-data="penjualanPage()" x-init="init()" class="space-y-6">
+    <div id="penjualan-page" x-data="penjualanPage()" x-init="init()" class="space-y-6">
 
         {{-- ACTION BAR --}}
         <div
@@ -114,9 +114,9 @@
 
         {{-- TABLE --}}
         <div class="bg-white border border-slate-200 rounded-xl overflow-hidden">
-            <div class="overflow-x-auto">
-                <table class="min-w-full text-sm">
-                    <thead class="bg-slate-50 border-b border-slate-200">
+            <div class="relative overflow-x-auto max-h-[70vh]">
+                <table class="min-w-full text-sm border-collapse">
+                    <thead class="bg-slate-50 border-b border-slate-200 sticky top-0 z-30">
                         <tr class="text-left text-slate-600">
                             <th class="px-4 py-3 w-[60px]">No.</th>
                             <th class="px-4 py-3 cursor-pointer" @click="toggleSort('no_faktur')">No Faktur <i
@@ -163,21 +163,42 @@
                                     </template>
                                 </td>
                                 <td class="px-2 py-3 text-right relative">
-                                    <button type="button" @click="toggleActions(r.id)"
-                                        class="px-2 py-1 rounded hover:bg-slate-100">
+                                    <!-- 🔘 Tombol dropdown (⋮) -->
+                                    <button type="button" @click="toggleActions(r.id, $event)"
+                                        class="px-2 py-1 rounded hover:bg-slate-100 focus:outline-none">
                                         <i class="fa-solid fa-ellipsis-vertical"></i>
                                     </button>
 
-                                    <div x-cloak x-show="openActionId === r.id" @click.away="openActionId = null"
-                                        x-transition
-                                        class="absolute right-2 mt-2 w-44 bg-white shadow rounded-md border border-slate-200 z-20">
-                                        <ul class="py-1">
+                                    <!-- ⚙️ Dropdown Action -->
+                                    <div x-cloak x-show="openActionId === r.id"
+                                        x-transition:enter="transition ease-out duration-100"
+                                        x-transition:enter-start="opacity-0 scale-95"
+                                        x-transition:enter-end="opacity-100 scale-100"
+                                        x-transition:leave="transition ease-in duration-75"
+                                        x-transition:leave-start="opacity-100 scale-100"
+                                        x-transition:leave-end="opacity-0 scale-95" :style="dropdownStyle"
+                                        class="fixed w-44 bg-white shadow-lg rounded-md border border-slate-200 z-[9999]"
+                                        @click.stop>
+                                        <ul class="py-1 text-sm text-slate-700">
+                                            <!-- Detail -->
                                             <li>
                                                 <a :href="r.url"
                                                     class="block px-4 py-2 hover:bg-slate-50 text-left">
                                                     <i class="fa-solid fa-eye mr-2"></i> Detail
                                                 </a>
                                             </li>
+
+                                            <!-- Print (hanya kalau bukan draft/pending) -->
+                                            <template x-if="!(r.status === 'pending' || r.is_draft)">
+                                                <li>
+                                                    <button type="button" @click="openPrintModal(r)"
+                                                        class="w-full text-left px-4 py-2 hover:bg-slate-50">
+                                                        <i class="fa-solid fa-print mr-2"></i> Print
+                                                    </button>
+                                                </li>
+                                            </template>
+
+                                            <!-- Hapus -->
                                             <li>
                                                 <button type="button" @click="confirmDelete(r)"
                                                     class="w-full text-left px-4 py-2 text-red-500 hover:bg-slate-50">
@@ -187,6 +208,11 @@
                                         </ul>
                                     </div>
                                 </td>
+
+
+
+
+
                             </tr>
                         </template>
                         <tr x-show="filteredTotal()===0" class="text-center text-slate-500">
@@ -195,63 +221,90 @@
                     </tbody>
                 </table>
             </div>
-
-            {{-- PAGINATION --}}
-            <div class="px-6 py-4">
-                <nav class="flex items-center justify-center gap-2" aria-label="Pagination">
-                    <button type="button" @click="goToPage(1)" :disabled="currentPage === 1"
-                        class="px-3 py-1 rounded border border-slate-200 hover:bg-slate-50 disabled:opacity-50">
-                        <i class="fa-solid fa-angles-left"></i>
-                    </button>
-                    <button type="button" @click="prev()" :disabled="currentPage === 1"
-                        class="px-3 py-1 rounded border border-slate-200 hover:bg-slate-50 disabled:opacity-50">
-                        <i class="fa-solid fa-chevron-left"></i>
-                    </button>
-                    <template x-for="p in pagesToShow()" :key="p">
-                        <span>
-                            <button type="button" x-show="p!=='...'" @click="goToPage(p)" x-text="p"
-                                :class="{ 'bg-[#344579] text-white': currentPage === p }"
-                                class="mx-0.5 px-3 py-1 rounded border border-slate-200 hover:bg-slate-50"></button>
-                            <span x-show="p==='...'" class="mx-1 px-3 py-1 text-slate-500">...</span>
-                        </span>
-                    </template>
-                    <button type="button" @click="next()" :disabled="currentPage === totalPages()"
-                        class="px-3 py-1 rounded border border-slate-200 hover:bg-slate-50 disabled:opacity-50">
-                        <i class="fa-solid fa-chevron-right"></i>
-                    </button>
-                    <button type="button" @click="goToPage(totalPages())" :disabled="currentPage === totalPages()"
-                        class="px-3 py-1 rounded border border-slate-200 hover:bg-slate-50 disabled:opacity-50">
-                        <i class="fa-solid fa-angles-right"></i>
-                    </button>
-                </nav>
-            </div>
         </div>
-    </div>
-
-    {{-- DELETE MODAL --}}
-    <div x-cloak x-show="showDeleteModal" class="fixed inset-0 z-50 flex items-center justify-center">
-        <div class="absolute inset-0 bg-black/40" @click="closeDelete()"></div>
-        <div x-transition class="bg-white rounded-xl shadow-lg w-11/12 md:w-1/3 z-10 overflow-hidden">
-            <div class="px-6 py-4 border-b border-slate-200">
-                <h3 class="text-lg font-semibold text-red-600">Konfirmasi Hapus</h3>
-            </div>
-            <div class="px-6 py-4">
-                <p class="text-slate-600">
-                    Apakah Anda yakin ingin menghapus penjualan
-                    <span class="font-semibold" x-text="deleteItem.no_faktur"></span> untuk
-                    <span class="text-green-600" x-text="deleteItem.pelanggan"></span>?
-                </p>
-            </div>
-            <div class="px-6 py-4 border-t border-slate-200 flex justify-end gap-2">
-                <button type="button" @click="closeDelete()"
-                    class="px-4 py-2 rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50">
-                    Batal
+        {{-- PAGINATION --}}
+        <div class="px-6 py-4">
+            <nav class="flex items-center justify-center gap-2" aria-label="Pagination">
+                <button type="button" @click="goToPage(1)" :disabled="currentPage === 1"
+                    class="px-3 py-1 rounded border border-slate-200 hover:bg-slate-50 disabled:opacity-50">
+                    <i class="fa-solid fa-angles-left"></i>
                 </button>
-                <button type="button" @click="doDelete()"
-                    class="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700">Hapus</button>
+                <button type="button" @click="prev()" :disabled="currentPage === 1"
+                    class="px-3 py-1 rounded border border-slate-200 hover:bg-slate-50 disabled:opacity-50">
+                    <i class="fa-solid fa-chevron-left"></i>
+                </button>
+                <template x-for="p in pagesToShow()" :key="p">
+                    <span>
+                        <button type="button" x-show="p!=='...'" @click="goToPage(p)" x-text="p"
+                            :class="{ 'bg-[#344579] text-white': currentPage === p }"
+                            class="mx-0.5 px-3 py-1 rounded border border-slate-200 hover:bg-slate-50"></button>
+                        <span x-show="p==='...'" class="mx-1 px-3 py-1 text-slate-500">...</span>
+                    </span>
+                </template>
+                <button type="button" @click="next()" :disabled="currentPage === totalPages()"
+                    class="px-3 py-1 rounded border border-slate-200 hover:bg-slate-50 disabled:opacity-50">
+                    <i class="fa-solid fa-chevron-right"></i>
+                </button>
+                <button type="button" @click="goToPage(totalPages())" :disabled="currentPage === totalPages()"
+                    class="px-3 py-1 rounded border border-slate-200 hover:bg-slate-50 disabled:opacity-50">
+                    <i class="fa-solid fa-angles-right"></i>
+                </button>
+            </nav>
+        </div>
+
+
+        <div x-cloak x-show="showDeleteModal" class="fixed inset-0 z-50 flex items-center justify-center">
+            <div class="absolute inset-0 bg-black/40" @click="closeDelete()"></div>
+            <div x-transition class="bg-white rounded-xl shadow-lg w-11/12 md:w-1/3 z-10 overflow-hidden">
+                <div class="px-6 py-4 border-b border-slate-200">
+                    <h3 class="text-lg font-semibold text-red-600">Konfirmasi Hapus</h3>
+                </div>
+                <div class="px-6 py-4">
+                    <p class="text-slate-600">
+                        Apakah Anda yakin ingin menghapus penjualan
+                        <span class="font-semibold" x-text="deleteItem.no_faktur"></span> untuk
+                        <span class="text-green-600" x-text="deleteItem.pelanggan"></span>?
+                    </p>
+                </div>
+                <div class="px-6 py-4 border-t border-slate-200 flex justify-end gap-2">
+                    <button type="button" @click="closeDelete()"
+                        class="px-4 py-2 rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50">
+                        Batal
+                    </button>
+                    <button type="button" @click="doDelete()"
+                        class="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700">Hapus</button>
+                </div>
+            </div>
+        </div>
+
+        {{-- PRINT MODAL --}}
+        <div x-cloak x-show="showPrintModal" class="fixed inset-0 z-100 flex items-center justify-center">
+            <div class="absolute inset-0 bg-black/40" @click="closePrint()"></div>
+            <div x-transition class="bg-white rounded-xl shadow-lg w-11/12 md:w-1/3 z-10 overflow-hidden">
+                <div class="px-6 py-4 border-b border-slate-200">
+                    <h3 class="text-lg font-semibold text-blue-600">Pilih Jenis Nota</h3>
+                </div>
+                <div class="px-6 py-4 space-y-3">
+                    <button type="button" @click="doPrint('kecil')"
+                        class="w-full px-4 py-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium">
+                        <i class="fa-solid fa-receipt mr-2"></i> Print Nota Kecil
+                    </button>
+                    <button type="button" @click="doPrint('besar')"
+                        class="w-full px-4 py-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium">
+                        <i class="fa-solid fa-file-invoice mr-2"></i> Print Nota Besar
+                    </button>
+                </div>
+                <div class="px-6 py-4 border-t border-slate-200 flex justify-end">
+                    <button type="button" @click="closePrint()"
+                        class="px-4 py-2 rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50">
+                        Batal
+                    </button>
+                </div>
             </div>
         </div>
     </div>
+
+
 
     @php
         $penjualansJson = $penjualans
@@ -261,6 +314,12 @@
                     'unpaid' => 'belum',
                     'return' => 'retur',
                 ];
+
+                // Kalau draft → paksa status jadi "pending"
+                $status = $statusBayarMap[$p->status_bayar] ?? 'belum';
+                if ($p->is_draft) {
+                    $status = 'pending';
+                }
 
                 $statusKirimMap = [
                     'perlu_dikirim' => 'Perlu Diantar',
@@ -288,9 +347,10 @@
                     'tanggal' => $tanggal,
                     'pelanggan' => optional($p->pelanggan)->nama_pelanggan ?? 'Customer',
                     'total' => (float) ($p->total ?? 0),
-                    'status' => $statusBayarMap[$p->status_bayar] ?? 'belum',
-                    'status_pengiriman' => $statusPengiriman, // 👈 ini yg dipakai
+                    'status' => $status,
+                    'status_pengiriman' => $statusPengiriman,
                     'url' => route('penjualan.show', $p->id),
+                    'is_draft' => (bool) $p->is_draft, // ✅ tambahkan ini
                     'items' => $p->items
                         ->map(fn($it) => optional($it->item)->nama_item ?? ($it->item_id ?? ''))
                         ->filter()
@@ -303,6 +363,7 @@
     <script>
         function penjualanPage() {
             return {
+                // 🔹 STATE
                 showFilter: false,
                 q: '',
                 filters: {
@@ -316,13 +377,19 @@
                 maxPageButtons: 7,
                 openActionId: null,
                 showDeleteModal: false,
+                showPrintModal: false,
                 deleteItem: {},
+                printItem: {},
                 data: @json($penjualansJson),
                 sortBy: 'tanggal',
                 sortDir: 'desc',
+                dropdownStyle: '',
+                outsideHandler: null,
 
+                // 🔹 INIT
                 init() {},
 
+                // 🔹 FORMAT HELPERS
                 formatRupiah(n) {
                     return new Intl.NumberFormat('id-ID', {
                         style: 'currency',
@@ -343,44 +410,37 @@
                     return this.sortDir === 'asc' ? 'fa-arrow-up ml-2' : 'fa-arrow-down ml-2';
                 },
 
+                // 🔹 FILTER & SORT
                 filteredList() {
                     const q = this.q.trim().toLowerCase();
+
                     let list = this.data.filter(r => {
                         if (q && !(`${r.no_faktur} ${r.pelanggan} ${r.items}`.toLowerCase().includes(q)))
                             return false;
                         if (this.filters.no_faktur && !r.no_faktur.toLowerCase().includes(this.filters.no_faktur
-                                .toLowerCase()))
-                            return false;
+                                .toLowerCase())) return false;
                         if (this.filters.pelanggan && !r.pelanggan.toLowerCase().includes(this.filters.pelanggan
-                                .toLowerCase()))
-                            return false;
+                                .toLowerCase())) return false;
                         if (this.filters.tanggal && r.tanggal && r.tanggal.split(' ')[0] !== this.filters.tanggal)
                             return false;
-                        if (this.filters.status && r.status !== this.filters.status)
-                            return false;
+                        if (this.filters.status && r.status !== this.filters.status) return false;
                         return true;
                     });
 
                     const dir = this.sortDir === 'asc' ? 1 : -1;
                     list.sort((a, b) => {
-                        const va = (a[this.sortBy] ?? '');
-                        const vb = (b[this.sortBy] ?? '');
+                        const va = a[this.sortBy] ?? '';
+                        const vb = b[this.sortBy] ?? '';
 
-                        // tanggal
-                        const aIsDate = !isNaN(Date.parse(va));
-                        const bIsDate = !isNaN(Date.parse(vb));
-                        if (aIsDate && bIsDate) {
+                        // urutan tanggal
+                        if (!isNaN(Date.parse(va)) && !isNaN(Date.parse(vb)))
                             return (new Date(va) - new Date(vb)) * dir;
-                        }
 
-                        // numeric
-                        const aNum = parseFloat(va);
-                        const bNum = parseFloat(vb);
-                        if (!isNaN(aNum) && !isNaN(bNum)) {
-                            return (aNum - bNum) * dir;
-                        }
+                        // urutan angka
+                        if (!isNaN(parseFloat(va)) && !isNaN(parseFloat(vb)))
+                            return (parseFloat(va) - parseFloat(vb)) * dir;
 
-                        // string
+                        // urutan string
                         return va.toString().localeCompare(vb.toString()) * dir;
                     });
 
@@ -400,22 +460,23 @@
                     return this.filteredList().slice(start, start + this.pageSize);
                 },
 
+                // 🔹 PAGINATION
                 goToPage(n) {
                     const t = this.totalPages();
                     if (n < 1) n = 1;
                     if (n > t) n = t;
                     this.currentPage = n;
-                    this.openActionId = null;
+                    this.closeDropdown();
                 },
 
                 prev() {
                     if (this.currentPage > 1) this.currentPage--;
-                    this.openActionId = null;
+                    this.closeDropdown();
                 },
 
                 next() {
                     if (this.currentPage < this.totalPages()) this.currentPage++;
-                    this.openActionId = null;
+                    this.closeDropdown();
                 },
 
                 pagesToShow() {
@@ -441,13 +502,86 @@
                     return pages;
                 },
 
-                toggleActions(id) {
-                    this.openActionId = (this.openActionId === id) ? null : id;
+                // 🔹 DROPDOWN ACTION (perbaikan total)
+                // 🔹 DROPDOWN ACTION (versi bersih & fix posisi)
+                toggleActions(id, event) {
+                    event.stopPropagation();
+
+                    // Tutup dropdown jika klik yang sama
+                    if (this.openActionId === id) {
+                        this.closeDropdown();
+                        return;
+                    }
+
+                    this.openActionId = id;
+
+                    this.$nextTick(() => {
+                        const btn = event.currentTarget.getBoundingClientRect();
+                        const dropdownWidth = 176; // w-44 = 11rem
+                        const dropdownHeight = 140; // kira-kira tinggi isi dropdown
+
+                        let top = btn.bottom + 6; // posisi default: di bawah tombol
+                        let left = btn.right - dropdownWidth;
+
+                        // Buka ke atas kalau terlalu bawah
+                        if (btn.bottom + dropdownHeight + 10 > window.innerHeight) {
+                            top = btn.top - dropdownHeight - 6;
+                        }
+
+                        // Cegah keluar kanan layar
+                        if (left + dropdownWidth > window.innerWidth - 8) {
+                            left = window.innerWidth - dropdownWidth - 8;
+                        }
+
+                        // Cegah keluar kiri layar
+                        if (left < 8) left = 8;
+
+                        this.dropdownStyle = `
+            top: ${top}px;
+            left: ${left}px;
+            transform-origin: top right;
+        `;
+
+                        // Klik di luar → tutup dropdown
+                        if (this.outsideHandler) {
+                            document.removeEventListener('click', this.outsideHandler);
+                        }
+
+                        this.outsideHandler = (e) => {
+                            const isDropdown = e.target.closest('[x-show]');
+                            const isButton = e.target.closest('button')?.querySelector('.fa-ellipsis-vertical');
+                            if (!isDropdown && !isButton) {
+                                this.closeDropdown();
+                            }
+                        };
+
+                        document.addEventListener('click', this.outsideHandler);
+                    });
                 },
 
+                closeDropdown() {
+                    this.openActionId = null;
+                    this.dropdownStyle = '';
+                    if (this.outsideHandler) {
+                        document.removeEventListener('click', this.outsideHandler);
+                        this.outsideHandler = null;
+                    }
+                },
+
+                closeDropdown() {
+                    this.openActionId = null;
+
+                    if (this.outsideHandler) {
+                        document.removeEventListener('click', this.outsideHandler);
+                        this.outsideHandler = null;
+                    }
+                },
+
+
+                // 🔹 SORT
                 toggleSort(field) {
                     if (this.sortBy === field) {
-                        this.sortDir = (this.sortDir === 'asc') ? 'desc' : 'asc';
+                        this.sortDir = this.sortDir === 'asc' ? 'desc' : 'asc';
                     } else {
                         this.sortBy = field;
                         this.sortDir = 'asc';
@@ -466,17 +600,20 @@
                     this.currentPage = 1;
                 },
 
+                // 🔹 BADGES
                 badgeClass(st) {
                     if (st === 'lunas') return 'bg-green-50 text-green-700 border border-green-200';
-                    if (st === 'belum') return 'bg-amber-50 text-amber-700 border border-amber-200';
+                    if (st === 'belum') return 'bg-slate-100 text-slate-600 border border-slate-200';
                     if (st === 'retur') return 'bg-rose-50 text-rose-700 border border-rose-200';
+                    if (st === 'pending') return 'bg-amber-50 text-amber-700 border border-amber-200';
                     return 'bg-slate-50 text-slate-700 border border-slate-200';
                 },
 
                 dotClass(st) {
                     if (st === 'lunas') return 'bg-green-500';
-                    if (st === 'belum') return 'bg-amber-500';
+                    if (st === 'belum') return 'bg-slate-400';
                     if (st === 'retur') return 'bg-rose-500';
+                    if (st === 'pending') return 'bg-amber-500';
                     return 'bg-slate-500';
                 },
 
@@ -484,6 +621,7 @@
                     if (st === 'lunas') return 'Lunas';
                     if (st === 'belum') return 'Belum Lunas';
                     if (st === 'retur') return 'Retur';
+                    if (st === 'pending') return 'Pending';
                     return '-';
                 },
 
@@ -493,6 +631,7 @@
                     if (st === 'Diterima') return 'bg-green-50 text-green-700 border border-green-200';
                     return 'bg-slate-50 text-slate-600 border border-slate-200';
                 },
+
                 dotKirim(st) {
                     if (st === 'Perlu Diantar') return 'bg-orange-500';
                     if (st === 'Dalam Pengiriman') return 'bg-blue-500';
@@ -500,9 +639,9 @@
                     return 'bg-slate-500';
                 },
 
-
+                // 🔹 DELETE
                 confirmDelete(item) {
-                    this.openActionId = null;
+                    this.closeDropdown();
                     this.deleteItem = {
                         ...item
                     };
@@ -541,8 +680,32 @@
                         this.closeDelete();
                         if (this.currentPage > this.totalPages()) this.currentPage = this.totalPages();
                     }
+                },
+
+                // 🔹 PRINT
+                openPrintModal(item) {
+                    if (item.status === 'pending' || item.is_draft) return; // ❌ cegah buka modal print
+                    this.closeDropdown();
+                    this.printItem = {
+                        ...item
+                    };
+                    this.showPrintModal = true;
+                },
+
+                closePrint() {
+                    this.showPrintModal = false;
+                    this.printItem = {};
+                },
+
+                doPrint(type) {
+                    if (!this.printItem.id) return;
+                    const url = `{{ url('penjualan') }}/${this.printItem.id}/print?type=${type}`;
+                    window.open(url, '_blank'); // buka tab baru untuk print
+                    this.closePrint();
                 }
-            }
+            };
         }
     </script>
+
+
 @endsection
