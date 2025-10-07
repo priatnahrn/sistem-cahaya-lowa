@@ -367,12 +367,23 @@
                 class="w-full text-left px-4 py-2 text-sm hover:bg-slate-50 flex items-center gap-2 text-slate-700">
                 <i class="fa-solid fa-eye text-blue-500"></i> Detail
             </button>
-            <template x-if="!(dropdownData.status === 'pending' || dropdownData.is_draft)">
-                <button @click="openPrintModal(dropdownData)"
-                    class="w-full text-left px-4 py-2 text-sm hover:bg-slate-50 flex items-center gap-2 text-slate-700">
-                    <i class="fa-solid fa-print text-green-500"></i> Print
-                </button>
-            </template>
+            <!-- Tombol Print SELALU muncul -->
+            <button
+                @click="!['pending'].includes(dropdownData.status) && !dropdownData.is_draft ? openPrintModal(dropdownData) : null"
+                :disabled="['pending'].includes(dropdownData.status) || dropdownData.is_draft"
+                class="w-full text-left px-4 py-2 text-sm flex items-center gap-2 rounded transition"
+                :class="{
+                    'text-slate-400 cursor-not-allowed bg-slate-50': ['pending'].includes(dropdownData.status) ||
+                        dropdownData.is_draft,
+                    'text-slate-700 hover:bg-slate-50': !(['pending'].includes(dropdownData.status) || dropdownData
+                        .is_draft)
+                }">
+                <i class="fa-solid fa-print"
+                    :class="(['pending'].includes(dropdownData.status) || dropdownData.is_draft) ? 'text-slate-400' :
+                    'text-green-500'"></i>
+                <span>Print</span>
+            </button>
+
             <button @click="confirmDelete(dropdownData)"
                 class="w-full text-left px-4 py-2 text-sm hover:bg-red-50 flex items-center gap-2 text-red-600 border-t border-slate-100">
                 <i class="fa-solid fa-trash"></i> Hapus
@@ -652,15 +663,56 @@
 
                     this.dropdownPos = {
                         top: top + 'px',
-                        left: rect.right - 176 + 'px' // w-44 = 11rem
+                        left: rect.right - 176 + 'px'
                     };
 
                     this.dropdownVisible = true;
 
-                    // ✅ tambahkan event listener dengan bind(this)
+                    // ✅ Tambahkan event listener (klik luar + scroll + resize)
                     this._outsideClickHandler = this.handleOutsideClick.bind(this);
+                    this._scrollHandler = this.closeDropdown.bind(this);
+                    this._resizeHandler = this.closeDropdown.bind(this);
+
                     document.addEventListener('click', this._outsideClickHandler);
+                    window.addEventListener('scroll', this._scrollHandler,
+                        true); // true agar juga deteksi scroll dalam container
+                    window.addEventListener('resize', this._resizeHandler);
                 },
+
+                handleOutsideClick(e) {
+                    const dropdown = document.getElementById('floating-dropdown');
+                    // jika klik bukan di dropdown dan bukan di tombol openDropdown
+                    if (
+                        dropdown &&
+                        !dropdown.contains(e.target) &&
+                        !e.target.closest('[x-on\\:click^="openDropdown"]') &&
+                        !e.target.closest('[ @click^="openDropdown"]')
+                    ) {
+                        this.closeDropdown();
+                    }
+                },
+
+                closeDropdown() {
+                    this.dropdownVisible = false;
+                    this.openActionId = null;
+                    this.dropdownData = {};
+
+                    if (this._outsideClickHandler) {
+                        document.removeEventListener('click', this._outsideClickHandler);
+                        this._outsideClickHandler = null;
+                    }
+
+                    if (this._scrollHandler) {
+                        window.removeEventListener('scroll', this._scrollHandler, true);
+                        this._scrollHandler = null;
+                    }
+
+                    if (this._resizeHandler) {
+                        window.removeEventListener('resize', this._resizeHandler);
+                        this._resizeHandler = null;
+                    }
+                },
+
 
                 handleOutsideClick(e) {
                     const dropdown = document.getElementById('floating-dropdown');
