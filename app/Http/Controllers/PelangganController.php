@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\Pelanggan;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 
 class PelangganController extends Controller
 {
@@ -59,22 +60,31 @@ class PelangganController extends Controller
         try {
             $pelanggan = Pelanggan::create($validated);
 
-            // Kalau request minta JSON (AJAX dari Alpine)
-            if ($request->wantsJson()) {
-                return response()->json($pelanggan, 201);
+            // 🧩 Selalu kirim JSON kalau request dari fetch (application/json)
+            if ($request->expectsJson() || $request->isJson()) {
+                return response()->json([
+                    'id' => $pelanggan->id,
+                    'nama_pelanggan' => $pelanggan->nama_pelanggan,
+                    'kontak' => $pelanggan->kontak,
+                    'alamat' => $pelanggan->alamat,
+                    'level' => $pelanggan->level,
+                ], 201);
             }
 
-            // Kalau request biasa (form Laravel klasik)
+            // Fallback: request normal (via browser form)
             return redirect()->route('pelanggan.index')
                 ->with('success', 'Pelanggan berhasil dibuat.');
         } catch (\Exception $e) {
-            if ($request->wantsJson()) {
+            Log::error('Gagal menyimpan pelanggan: ' . $e->getMessage());
+
+            if ($request->expectsJson() || $request->isJson()) {
                 return response()->json(['message' => 'Terjadi kesalahan saat menyimpan data.'], 500);
             }
 
             return back()->withErrors(['error' => 'Terjadi kesalahan saat menyimpan data.'])->withInput();
         }
     }
+
 
     public function show($id)
     {

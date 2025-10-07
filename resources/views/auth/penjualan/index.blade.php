@@ -7,6 +7,25 @@
         [x-cloak] {
             display: none !important;
         }
+
+        /* Smooth transitions */
+        .filter-panel {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            max-height: 0;
+            overflow: hidden;
+            opacity: 0;
+        }
+
+        .filter-panel.show {
+            max-height: 500px;
+            opacity: 1;
+        }
+
+        table,
+        tr,
+        td {
+            overflow: visible !important;
+        }
     </style>
 
     {{-- CSRF meta --}}
@@ -48,7 +67,7 @@
             class="bg-white border border-slate-200 rounded-xl px-6 py-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
             <div class="flex items-center gap-3">
                 <a href="{{ route('penjualan.create') }}"
-                    class="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-white bg-[#344579] hover:bg-[#3a8f70] shadow">
+                    class="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-white bg-[#344579] hover:bg-[#2e3e6a] shadow">
                     <i class="fa-solid fa-plus"></i> Tambah Penjualan Baru
                 </a>
 
@@ -61,85 +80,142 @@
             <div class="flex items-center gap-3">
                 <div class="relative">
                     <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
-                    <input type="text" placeholder="Search (No Faktur, Pelanggan, Item...)" x-model="q"
+                    <input type="text" placeholder="Cari Faktur, Pelanggan, Item..." x-model="q"
                         class="w-64 pl-10 pr-3 py-2 rounded-lg border border-slate-200 text-slate-600 placeholder-slate-400
-                                  focus:outline-none focus:ring-2 focus:ring-[#344579]/20 focus:border-[#344579]">
+                       focus:outline-none focus:ring-2 focus:ring-[#344579]/20 focus:border-[#344579]">
                 </div>
                 <button type="button" @click="showFilter=!showFilter"
-                    class="px-4 py-2 rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50">
+                    class="px-4 py-2 rounded-lg border border-slate-200 text-slate-700 hover:bg-[#344579] hover:text-white transition"
+                    :class="{ 'bg-[#344579] text-white': showFilter || hasActiveFilters() }">
                     <i class="fa-solid fa-filter mr-2"></i> Filter
+                    <span x-show="hasActiveFilters()" class="ml-1 bg-white text-[#344579] px-1.5 py-0.5 rounded text-xs">
+                        <span x-text="activeFiltersCount()"></span>
+                    </span>
                 </button>
             </div>
         </div>
 
-        {{-- FILTER --}}
-        <div x-show="showFilter" x-collapse x-transition
-            class="bg-white border border-slate-200 rounded-xl px-6 py-4 grid grid-cols-1 md:grid-cols-5 gap-4">
-            <div>
-                <label class="block text-sm text-slate-500 mb-1">No Faktur</label>
-                <input type="text" placeholder="Cari No Faktur" x-model="filters.no_faktur"
-                    class="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm text-slate-700">
+        {{-- FILTER PANEL (style mengikuti pembelian) --}}
+        <div x-show="showFilter" x-collapse x-transition class="bg-white border border-slate-200 rounded-xl px-6 py-4">
+            <div class="grid grid-cols-1 md:grid-cols-6 gap-4">
+                {{-- Filter No Faktur --}}
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-2">No Faktur</label>
+                    <input type="text" placeholder="Cari No Faktur..." x-model="filters.no_faktur"
+                        class="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm text-slate-700
+                       focus:outline-none focus:ring-2 focus:ring-[#344579]/20 focus:border-[#344579]">
+                </div>
+
+                {{-- Filter Pelanggan --}}
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-2">Nama Pelanggan</label>
+                    <input type="text" placeholder="Cari Pelanggan..." x-model="filters.pelanggan"
+                        class="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm text-slate-700
+                       focus:outline-none focus:ring-2 focus:ring-[#344579]/20 focus:border-[#344579]">
+                </div>
+
+                {{-- Filter Tanggal --}}
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-2">Tanggal</label>
+                    <input type="date" x-model="filters.tanggal"
+                        class="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm text-slate-700
+                       focus:outline-none focus:ring-2 focus:ring-[#344579]/20 focus:border-[#344579]">
+                </div>
+
+                {{-- Filter Status Bayar --}}
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-2">Status Bayar</label>
+                    <select x-model="filters.status"
+                        class="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm text-slate-700
+                       focus:outline-none focus:ring-2 focus:ring-[#344579]/20 focus:border-[#344579]">
+                        <option value="">Semua</option>
+                        <option value="lunas">Lunas</option>
+                        <option value="belum">Belum Lunas</option>
+                        <option value="retur">Retur</option>
+                    </select>
+                </div>
+                {{-- Filter Status Pengiriman --}}
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-2">Status Pengiriman</label>
+                    <select x-model="filters.status_pengiriman"
+                        class="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm text-slate-700
+               focus:outline-none focus:ring-2 focus:ring-[#344579]/20 focus:border-[#344579]">
+                        <option value="">Semua</option>
+                        <option value="Perlu Diantar">Perlu Diantar</option>
+                        <option value="Dalam Pengiriman">Dalam Pengiriman</option>
+                        <option value="Diterima">Diterima</option>
+                    </select>
+                </div>
+
+
+                {{-- Filter Tombol --}}
+                <div class="flex items-end">
+                    <button type="button" @click="resetFilters()"
+                        class="w-full px-4 py-2 rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50">
+                        <i class="fa-solid fa-arrow-rotate-left mr-2"></i> Reset
+                    </button>
+                </div>
             </div>
 
-            <div>
-                <label class="block text-sm text-slate-500 mb-1">Nama Pelanggan</label>
-                <input type="text" placeholder="Cari Pelanggan" x-model="filters.pelanggan"
-                    class="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm text-slate-700">
-            </div>
-
-            <div>
-                <label class="block text-sm text-slate-500 mb-1">Tanggal</label>
-                <input type="date" x-model="filters.tanggal"
-                    class="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm text-slate-700">
-            </div>
-
-            <div>
-                <label class="block text-sm text-slate-500 mb-1">Status Bayar</label>
-                <select x-model="filters.status"
-                    class="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm text-slate-700">
-                    <option value="">Semua</option>
-                    <option value="lunas">Lunas</option>
-                    <option value="belum">Belum Lunas</option>
-                    <option value="retur">Retur</option>
-                </select>
-            </div>
-
-            <div class="flex items-end">
-                <button type="button" @click="resetFilters()"
-                    class="w-full px-4 py-2 rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50">
-                    Reset
-                </button>
+            <div class="flex items-center justify-between mt-4 pt-4 border-t border-slate-200">
+                <div class="text-sm text-slate-600">
+                    <span x-text="filteredTotal()"></span> dari <span x-text="data.length"></span> penjualan
+                </div>
+                <div class="flex items-center gap-2">
+                    <button type="button" @click="resetFilters()"
+                        class="px-4 py-2 rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50">
+                        <i class="fa-solid fa-arrow-rotate-left mr-2"></i> Reset Filter
+                    </button>
+                    <button type="button" @click="showFilter=false"
+                        class="px-4 py-2 rounded-lg bg-[#344579] text-white hover:bg-[#2e3e6a]">
+                        Terapkan Filter
+                    </button>
+                </div>
             </div>
         </div>
+
 
         {{-- TABLE --}}
         <div class="bg-white border border-slate-200 rounded-xl overflow-hidden">
-            <div class="relative overflow-x-auto max-h-[70vh]">
-                <table class="min-w-full text-sm border-collapse">
-                    <thead class="bg-slate-50 border-b border-slate-200 sticky top-0 z-30">
+            <div class="overflow-x-auto">
+                <table class="min-w-full text-sm">
+                    <thead class="bg-slate-50 border-b border-slate-200">
                         <tr class="text-left text-slate-600">
                             <th class="px-4 py-3 w-[60px]">No.</th>
-                            <th class="px-4 py-3 cursor-pointer" @click="toggleSort('no_faktur')">No Faktur <i
-                                    class="fa-solid" :class="sortIcon('no_faktur')"></i></th>
-                            <th class="px-4 py-3 cursor-pointer" @click="toggleSort('tanggal')">Tanggal <i class="fa-solid"
-                                    :class="sortIcon('tanggal')"></i></th>
-                            <th class="px-4 py-3 cursor-pointer" @click="toggleSort('pelanggan')">Pelanggan <i
-                                    class="fa-solid" :class="sortIcon('pelanggan')"></i></th>
-                            <th class="px-4 py-3 text-right cursor-pointer" @click="toggleSort('total')">Total <i
-                                    class="fa-solid" :class="sortIcon('total')"></i></th>
+                            <th class="px-4 py-3 cursor-pointer" @click="toggleSort('no_faktur')">
+                                No Faktur
+                                <i class="fa-solid" :class="sortIcon('no_faktur')"></i>
+                            </th>
+                            <th class="px-4 py-3 cursor-pointer" @click="toggleSort('tanggal')">
+                                Tanggal
+                                <i class="fa-solid" :class="sortIcon('tanggal')"></i>
+                            </th>
+                            <th class="px-4 py-3 cursor-pointer" @click="toggleSort('pelanggan')">
+                                Pelanggan
+                                <i class="fa-solid" :class="sortIcon('pelanggan')"></i>
+                            </th>
+                            <th class="px-4 py-3 text-right cursor-pointer" @click="toggleSort('total')">
+                                Total
+                                <i class="fa-solid" :class="sortIcon('total')"></i>
+                            </th>
                             <th class="px-4 py-3">Status Bayar</th>
                             <th class="px-4 py-3">Status Pengiriman</th>
                             <th class="px-2 py-3"></th>
                         </tr>
                     </thead>
+
                     <tbody>
                         <template x-for="(r, idx) in pagedData()" :key="r.id">
                             <tr class="hover:bg-slate-50 text-slate-700 border-b border-slate-200">
                                 <td class="px-4 py-3" x-text="(currentPage-1)*pageSize + idx + 1"></td>
-                                <td class="px-4 py-3" x-text="r.no_faktur"></td>
-                                <td class="px-4 py-3" x-text="fmtTanggal(r.tanggal)"></td>
-                                <td class="px-4 py-3 text-green-600" x-text="r.pelanggan"></td>
-                                <td class="px-4 py-3 text-right" x-text="formatRupiah(r.total)"></td>
+                                <td class="px-4 py-3 font-medium" x-text="r.no_faktur"></td>
+                                <td class="px-4 py-3 text-slate-600" x-text="fmtTanggal(r.tanggal)"></td>
+                                <td class="px-4 py-3 text-green-600 font-medium">
+                                    <a :href="r.url" class="hover:underline hover:text-[#2e3e6a] transition"
+                                        x-text="r.pelanggan"></a>
+                                </td>
+
+                                <td class="px-4 py-3 text-right font-semibold" x-text="formatRupiah(r.total)"></td>
                                 <td class="px-4 py-3">
                                     <span
                                         class="inline-flex items-center gap-2 text-xs font-medium px-2.5 py-1 rounded-full"
@@ -162,149 +238,148 @@
                                         <span class="text-slate-400">-</span>
                                     </template>
                                 </td>
+
+                                <!-- tombol aksi -->
                                 <td class="px-2 py-3 text-right relative">
-                                    <!-- 🔘 Tombol dropdown (⋮) -->
-                                    <button type="button" @click="toggleActions(r.id, $event)"
-                                        class="px-2 py-1 rounded hover:bg-slate-100 focus:outline-none">
+                                    <button type="button" @click="openDropdown(r, $event)"
+                                        class="px-2 py-1 rounded hover:bg-slate-100 focus:outline-none transition">
                                         <i class="fa-solid fa-ellipsis-vertical"></i>
                                     </button>
-
-                                    <!-- ⚙️ Dropdown Action -->
-                                    <div x-cloak x-show="openActionId === r.id"
-                                        x-transition:enter="transition ease-out duration-100"
-                                        x-transition:enter-start="opacity-0 scale-95"
-                                        x-transition:enter-end="opacity-100 scale-100"
-                                        x-transition:leave="transition ease-in duration-75"
-                                        x-transition:leave-start="opacity-100 scale-100"
-                                        x-transition:leave-end="opacity-0 scale-95" :style="dropdownStyle"
-                                        class="fixed w-44 bg-white shadow-lg rounded-md border border-slate-200 z-[9999]"
-                                        @click.stop>
-                                        <ul class="py-1 text-sm text-slate-700">
-                                            <!-- Detail -->
-                                            <li>
-                                                <a :href="r.url"
-                                                    class="block px-4 py-2 hover:bg-slate-50 text-left">
-                                                    <i class="fa-solid fa-eye mr-2"></i> Detail
-                                                </a>
-                                            </li>
-
-                                            <!-- Print (hanya kalau bukan draft/pending) -->
-                                            <template x-if="!(r.status === 'pending' || r.is_draft)">
-                                                <li>
-                                                    <button type="button" @click="openPrintModal(r)"
-                                                        class="w-full text-left px-4 py-2 hover:bg-slate-50">
-                                                        <i class="fa-solid fa-print mr-2"></i> Print
-                                                    </button>
-                                                </li>
-                                            </template>
-
-                                            <!-- Hapus -->
-                                            <li>
-                                                <button type="button" @click="confirmDelete(r)"
-                                                    class="w-full text-left px-4 py-2 text-red-500 hover:bg-slate-50">
-                                                    <i class="fa-solid fa-trash mr-2"></i> Hapus
-                                                </button>
-                                            </li>
-                                        </ul>
-                                    </div>
                                 </td>
-
-
-
-
-
                             </tr>
                         </template>
+
                         <tr x-show="filteredTotal()===0" class="text-center text-slate-500">
-                            <td colspan="8" class="px-4 py-6">Tidak ada data penjualan.</td>
+                            <td colspan="8" class="px-4 py-8">
+                                <i class="fa-solid fa-inbox text-4xl text-slate-300 mb-2"></i>
+                                <p class="text-slate-400">Tidak ada data penjualan.</p>
+                            </td>
                         </tr>
                     </tbody>
                 </table>
             </div>
-        </div>
-        {{-- PAGINATION --}}
-        <div class="px-6 py-4">
-            <nav class="flex items-center justify-center gap-2" aria-label="Pagination">
-                <button type="button" @click="goToPage(1)" :disabled="currentPage === 1"
-                    class="px-3 py-1 rounded border border-slate-200 hover:bg-slate-50 disabled:opacity-50">
-                    <i class="fa-solid fa-angles-left"></i>
-                </button>
-                <button type="button" @click="prev()" :disabled="currentPage === 1"
-                    class="px-3 py-1 rounded border border-slate-200 hover:bg-slate-50 disabled:opacity-50">
-                    <i class="fa-solid fa-chevron-left"></i>
-                </button>
-                <template x-for="p in pagesToShow()" :key="p">
-                    <span>
-                        <button type="button" x-show="p!=='...'" @click="goToPage(p)" x-text="p"
-                            :class="{ 'bg-[#344579] text-white': currentPage === p }"
-                            class="mx-0.5 px-3 py-1 rounded border border-slate-200 hover:bg-slate-50"></button>
-                        <span x-show="p==='...'" class="mx-1 px-3 py-1 text-slate-500">...</span>
-                    </span>
-                </template>
-                <button type="button" @click="next()" :disabled="currentPage === totalPages()"
-                    class="px-3 py-1 rounded border border-slate-200 hover:bg-slate-50 disabled:opacity-50">
-                    <i class="fa-solid fa-chevron-right"></i>
-                </button>
-                <button type="button" @click="goToPage(totalPages())" :disabled="currentPage === totalPages()"
-                    class="px-3 py-1 rounded border border-slate-200 hover:bg-slate-50 disabled:opacity-50">
-                    <i class="fa-solid fa-angles-right"></i>
-                </button>
-            </nav>
+
+            {{-- PAGINATION --}}
+            <div class="px-6 py-4">
+                <nav class="flex items-center justify-center gap-2" aria-label="Pagination">
+                    <button type="button" @click="goToPage(1)" :disabled="currentPage === 1"
+                        class="px-3 py-1 rounded border border-slate-200 hover:bg-slate-50 disabled:opacity-50">
+                        <i class="fa-solid fa-angles-left"></i>
+                    </button>
+                    <button type="button" @click="prev()" :disabled="currentPage === 1"
+                        class="px-3 py-1 rounded border border-slate-200 hover:bg-slate-50 disabled:opacity-50">
+                        <i class="fa-solid fa-chevron-left"></i>
+                    </button>
+
+                    <template x-for="p in pagesToShow()" :key="p">
+                        <span>
+                            <button type="button" x-show="p!=='...'" @click="goToPage(p)" x-text="p"
+                                :class="{ 'bg-[#344579] text-white': currentPage === p }"
+                                class="mx-0.5 px-3 py-1 rounded border border-slate-200 hover:bg-[#2c3e6b] hover:text-white cursor-pointer"></button>
+                            <span x-show="p==='...'" class="mx-1 px-3 py-1 text-slate-500">...</span>
+                        </span>
+                    </template>
+
+                    <button type="button" @click="next()" :disabled="currentPage === totalPages()"
+                        class="px-3 py-1 rounded border border-slate-200 hover:bg-slate-50 disabled:opacity-50">
+                        <i class="fa-solid fa-chevron-right"></i>
+                    </button>
+                    <button type="button" @click="goToPage(totalPages())" :disabled="currentPage === totalPages()"
+                        class="px-3 py-1 rounded border border-slate-200 hover:bg-slate-50 disabled:opacity-50">
+                        <i class="fa-solid fa-angles-right"></i>
+                    </button>
+                </nav>
+            </div>
         </div>
 
 
+        {{-- DELETE MODAL --}}
         <div x-cloak x-show="showDeleteModal" class="fixed inset-0 z-50 flex items-center justify-center">
-            <div class="absolute inset-0 bg-black/40" @click="closeDelete()"></div>
-            <div x-transition class="bg-white rounded-xl shadow-lg w-11/12 md:w-1/3 z-10 overflow-hidden">
-                <div class="px-6 py-4 border-b border-slate-200">
-                    <h3 class="text-lg font-semibold text-red-600">Konfirmasi Hapus</h3>
+            <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" @click="closeDelete()"></div>
+            <div x-show="showDeleteModal" x-transition:enter="transition ease-out duration-200"
+                x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100"
+                x-transition:leave="transition ease-in duration-150" x-transition:leave-start="opacity-100 scale-100"
+                x-transition:leave-end="opacity-0 scale-95"
+                class="bg-white rounded-xl shadow-2xl w-11/12 md:w-1/3 z-10 overflow-hidden">
+                <div class="px-6 py-4 border-b border-slate-200 bg-red-50">
+                    <h3 class="text-lg font-semibold text-red-600 flex items-center gap-2">
+                        <i class="fa-solid fa-triangle-exclamation"></i> Konfirmasi Hapus
+                    </h3>
                 </div>
-                <div class="px-6 py-4">
+                <div class="px-6 py-5">
                     <p class="text-slate-600">
                         Apakah Anda yakin ingin menghapus penjualan
-                        <span class="font-semibold" x-text="deleteItem.no_faktur"></span> untuk
-                        <span class="text-green-600" x-text="deleteItem.pelanggan"></span>?
+                        <span class="font-semibold text-slate-800" x-text="deleteItem.no_faktur"></span> untuk
+                        <span class="text-green-600 font-semibold" x-text="deleteItem.pelanggan"></span>?
                     </p>
+                    <p class="text-sm text-slate-500 mt-2">Tindakan ini tidak dapat dibatalkan.</p>
                 </div>
-                <div class="px-6 py-4 border-t border-slate-200 flex justify-end gap-2">
+                <div class="px-6 py-4 border-t border-slate-200 flex justify-end gap-2 bg-slate-50">
                     <button type="button" @click="closeDelete()"
-                        class="px-4 py-2 rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50">
+                        class="px-4 py-2 rounded-lg border border-slate-200 text-slate-700 hover:bg-white transition-colors">
                         Batal
                     </button>
                     <button type="button" @click="doDelete()"
-                        class="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700">Hapus</button>
+                        class="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 transition-colors shadow-sm">
+                        <i class="fa-solid fa-trash mr-1"></i> Hapus
+                    </button>
                 </div>
             </div>
         </div>
 
         {{-- PRINT MODAL --}}
-        <div x-cloak x-show="showPrintModal" class="fixed inset-0 z-100 flex items-center justify-center">
-            <div class="absolute inset-0 bg-black/40" @click="closePrint()"></div>
-            <div x-transition class="bg-white rounded-xl shadow-lg w-11/12 md:w-1/3 z-10 overflow-hidden">
-                <div class="px-6 py-4 border-b border-slate-200">
-                    <h3 class="text-lg font-semibold text-blue-600">Pilih Jenis Nota</h3>
+        <div x-cloak x-show="showPrintModal" class="fixed inset-0 z-50 flex items-center justify-center">
+            <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" @click="closePrint()"></div>
+            <div x-show="showPrintModal" x-transition:enter="transition ease-out duration-200"
+                x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100"
+                x-transition:leave="transition ease-in duration-150" x-transition:leave-start="opacity-0 scale-95"
+                x-transition:leave-end="opacity-0 scale-95"
+                class="bg-white rounded-xl shadow-2xl w-11/12 md:w-1/3 z-10 overflow-hidden">
+                <div class="px-6 py-4 border-b border-slate-200 bg-blue-50">
+                    <h3 class="text-lg font-semibold text-blue-600 flex items-center gap-2">
+                        <i class="fa-solid fa-print"></i> Pilih Jenis Nota
+                    </h3>
                 </div>
-                <div class="px-6 py-4 space-y-3">
+                <div class="px-6 py-5 space-y-3">
                     <button type="button" @click="doPrint('kecil')"
-                        class="w-full px-4 py-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium">
-                        <i class="fa-solid fa-receipt mr-2"></i> Print Nota Kecil
+                        class="w-full px-4 py-3 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium transition-colors flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-receipt"></i> Print Nota Kecil
                     </button>
                     <button type="button" @click="doPrint('besar')"
-                        class="w-full px-4 py-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium">
-                        <i class="fa-solid fa-file-invoice mr-2"></i> Print Nota Besar
+                        class="w-full px-4 py-3 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium transition-colors flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-file-invoice"></i> Print Nota Besar
                     </button>
                 </div>
-                <div class="px-6 py-4 border-t border-slate-200 flex justify-end">
+                <div class="px-6 py-4 border-t border-slate-200 flex justify-end bg-slate-50">
                     <button type="button" @click="closePrint()"
-                        class="px-4 py-2 rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50">
+                        class="px-4 py-2 rounded-lg border border-slate-200 text-slate-700 hover:bg-white transition-colors">
                         Batal
                     </button>
                 </div>
             </div>
         </div>
+
+        <!-- ✅ Floating dropdown portal -->
+        <div x-cloak x-show="dropdownVisible" x-transition.origin.top.right id="floating-dropdown"
+            class="fixed w-44 bg-white border border-slate-200 rounded-lg shadow-lg z-[9999]"
+            :style="`top:${dropdownPos.top}; left:${dropdownPos.left}`">
+            <button @click="window.location = dropdownData.url"
+                class="w-full text-left px-4 py-2 text-sm hover:bg-slate-50 flex items-center gap-2 text-slate-700">
+                <i class="fa-solid fa-eye text-blue-500"></i> Detail
+            </button>
+            <template x-if="!(dropdownData.status === 'pending' || dropdownData.is_draft)">
+                <button @click="openPrintModal(dropdownData)"
+                    class="w-full text-left px-4 py-2 text-sm hover:bg-slate-50 flex items-center gap-2 text-slate-700">
+                    <i class="fa-solid fa-print text-green-500"></i> Print
+                </button>
+            </template>
+            <button @click="confirmDelete(dropdownData)"
+                class="w-full text-left px-4 py-2 text-sm hover:bg-red-50 flex items-center gap-2 text-red-600 border-t border-slate-100">
+                <i class="fa-solid fa-trash"></i> Hapus
+            </button>
+        </div>
+
     </div>
-
-
 
     @php
         $penjualansJson = $penjualans
@@ -315,7 +390,6 @@
                     'return' => 'retur',
                 ];
 
-                // Kalau draft → paksa status jadi "pending"
                 $status = $statusBayarMap[$p->status_bayar] ?? 'belum';
                 if ($p->is_draft) {
                     $status = 'pending';
@@ -327,18 +401,16 @@
                     'diterima' => 'Diterima',
                 ];
 
-                // format tanggal
                 $tanggal =
                     $p->tanggal instanceof \Carbon\Carbon
                         ? $p->tanggal->timezone('Asia/Makassar')->format('Y-m-d H:i:s')
                         : $p->tanggal ?? null;
 
-                // tentukan status pengiriman
                 $statusPengiriman = '-';
                 if ($p->mode === 'antar') {
                     $statusPengiriman = $p->pengiriman
                         ? $statusKirimMap[$p->pengiriman->status_pengiriman] ?? '-'
-                        : 'Perlu Diantar'; // default kalau record pengiriman ada tapi status kosong
+                        : 'Perlu Diantar';
                 }
 
                 return [
@@ -350,7 +422,7 @@
                     'status' => $status,
                     'status_pengiriman' => $statusPengiriman,
                     'url' => route('penjualan.show', $p->id),
-                    'is_draft' => (bool) $p->is_draft, // ✅ tambahkan ini
+                    'is_draft' => (bool) $p->is_draft,
                     'items' => $p->items
                         ->map(fn($it) => optional($it->item)->nama_item ?? ($it->item_id ?? ''))
                         ->filter()
@@ -358,38 +430,49 @@
                 ];
             })
             ->toArray();
-
     @endphp
+
     <script>
         function penjualanPage() {
             return {
-                // 🔹 STATE
                 showFilter: false,
                 q: '',
                 filters: {
                     no_faktur: '',
                     pelanggan: '',
                     tanggal: '',
-                    status: ''
+                    status: '',
+                    status_pengiriman: ''
                 },
+
                 pageSize: 10,
                 currentPage: 1,
                 maxPageButtons: 7,
+
                 openActionId: null,
+                dropdownVisible: false,
+                dropdownData: {},
+                dropdownPos: {
+                    top: 0,
+                    left: 0
+                },
+                _outsideClickHandler: null,
+
                 showDeleteModal: false,
                 showPrintModal: false,
                 deleteItem: {},
                 printItem: {},
+
                 data: @json($penjualansJson),
                 sortBy: 'tanggal',
                 sortDir: 'desc',
-                dropdownStyle: '',
-                outsideHandler: null,
 
-                // 🔹 INIT
-                init() {},
+                init() {
+                    // Pastikan dropdown tertutup ketika keluar halaman
+                    window.addEventListener('beforeunload', () => this.closeDropdown());
+                },
 
-                // 🔹 FORMAT HELPERS
+                // --- FORMATTERS ---
                 formatRupiah(n) {
                     return new Intl.NumberFormat('id-ID', {
                         style: 'currency',
@@ -402,15 +485,22 @@
                     if (!iso) return '-';
                     const d = new Date(iso);
                     if (isNaN(d)) return iso;
-                    return `${String(d.getDate()).padStart(2, '0')}-${String(d.getMonth() + 1).padStart(2, '0')}-${d.getFullYear()}, ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+                    const dd = String(d.getDate()).padStart(2, '0');
+                    const mm = String(d.getMonth() + 1).padStart(2, '0');
+                    const yyyy = d.getFullYear();
+                    const hh = String(d.getHours()).padStart(2, '0');
+                    const mi = String(d.getMinutes()).padStart(2, '0');
+                    return `${dd}-${mm}-${yyyy}, ${hh}:${mi}`;
                 },
 
                 sortIcon(field) {
-                    if (this.sortBy !== field) return 'fa-sort ml-2';
-                    return this.sortDir === 'asc' ? 'fa-arrow-up ml-2' : 'fa-arrow-down ml-2';
+                    if (this.sortBy !== field) return 'fa-sort ml-2 text-slate-400';
+                    return this.sortDir === 'asc' ?
+                        'fa-arrow-up ml-2 text-[#344579]' :
+                        'fa-arrow-down ml-2 text-[#344579]';
                 },
 
-                // 🔹 FILTER & SORT
+                // --- FILTER + SORT ---
                 filteredList() {
                     const q = this.q.trim().toLowerCase();
 
@@ -418,12 +508,18 @@
                         if (q && !(`${r.no_faktur} ${r.pelanggan} ${r.items}`.toLowerCase().includes(q)))
                             return false;
                         if (this.filters.no_faktur && !r.no_faktur.toLowerCase().includes(this.filters.no_faktur
-                                .toLowerCase())) return false;
+                                .toLowerCase()))
+                            return false;
                         if (this.filters.pelanggan && !r.pelanggan.toLowerCase().includes(this.filters.pelanggan
-                                .toLowerCase())) return false;
+                                .toLowerCase()))
+                            return false;
                         if (this.filters.tanggal && r.tanggal && r.tanggal.split(' ')[0] !== this.filters.tanggal)
                             return false;
-                        if (this.filters.status && r.status !== this.filters.status) return false;
+                        if (this.filters.status && r.status !== this.filters.status)
+                            return false;
+                        if (this.filters.status_pengiriman && r.status_pengiriman !== this.filters
+                            .status_pengiriman)
+                            return false;
                         return true;
                     });
 
@@ -432,15 +528,12 @@
                         const va = a[this.sortBy] ?? '';
                         const vb = b[this.sortBy] ?? '';
 
-                        // urutan tanggal
                         if (!isNaN(Date.parse(va)) && !isNaN(Date.parse(vb)))
                             return (new Date(va) - new Date(vb)) * dir;
 
-                        // urutan angka
                         if (!isNaN(parseFloat(va)) && !isNaN(parseFloat(vb)))
                             return (parseFloat(va) - parseFloat(vb)) * dir;
 
-                        // urutan string
                         return va.toString().localeCompare(vb.toString()) * dir;
                     });
 
@@ -460,7 +553,6 @@
                     return this.filteredList().slice(start, start + this.pageSize);
                 },
 
-                // 🔹 PAGINATION
                 goToPage(n) {
                     const t = this.totalPages();
                     if (n < 1) n = 1;
@@ -502,83 +594,97 @@
                     return pages;
                 },
 
-                // 🔹 DROPDOWN ACTION (perbaikan total)
-                // 🔹 DROPDOWN ACTION (versi bersih & fix posisi)
-                toggleActions(id, event) {
+                // --- FILTER HELPERS ---
+                hasActiveFilters() {
+                    return (
+                        this.filters.no_faktur ||
+                        this.filters.pelanggan ||
+                        this.filters.tanggal ||
+                        this.filters.status ||
+                        this.filters.status_pengiriman
+                    );
+                },
+
+                activeFiltersCount() {
+                    let count = 0;
+                    if (this.filters.no_faktur) count++;
+                    if (this.filters.pelanggan) count++;
+                    if (this.filters.tanggal) count++;
+                    if (this.filters.status) count++;
+                    if (this.filters.status_pengiriman) count++;
+                    return count;
+                },
+
+                resetFilters() {
+                    this.filters = {
+                        no_faktur: '',
+                        pelanggan: '',
+                        tanggal: '',
+                        status: '',
+                        status_pengiriman: ''
+                    };
+                    this.q = '';
+                    this.currentPage = 1;
+                },
+
+                // --- DROPDOWN FLOATING FIX ---
+                openDropdown(row, event) {
                     event.stopPropagation();
 
-                    // Tutup dropdown jika klik yang sama
-                    if (this.openActionId === id) {
+                    if (this.openActionId === row.id) {
                         this.closeDropdown();
                         return;
                     }
 
-                    this.openActionId = id;
+                    this.openActionId = row.id;
+                    this.dropdownData = row;
 
-                    this.$nextTick(() => {
-                        const btn = event.currentTarget.getBoundingClientRect();
-                        const dropdownWidth = 176; // w-44 = 11rem
-                        const dropdownHeight = 140; // kira-kira tinggi isi dropdown
+                    const rect = event.currentTarget.getBoundingClientRect();
+                    const dropdownHeight = 120;
 
-                        let top = btn.bottom + 6; // posisi default: di bawah tombol
-                        let left = btn.right - dropdownWidth;
+                    let top = rect.bottom + 6;
+                    const spaceBelow = window.innerHeight - rect.bottom;
+                    const spaceAbove = rect.top;
 
-                        // Buka ke atas kalau terlalu bawah
-                        if (btn.bottom + dropdownHeight + 10 > window.innerHeight) {
-                            top = btn.top - dropdownHeight - 6;
-                        }
+                    if (spaceBelow < dropdownHeight && spaceAbove > dropdownHeight) {
+                        top = rect.top - dropdownHeight - 6;
+                    }
 
-                        // Cegah keluar kanan layar
-                        if (left + dropdownWidth > window.innerWidth - 8) {
-                            left = window.innerWidth - dropdownWidth - 8;
-                        }
+                    this.dropdownPos = {
+                        top: top + 'px',
+                        left: rect.right - 176 + 'px' // w-44 = 11rem
+                    };
 
-                        // Cegah keluar kiri layar
-                        if (left < 8) left = 8;
+                    this.dropdownVisible = true;
 
-                        this.dropdownStyle = `
-            top: ${top}px;
-            left: ${left}px;
-            transform-origin: top right;
-        `;
-
-                        // Klik di luar → tutup dropdown
-                        if (this.outsideHandler) {
-                            document.removeEventListener('click', this.outsideHandler);
-                        }
-
-                        this.outsideHandler = (e) => {
-                            const isDropdown = e.target.closest('[x-show]');
-                            const isButton = e.target.closest('button')?.querySelector('.fa-ellipsis-vertical');
-                            if (!isDropdown && !isButton) {
-                                this.closeDropdown();
-                            }
-                        };
-
-                        document.addEventListener('click', this.outsideHandler);
-                    });
+                    // ✅ tambahkan event listener dengan bind(this)
+                    this._outsideClickHandler = this.handleOutsideClick.bind(this);
+                    document.addEventListener('click', this._outsideClickHandler);
                 },
 
-                closeDropdown() {
-                    this.openActionId = null;
-                    this.dropdownStyle = '';
-                    if (this.outsideHandler) {
-                        document.removeEventListener('click', this.outsideHandler);
-                        this.outsideHandler = null;
+                handleOutsideClick(e) {
+                    const dropdown = document.getElementById('floating-dropdown');
+                    if (
+                        dropdown &&
+                        !dropdown.contains(e.target) &&
+                        !e.target.closest('button[ @click^="openDropdown"]')
+                    ) {
+                        this.closeDropdown();
                     }
                 },
 
                 closeDropdown() {
+                    this.dropdownVisible = false;
                     this.openActionId = null;
+                    this.dropdownData = {};
 
-                    if (this.outsideHandler) {
-                        document.removeEventListener('click', this.outsideHandler);
-                        this.outsideHandler = null;
+                    if (this._outsideClickHandler) {
+                        document.removeEventListener('click', this._outsideClickHandler);
+                        this._outsideClickHandler = null;
                     }
                 },
 
-
-                // 🔹 SORT
+                // --- SORT ---
                 toggleSort(field) {
                     if (this.sortBy === field) {
                         this.sortDir = this.sortDir === 'asc' ? 'desc' : 'asc';
@@ -589,18 +695,7 @@
                     this.currentPage = 1;
                 },
 
-                resetFilters() {
-                    this.filters = {
-                        no_faktur: '',
-                        pelanggan: '',
-                        tanggal: '',
-                        status: ''
-                    };
-                    this.q = '';
-                    this.currentPage = 1;
-                },
-
-                // 🔹 BADGES
+                // --- STATUS STYLING ---
                 badgeClass(st) {
                     if (st === 'lunas') return 'bg-green-50 text-green-700 border border-green-200';
                     if (st === 'belum') return 'bg-slate-100 text-slate-600 border border-slate-200';
@@ -639,8 +734,9 @@
                     return 'bg-slate-500';
                 },
 
-                // 🔹 DELETE
+                // --- DELETE & PRINT ---
                 confirmDelete(item) {
+                    if (!item) return;
                     this.closeDropdown();
                     this.deleteItem = {
                         ...item
@@ -669,22 +765,21 @@
                         if (res.ok) {
                             const idx = this.data.findIndex(d => d.id === this.deleteItem.id);
                             if (idx !== -1) this.data.splice(idx, 1);
-                            alert('Data berhasil dihapus');
+                            this.showNotification('success', 'Data berhasil dihapus');
                         } else {
-                            alert('Gagal menghapus data');
+                            this.showNotification('error', 'Gagal menghapus data');
                         }
                     } catch (e) {
                         console.error('Delete error', e);
-                        alert('Terjadi kesalahan koneksi');
+                        this.showNotification('error', 'Terjadi kesalahan koneksi');
                     } finally {
                         this.closeDelete();
                         if (this.currentPage > this.totalPages()) this.currentPage = this.totalPages();
                     }
                 },
 
-                // 🔹 PRINT
                 openPrintModal(item) {
-                    if (item.status === 'pending' || item.is_draft) return; // ❌ cegah buka modal print
+                    if (!item || item.status === 'pending' || item.is_draft) return;
                     this.closeDropdown();
                     this.printItem = {
                         ...item
@@ -700,8 +795,17 @@
                 doPrint(type) {
                     if (!this.printItem.id) return;
                     const url = `{{ url('penjualan') }}/${this.printItem.id}/print?type=${type}`;
-                    window.open(url, '_blank'); // buka tab baru untuk print
+                    window.open(url, '_blank');
                     this.closePrint();
+                },
+
+                // --- TOAST / NOTIF ---
+                showNotification(type, message) {
+                    if (type === 'success') {
+                        alert('✓ ' + message);
+                    } else {
+                        alert('✗ ' + message);
+                    }
                 }
             };
         }

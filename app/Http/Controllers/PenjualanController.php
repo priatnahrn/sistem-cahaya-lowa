@@ -383,14 +383,12 @@ class PenjualanController extends Controller
 
     public function update(Request $request, $id)
     {
-        $penjualan = Penjualan::findOrFail($id);
-
-        // cek apakah request kirim draft atau tidak
+        $penjualan = Penjualan::with('items')->findOrFail($id);
         $isDraftRequest = $request->boolean('is_draft', false);
 
-        // rules dasar
+        // === VALIDASI DASAR ===
         $rules = [
-            'pelanggan_id'    => 'nullable|exists:pelanggans,id',
+            'pelanggan_id'    => 'nullable|integer|exists:pelanggans,id',
             'no_faktur'       => 'required|string',
             'tanggal'         => 'required|date',
             'deskripsi'       => 'nullable|string',
@@ -399,36 +397,20 @@ class PenjualanController extends Controller
             'status_bayar'    => 'nullable|in:paid,unpaid,return',
             'sub_total'       => 'required|numeric|min:0',
             'total'           => 'required|numeric|min:0',
+            'items'           => 'required|array|min:1',
+            'items.*.item_id' => 'required|exists:items,id',
+            'items.*.gudang_id' => 'required|exists:gudangs,id',
+            'items.*.satuan_id' => 'required|exists:satuans,id',
+            'items.*.jumlah'    => 'required|numeric|min:1',
+            'items.*.harga'     => 'required|numeric|min:0',
+            'items.*.keterangan' => 'nullable|string|max:255',
         ];
-
-        // kalau bukan draft wajib ada item
-        if (!$isDraftRequest) {
-            $rules = array_merge($rules, [
-                'items'             => 'required|array|min:1',
-                'items.*.id'        => 'nullable|exists:item_penjualans,id',
-                'items.*.item_id'   => 'required|exists:items,id',
-                'items.*.gudang_id' => 'required|exists:gudangs,id',
-                'items.*.satuan_id' => 'required|exists:satuans,id',
-                'items.*.jumlah'    => 'required|numeric|min:1',
-                'items.*.harga'     => 'required|numeric|min:0',
-            ]);
-        }
 
         $data = $request->validate($rules);
 
         DB::beginTransaction();
         try {
-            // 🚀 logika finalisasi draft → unpaid
-            if ($penjualan->is_draft) {
-                $data['is_draft'] = 0;
-                $data['status_bayar'] = 'unpaid';
-            } else {
-                // kalau bukan draft, ikuti request
-                $data['is_draft'] = $isDraftRequest;
-                $data['status_bayar'] = $data['status_bayar'] ?? $penjualan->status_bayar;
-            }
-
-            // update header penjualan
+            // === UPDATE HEADER PENJUALAN ===
             $penjualan->update([
                 'pelanggan_id'    => $data['pelanggan_id'] ?? null,
                 'no_faktur'       => $data['no_faktur'],
@@ -438,54 +420,61 @@ class PenjualanController extends Controller
                 'sub_total'       => $data['sub_total'],
                 'biaya_transport' => $data['biaya_transport'] ?? 0,
                 'total'           => $data['total'],
-                'status_bayar'    => $data['status_bayar'],
-                'is_draft'        => $data['is_draft'],
+                'status_bayar'    => $data['status_bayar'] ?? 'unpaid',
+                'is_draft'        => $isDraftRequest,
                 'updated_by'      => Auth::id(),
             ]);
 
-            // kalau bukan draft, update item
-            if (!$data['is_draft'] && !empty($data['items'])) {
-                // hapus item lama
-                $penjualan->items()->delete();
+            // === PROSES ITEM ===
+            foreach ($penjualan->items as $oldItem) {
+                // kembalikan stok lama (revert)
+                $gudangItem = ItemGudang::where('item_id', $oldItem->item_id)
+                    ->where('gudang_id', $oldItem->gudang_id)
+                    ->where('satuan_id', $oldItem->satuan_id)
+                    ->first();
 
-                // insert ulang item baru
-                foreach ($data['items'] as $it) {
-                    $penjualan->items()->create([
-                        'item_id'   => $it['item_id'],
-                        'gudang_id' => $it['gudang_id'],
-                        'satuan_id' => $it['satuan_id'],
-                        'jumlah'    => $it['jumlah'],
-                        'harga'     => $it['harga'],
-                        'total'     => $it['total'],
-                    ]);
+                if ($gudangItem) {
+                    $gudangItem->increment('stok', $oldItem->jumlah);
+                }
+            }
 
-                    // update stok di gudang terkait
-                    $gudangItem =  ItemGudang::where('item_id', $it['item_id'])
-                        ->where('gudang_id', $it['gudang_id'])
-                        ->where('satuan_id', $it['satuan_id'])
-                        ->first();
+            // hapus semua item lama
+            $penjualan->items()->delete();
 
-                    if ($gudangItem) {
-                        $gudangItem->decrement('stok', $it['jumlah']);
-                    }
+            // tambahkan item baru
+            foreach ($data['items'] as $it) {
+                $jumlah = floatval($it['jumlah']);
+                $harga = floatval($it['harga']);
+                $total = isset($it['total']) ? floatval($it['total']) : ($jumlah * $harga);
+
+                $penjualan->items()->create([
+                    'item_id'   => $it['item_id'],
+                    'gudang_id' => $it['gudang_id'],
+                    'satuan_id' => $it['satuan_id'],
+                    'jumlah'    => $jumlah,
+                    'harga'     => $harga,
+                    'total'     => $total,
+                    'keterangan' => $it['keterangan'] ?? null,
+                ]);
+
+                // kurangi stok baru
+                $gudangItem = ItemGudang::where('item_id', $it['item_id'])
+                    ->where('gudang_id', $it['gudang_id'])
+                    ->where('satuan_id', $it['satuan_id'])
+                    ->first();
+
+                if ($gudangItem) {
+                    $gudangItem->decrement('stok', $jumlah);
                 }
             }
 
             DB::commit();
 
-            return response()->json([
-                'message' => $penjualan->wasChanged('is_draft') && !$penjualan->is_draft
-                    ? 'Draft difinalisasi menjadi Belum Lunas'
-                    : 'Penjualan berhasil diperbarui'
-            ]);
+            return response()->json(['message' => 'Penjualan berhasil diperbarui'], 200);
         } catch (\Throwable $e) {
             DB::rollBack();
             Log::error('Update Penjualan error: ' . $e->getMessage());
-
-            return response()->json([
-                'message' => 'Gagal update penjualan',
-                'error'   => $e->getMessage(),
-            ], 500);
+            return response()->json(['message' => 'Gagal update penjualan', 'error' => $e->getMessage()], 500);
         }
     }
 }
