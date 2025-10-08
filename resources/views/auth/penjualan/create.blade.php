@@ -20,6 +20,24 @@
         [x-cloak] {
             display: none !important;
         }
+
+        /* Hilangkan spinner di Chrome, Safari, Edge (WebKit/Blink) */
+        .no-spinner::-webkit-outer-spin-button,
+        .no-spinner::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+
+        /* Hilangkan spinner di Firefox */
+        .no-spinner {
+            -moz-appearance: textfield;
+        }
+
+        /* Hilangkan tombol di IE / old Edge */
+        .no-spinner::-ms-clear,
+        .no-spinner::-ms-expand {
+            display: none;
+        }
     </style>
 
     {{-- 🌟 Root Alpine Component --}}
@@ -66,120 +84,103 @@
             <div class="space-y-4">
 
                 {{-- 🧍 Input Pelanggan --}}
-                <div @click.away="openResults = false">
-                    <label class="block text-sm font-medium text-slate-700 mb-2">Pelanggan</label>
-                    <div class="relative">
-                        <i class="fa-solid fa-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
-                        <input type="text" x-model="pelangganQuery"
-                            @input.debounce.300ms="
-                                    if (pelangganQuery.length >= 2) {
-                                        searchPelanggan();
-                                        openResults = true;
-                                    } else {
-                                        form.pelanggan_id = null;
-                                        selectedPelangganLevel = null;
-                                        selectedPelangganNames = '';
-                                        form.is_walkin = false;
-                                        pelangganResults = [];
-                                        openResults = false;
-                                        updateAllItemPrices();
-                                    }
-                                "
-                            @blur="if (!form.pelanggan_id && pelangganQuery && pelangganResults.length === 0) {
-                                    selectedPelangganNames = 'Customer';
-                                    selectedPelangganLevel = null;
-                                    form.pelanggan_id = null;
-                                    form.is_walkin = true;
-                                }"
-                            @focus="openResults = (pelangganQuery.length >= 2)"
-                            placeholder="Cari pelanggan (ketik minimal 2 huruf) atau biarkan kosong untuk umum"
-                            class="w-full pl-12 pr-10 py-2.5 rounded-lg border border-slate-300
-                                      focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-2">Pelanggan</label>
+                        <div class="relative" @click.away="handlePelangganClickAway()">
+                            {{-- Input pelanggan --}}
+                            <input type="text" x-model="pelangganQuery"
+                                @input.debounce.300ms="
+                    if (pelangganQuery.length >= 2) {
+                        searchPelanggan();
+                        openResults = true;
+                    } else {
+                        form.pelanggan_id = null;
+                        selectedPelangganLevel = null;
+                        selectedPelangganNames = '';
+                        form.is_walkin = false;
+                        pelangganResults = [];
+                        openResults = false;
+                        updateAllItemPrices();
+                    }
+                "
+                                @blur="if (!form.pelanggan_id && pelangganQuery && pelangganResults.length === 0) {
+                    selectedPelangganNames = 'Customer';
+                    selectedPelangganLevel = null;
+                    form.pelanggan_id = null;
+                    form.is_walkin = true;
+                }"
+                                @focus="openResults = (pelangganQuery.length >= 2)" placeholder="Cari pelanggan"
+                                class="w-full pl-4 pr-12 py-2.5 rounded-lg border border-slate-300
+                    focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition">
 
-                        {{-- Dropdown Hasil Pencarian --}}
-                        <div x-show="openResults && pelangganQuery.length >= 2" x-cloak
-                            class="absolute z-50 left-0 right-0 mt-1 bg-white border border-slate-200
-                                    rounded-lg shadow-lg text-sm max-h-56 overflow-auto">
+                            {{-- Icon pencarian di kanan (NON-CLICKABLE). Akan DISAPPEAR saat form.pelanggan_id truthy --}}
+                            <span x-show="!form.pelanggan_id" x-cloak x-transition.opacity.duration.150ms
+                                class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 p-1 rounded-full pointer-events-none">
+                                <i class="fa-solid fa-magnifying-glass"></i>
+                            </span>
 
-                            <template x-if="pelangganLoading">
-                                <div class="px-4 py-3 text-gray-500 text-center">
-                                    <i class="fa-solid fa-spinner fa-spin mr-2"></i> Mencari pelanggan...
-                                </div>
-                            </template>
+                            {{-- Badge di dalam input (tetap muncul saat ada pelanggan atau 'Customer' default).
+                 Posisi badge menyesuaikan: jika ada pelanggan (ikon hilang) badge pindah lebih ke kanan. --}}
+                            <span x-show="form.pelanggan_id" x-cloak x-transition.opacity.duration.150ms
+                                :class="[
+                                    'absolute right-3 top-1/2 -translate-y-1/2 text-xs px-2 py-0.5 rounded font-medium select-none',
+                                    selectedPelangganLevel === 'partai_kecil' ? 'bg-yellow-100 text-yellow-700' :
+                                    selectedPelangganLevel === 'grosir' ? 'bg-green-100 text-green-700' :
+                                    'bg-blue-100 text-blue-700'
+                                ]"
+                                x-text="formatLevel(selectedPelangganLevel || 'retail')">
+                            </span>
 
-                            <template x-if="!pelangganLoading && pelangganResults.length > 0">
-                                <ul>
-                                    <template x-for="p in pelangganResults" :key="p.id">
-                                        <li @click="selectPelanggan(p); openResults = false"
-                                            class="px-4 py-3 cursor-pointer hover:bg-blue-50 transition border-b last:border-b-0">
-                                            <div class="font-medium text-slate-800" x-text="p.nama_pelanggan"></div>
-                                            <div class="flex items-center gap-2 mt-1">
-                                                <small class="text-slate-500" x-text="p.kontak || '-'"></small>
-                                                <span class="px-2 py-0.5 rounded text-xs bg-slate-100"
-                                                    x-text="formatLevel(p.level) || '-'"></span>
-                                            </div>
-                                        </li>
-                                    </template>
-                                </ul>
-                            </template>
 
-                            <template x-if="!pelangganLoading && pelangganResults.length === 0">
-                                <div class="px-4 py-3">
-                                    <div class="text-gray-500 italic mb-3 text-center">
-                                        <i class="fa-solid fa-user-slash mr-1"></i>
-                                        Pelanggan "<span x-text="pelangganQuery"></span>" tidak ditemukan
+                            {{-- Dropdown hasil pencarian --}}
+                            <div x-show="openResults && pelangganQuery.length >= 2" x-cloak
+                                class="absolute z-50 left-0 right-0 mt-1 bg-white border border-slate-200
+                       rounded-lg shadow-lg text-sm max-h-56 overflow-auto">
+
+                                <template x-if="pelangganLoading">
+                                    <div class="px-4 py-3 text-gray-500 text-center">
+                                        <i class="fa-solid fa-spinner fa-spin mr-2"></i> Mencari pelanggan...
                                     </div>
-                                    <button type="button" @click="openTambahPelanggan(); openResults = false"
-                                        class="w-full px-4 py-2 bg-[#334976] hover:bg-[#2d3d6d] text-white rounded-lg transition font-medium">
-                                        <i class="fa-solid fa-user-plus mr-2"></i> Tambah Pelanggan Baru
-                                    </button>
-                                </div>
-                            </template>
+                                </template>
+
+                                <template x-if="!pelangganLoading && pelangganResults.length > 0">
+                                    <ul>
+                                        <template x-for="p in pelangganResults" :key="p.id">
+                                            <li @click="selectPelanggan(p); openResults = false"
+                                                class="px-4 py-3 cursor-pointer hover:bg-blue-50 transition border-b border-slate-100 last:border-b-0">
+                                                <div class="font-medium text-slate-800" x-text="p.nama_pelanggan"></div>
+                                                <div class="flex items-center gap-2 mt-1">
+                                                    <small class="text-slate-500" x-text="p.kontak || '-'"></small>
+                                                    <span class="px-2 py-0.5 rounded text-xs bg-slate-100"
+                                                        x-text="formatLevel(p.level) || '-'"></span>
+                                                </div>
+                                            </li>
+                                        </template>
+                                    </ul>
+                                </template>
+
+                                <template x-if="!pelangganLoading && pelangganResults.length === 0">
+                                    <div class="px-4 py-3">
+                                        <div class="text-gray-500 italic mb-3 text-center">
+                                            <i class="fa-solid fa-user-slash mr-1"></i>
+                                            Pelanggan "<span x-text="pelangganQuery"></span>" tidak ditemukan
+                                        </div>
+                                        <button type="button" @click="openTambahPelanggan(); openResults = false"
+                                            class="w-full px-4 py-2 bg-[#334976] hover:bg-[#2d3d6d] text-white rounded-lg transition font-medium">
+                                            <i class="fa-solid fa-user-plus mr-2"></i> Tambah Pelanggan Baru
+                                        </button>
+                                    </div>
+                                </template>
+                            </div>
                         </div>
-                    </div>
-
-                    {{-- Badge Info Pelanggan --}}
-                    <div x-show="form.pelanggan_id || selectedPelangganNames === 'Customer'"
-                        class="mt-2 flex items-center gap-2">
-                        <i class="fa-solid fa-check-circle text-green-600"></i>
-                        <span class="font-normal text-green-600 text-sm"
-                            x-text="selectedPelangganNames || 'Customer'"></span>
-                        <span class="ml-1 text-xs px-2 py-0.5 rounded font-medium"
-                            :class="{
-                                'bg-blue-100 text-blue-700': (selectedPelangganLevel === 'retail' || !
-                                    selectedPelangganLevel),
-                                'bg-yellow-100 text-yellow-700': selectedPelangganLevel === 'partai_kecil',
-                                'bg-green-100 text-green-700': selectedPelangganLevel === 'grosir'
-                            }"
-                            x-text="formatLevel(selectedPelangganLevel || 'retail')">
-                        </span>
-
                     </div>
                 </div>
 
                 {{-- ⚙️ Mode, Faktur, Tanggal --}}
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div>
-                        <label class="block text-sm font-medium text-slate-700 mb-2">Mode Pengambilan</label>
-                        <div class="relative">
-                            <select name="mode" x-model="form.mode"
-                                class="w-full px-3 py-2.5 rounded-lg border border-slate-200
-                                           appearance-none pr-8 bg-white">
-                                <option value="ambil">🏃 Ambil Sendiri</option>
-                                <option value="antar">🚚 Antar Barang</option>
-                            </select>
-                            <div class="absolute inset-y-0 right-3 flex items-center pointer-events-none">
-                                <svg class="w-4 h-4 text-slate-500" fill="none" stroke="currentColor"
-                                    viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                        d="M19 9l-7 7-7-7" />
-                                </svg>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div>
-                        <label class="block text-sm font-medium text-slate-700 mb-2">Nomor Faktur</label>
+                        <label class="block text-sm font-medium text-slate-700 mb-2">No. Nota</label>
                         <input type="text" x-model="form.no_faktur" readonly
                             class="w-full px-3 py-2.5 border border-slate-300 rounded-lg bg-slate-50 text-slate-600">
                     </div>
@@ -190,14 +191,24 @@
                             class="w-full px-3 py-2.5 border border-slate-300 rounded-lg
                                       focus:border-blue-500 focus:ring-2 focus:ring-blue-200">
                     </div>
-                </div>
-
-                {{-- 📝 Deskripsi --}}
-                <div>
-                    <label class="block text-sm font-medium text-slate-700 mb-2">Deskripsi (opsional)</label>
-                    <input type="text" x-model="form.deskripsi" placeholder="Catatan tambahan untuk transaksi ini..."
-                        class="w-full px-3 py-2.5 border border-slate-300 rounded-lg
-                                  focus:border-blue-500 focus:ring-2 focus:ring-blue-200">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-2">Pengiriman</label>
+                        <div class="relative">
+                            <select name="mode" x-model="form.mode"
+                                class="w-full px-3 py-2.5 rounded-lg border border-slate-200
+                                           appearance-none pr-8 bg-white">
+                                <option value="ambil">Ambil Sendiri</option>
+                                <option value="antar">Butuh Pengiriman</option>
+                            </select>
+                            <div class="absolute inset-y-0 right-3 flex items-center pointer-events-none">
+                                <svg class="w-4 h-4 text-slate-500" fill="none" stroke="currentColor"
+                                    viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M19 9l-7 7-7-7" />
+                                </svg>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -213,14 +224,13 @@
                 <table class="min-w-full text-sm">
                     <thead class="bg-slate-50 border-b border-slate-200">
                         <tr class="text-slate-600">
-                            <th class="px-4 py-3 w-12 text-center">#</th>
+                            <th class="px-4 py-3 w-12 text-center">No.</th>
                             <th class="px-4 py-3">Item</th>
-                            <th class="px-4 py-3 w-48">Keterangan</th> {{-- 🆕 kolom baru --}}
                             <th class="px-4 py-3 w-40 text-center">Gudang</th>
                             <th class="px-4 py-3 w-28 text-center">Jumlah</th>
                             <th class="px-4 py-3 w-32 text-center">Satuan</th>
-                            <th class="px-4 py-3 w-40 text-right">Harga</th>
-                            <th class="px-4 py-3 w-40 text-right">Total</th>
+                            <th class="px-4 py-3 w-40 text-center">Harga</th>
+                            <th class="px-4 py-3 w-40 text-center">Total</th>
                             <th class="px-2 py-3 w-12"></th>
                         </tr>
                     </thead>
@@ -231,85 +241,147 @@
                                 <!-- Nomor urut -->
                                 <td class="px-5 py-4 text-center font-medium align-middle" x-text="idx + 1"></td>
 
-                                <!-- Nama Item -->
+                                <!-- ===========================
+         Nama Item (ICON KANAN + HILANG SAAT ITEM DIPILIH)
+         ============================ -->
                                 <td class="px-5 py-4 align-middle">
-                                    <div class="relative" x-data="{ open: false }">
-                                        <i
-                                            class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
-                                        <input type="text" x-model="item.query"
-                                            @input.debounce.300ms="
-                                        if (item.query.length >= 2) {
-                                            searchItem(idx);
-                                            open = true;
-                                        } else {
-                                            item.item_id = null;
-                                            item.gudang_id = '';
-                                            item.satuan_id = '';
-                                            item.gudangs = [];
-                                            item.filteredSatuans = [];
-                                            item.stok = 0;
-                                            item.harga = 0;
-                                            item.results = [];
-                                            open = false;
-                                        }"
-                                            @focus="open = true" @click.away="open = false" placeholder="Cari item..."
-                                            class="w-full pl-10 pr-4 py-2.5 rounded-lg border border-slate-300 text-sm 
-                                        focus:border-blue-500 focus:ring-2 focus:ring-blue-200" />
+                                    <div class="relative" x-data="{
+                                        open: false,
+                                        teleStyle() {
+                                            try {
+                                                const el = this.$refs.itemInput;
+                                                if (!el) return 'position:absolute; display:none;';
+                                                const rect = el.getBoundingClientRect();
+                                                const top = rect.bottom + window.scrollY;
+                                                const left = rect.left + window.scrollX;
+                                                const width = rect.width;
+                                                return `position:absolute; top:${top}px; left:${left}px; width:${width}px; z-index:9999;`;
+                                            } catch (e) { return 'position:absolute; display:none;'; }
+                                        }
+                                    }" @keydown.escape="open = false"
+                                        @resize.window="$nextTick(() => {})">
 
-                                        <!-- Dropdown hasil pencarian -->
-                                        <div x-show="open && item.query.length >= 2 && !item.item_id" x-cloak
-                                            class="absolute z-30 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
-                                            <div class="p-2">
-                                                <div x-show="item.results.length === 0"
-                                                    class="px-3 py-2 text-sm text-slate-400 text-center italic">
-                                                    Tidak ada item ditemukan
-                                                </div>
-                                                <template x-for="r in item.results" :key="r.id">
-                                                    <div @click="selectItem(idx, r); open = false"
-                                                        class="px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 cursor-pointer rounded">
-                                                        <div class="font-medium" x-text="r.nama_item"></div>
-                                                        <div class="text-xs text-slate-500" x-text="r.kode_item"></div>
+                                        <!-- input pencarian item -->
+                                        <input type="text" x-ref="itemInput" x-model="item.query"
+                                            @input.debounce.300ms="
+                if (item.query.length >= 2) {
+                    searchItem(idx);
+                    open = true;
+                } else {
+                    item.item_id = null;
+                    item.gudang_id = '';
+                    item.satuan_id = '';
+                    item.gudangs = [];
+                    item.filteredSatuans = [];
+                    item.stok = 0;
+                    item.harga = 0;
+                    item.results = [];
+                    open = false;
+                }"
+                                            @focus="open = (item.query && item.query.length >= 2)"
+                                            @click="open = (item.query && item.query.length >= 2)"
+                                            placeholder="Cari item"
+                                            class="w-full pl-4 pr-10 py-2.5 rounded-lg border border-slate-300 text-sm 
+                   focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition" />
+
+                                        <!-- 🔍 ICON PENCARIAN KANAN -->
+                                        <span x-show="!item.item_id" x-cloak x-transition.opacity.duration.150ms
+                                            class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 p-1 rounded-full pointer-events-none">
+                                            <i class="fa-solid fa-magnifying-glass"></i>
+                                        </span>
+
+                                        <!-- ========== TELEPORT DROPDOWN (muncul di bawah input) ========== -->
+                                        <template x-teleport="body">
+                                            <div x-show="open && item.query.length >= 2 && !item.item_id" x-cloak
+                                                x-transition:enter="transition ease-out duration-150"
+                                                x-transition:enter-start="opacity-0 transform -translate-y-1"
+                                                x-transition:enter-end="opacity-100 transform translate-y-0"
+                                                x-transition:leave="transition ease-in duration-100"
+                                                x-transition:leave-start="opacity-100 transform translate-y-0"
+                                                x-transition:leave-end="opacity-0 transform -translate-y-1"
+                                                :style="teleStyle()"
+                                                class="bg-white border border-slate-200 rounded-lg shadow-lg max-h-60 overflow-y-auto text-sm">
+
+                                                <div class="p-2">
+                                                    <div x-show="item.results.length === 0"
+                                                        class="px-3 py-2 text-sm text-slate-400 text-center italic">
+                                                        Tidak ada item ditemukan
                                                     </div>
-                                                </template>
+
+                                                    <template x-for="r in item.results" :key="r.id">
+                                                        <div @click="
+                            selectItem(idx, r);
+                            open = false;
+                        "
+                                                            class="px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 cursor-pointer rounded">
+                                                            <div class="font-medium" x-text="r.nama_item"></div>
+                                                            <div class="text-xs text-slate-500" x-text="r.kode_item">
+                                                            </div>
+                                                        </div>
+                                                    </template>
+                                                </div>
                                             </div>
-                                        </div>
+                                        </template>
+                                        <!-- ========== END TELEPORT DROPDOWN ========== -->
                                     </div>
                                 </td>
 
-                                <!-- Keterangan (opsional) -->
+
+                                {{-- <!-- Keterangan (opsional) -->
                                 <td class="px-5 py-4 align-middle">
                                     <input type="text" x-model="item.keterangan" placeholder="Catatan item (opsional)"
                                         class="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm text-slate-700
                                     focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition" />
-                                </td>
+                                </td> --}}
 
                                 <!-- Gudang -->
                                 <td class="px-5 py-4 align-middle">
-                                    <div class="flex flex-col justify-center">
-                                        <div class="relative w-full">
-                                            <select x-model="item.gudang_id" @change="updateSatuanOptions(idx)"
-                                                class="w-full border border-gray-300 rounded-lg pl-3 pr-8 py-2.5 text-sm text-slate-700 
-                                            appearance-none focus:outline-none focus:ring-2 focus:ring-[#344579]/20 
-                                            focus:border-[#344579] transition">
-                                                <template x-for="g in getDistinctGudangs(item)" :key="g.gudang_id">
-                                                    <option :value="g.gudang_id" x-text="g.nama_gudang"></option>
-                                                </template>
-                                            </select>
-                                            <i
-                                                class="fa-solid fa-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"></i>
+                                    <div class="relative w-full">
+                                        <div
+                                            class="border border-slate-300 rounded-lg px-3 pr-8 py-[6px] text-sm text-slate-700 
+                focus-within:ring-2 focus-within:ring-[#344579]/20 focus-within:border-[#344579] transition">
+                                            <div class="flex flex-col leading-tight">
+                                                <!-- Nama gudang (tampil nama terpilih / opsi pertama / placeholder) -->
+                                                <div class="text-[13px] text-slate-700">
+                                                    <span
+                                                        x-text="(getDistinctGudangs(item).find(g => g.gudang_id == item.gudang_id) || getDistinctGudangs(item)[0] || {}).nama_gudang || '-'">
+                                                    </span>
+
+                                                    <!-- select transparan tetap ada di atas teks untuk interaksi -->
+                                                    <select x-model="item.gudang_id" @change="updateSatuanOptions(idx)"
+                                                        class="absolute inset-0 opacity-0 cursor-pointer">
+                                                        <template x-for="g in getDistinctGudangs(item)"
+                                                            :key="g.gudang_id">
+                                                            <option :value="g.gudang_id" x-text="g.nama_gudang"></option>
+                                                        </template>
+                                                    </select>
+                                                </div>
+
+                                                <!-- Stok: selalu tampil label. Angka hanya kalau gudang dipilih.
+                                                                         Warna berubah merah kalau gudang dipilih dan stok === 0 -->
+                                                <div
+                                                    :class="(item.gudang_id && (parseFloat(item.stok) === 0)) ?
+                                                    'text-rose-600 font-semibold text-[11px] mt-[1px]' :
+                                                    'text-slate-500 text-[11px] mt-[1px]'">
+                                                    Stok: <span
+                                                        x-text="item.gudang_id ? formatStok(item.stok) : ''"></span>
+                                                </div>
+                                            </div>
                                         </div>
-                                        <div class="text-center text-xs whitespace-nowrap mt-1.5"
-                                            :class="item.stok > 0 ? 'text-slate-500' : 'text-rose-600 font-semibold'">
-                                            Stok: <span x-text="formatStok(item.stok)"></span>
-                                        </div>
+
+                                        <!-- Ikon dropdown -->
+                                        <i
+                                            class="fa-solid fa-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none text-[12px]"></i>
                                     </div>
                                 </td>
 
                                 <!-- Jumlah -->
                                 <td class="px-5 py-4 text-center align-middle">
-                                    <input type="number" min="1" x-model.number="item.jumlah" @input="recalc"
-                                        class="w-20 text-center border border-slate-300 rounded-lg px-2 py-2.5 
-                                    focus:border-blue-500 focus:ring-1 focus:ring-blue-200" />
+                                    <input type="text" :value="item.jumlah ? formatJumlah(item.jumlah) : ''"
+                                        @input="updateJumlahFormatted(idx, $event.target.value)"
+                                        class="no-spinner w-24 text-center border border-slate-300 rounded-lg px-2 py-2.5 
+           focus:border-blue-500 focus:ring-1 focus:ring-blue-200"
+                                        inputmode="numeric" pattern="[0-9]*" />
                                 </td>
 
                                 <!-- Satuan -->
@@ -357,14 +429,14 @@
                         </template>
                     </tbody>
                 </table>
-            </div>
 
-            {{-- Button Tambah Item Manual --}}
-            <div class="m-4">
-                <button type="button" @click="addItemManual"
-                    class="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded border-2 border-dashed border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100 transition">
-                    <i class="fa-solid fa-plus"></i> Tambah Item Baru
-                </button>
+                {{-- Button Tambah Item Manual --}}
+                <div class="m-4">
+                    <button type="button" @click="addItemManual"
+                        class="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded border-2 border-dashed border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100 transition">
+                        <i class="fa-solid fa-plus"></i> Tambah Item Baru
+                    </button>
+                </div>
             </div>
         </div>
 
@@ -372,7 +444,9 @@
 
         {{-- === RINGKASAN PENJUALAN === --}}
         <div class="flex flex-col md:flex-row md:justify-end gap-4 mt-8">
-            <div class="w-full md:w-96 bg-gradient-to-b from-white to-slate-50 border border-slate-200 rounded-2xl p-6">
+            <div :class="totalPembayaran > lebarThreshold ? 'w-full md:w-[40%]' : 'w-full md:w-96'"
+                class="bg-gradient-to-b from-white to-slate-50 border border-slate-200 rounded-2xl p-6 transition-all duration-300">
+
                 {{-- Sub Total --}}
                 <div class="flex justify-between items-center mb-4">
                     <div class="text-slate-600">Sub Total</div>
@@ -566,6 +640,8 @@
                 subTotal: 0,
                 totalPembayaran: 0,
 
+                lebarThreshold: 10000000,
+
                 allItems: [],
                 savedPenjualanId: null,
                 showPrintModal: false,
@@ -586,6 +662,64 @@
 
                     this.setupSmartScannerFocus();
                     this.recalc();
+                },
+
+                // === JUMLAH DENGAN FORMAT (MENDUKUNG 1 KOMA) ===
+                updateJumlahFormatted(idx, val) {
+                    // pastikan val adalah string
+                    val = (val || '').toString();
+
+                    // jika user mulai dengan koma seperti ",5" => ubah ke "0,5"
+                    if (val.startsWith(',')) val = '0' + val;
+
+                    // hapus semua kecuali digit dan koma
+                    val = val.replace(/[^0-9,]/g, '');
+
+                    // pisah kiri/kanan berdasarkan koma
+                    let parts = val.split(',');
+
+                    // jika lebih dari satu koma, gabungkan sisanya jadi satu (ambil dua bagian teratas)
+                    if (parts.length > 2) {
+                        parts = [parts[0], parts.slice(1).join('')];
+                    }
+
+                    // bagian kiri (angka bulat) — buang leading zeros (kecuali satu digit '0')
+                    parts[0] = parts[0].replace(/^0+(?=\d)/, '');
+
+                    // format ribuan pada bagian kiri
+                    const leftFormatted = (parts[0] || '0').replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+
+                    // bagian desimal (jika ada) hanya berisi digit
+                    if (parts[1]) {
+                        parts[1] = parts[1].replace(/[^0-9]/g, '');
+                    }
+
+                    // gabungkan untuk tampilan sementara (Alpine akan meng-overwrite input dari :value)
+                    const formatted = parts.length > 1 ? `${leftFormatted},${parts[1]}` : leftFormatted;
+
+                    // Simpan nilai numeric ke model (gunakan titik sebagai pemisah desimal)
+                    const numericStr = (parts[0] ? parts[0].replace(/\./g, '') : '0') + (parts[1] ? '.' + parts[1] : '');
+                    const numeric = parseFloat(numericStr) || 0;
+                    this.form.items[idx].jumlah = numeric;
+
+                    // Hitung ulang totals
+                    this.recalc();
+
+                    // NOTE: input akan diperbarui oleh :value binding (formatJumlah)
+                    // Jika ingin segera menimpa input secara manual, kamu bisa:
+                    // event.target.value = formatted
+                    // tapi karena kita tidak menerima event di sini, biarkan Alpine yang re-render.
+                },
+
+                // Format tampilan jumlah (dipakai oleh :value)
+                formatJumlah(val) {
+                    if (val == null || val === '') return '';
+                    // pastikan string (jaga agar desimal tetap seperti yang tersimpan)
+                    const s = val.toString();
+                    const parts = s.split('.');
+                    const intPart = (parts[0] || '0').replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+                    const decPart = parts[1] || '';
+                    return decPart ? `${intPart},${decPart}` : intPart;
                 },
 
                 // === SMART SCANNER FOCUS ===
