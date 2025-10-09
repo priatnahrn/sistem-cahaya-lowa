@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Penjualan')
+@section('title', 'Daftar Penjualan')
 
 @section('content')
     <style>
@@ -227,10 +227,11 @@
 
                                 <!-- tombol aksi -->
                                 <td class="px-2 py-3 text-right relative">
-                                    <button type="button" @click="openDropdown(r, $event)"
+                                    <button type="button" data-dropdown-open-button @click="openDropdown(r, $event)"
                                         class="px-2 py-1 rounded hover:bg-slate-100 focus:outline-none transition">
                                         <i class="fa-solid fa-ellipsis-vertical"></i>
                                     </button>
+
                                 </td>
                             </tr>
                         </template>
@@ -346,8 +347,8 @@
         </div>
 
         <!-- ✅ Floating dropdown portal -->
-        <div x-cloak x-show="dropdownVisible" x-transition.origin.top.right id="floating-dropdown"
-            class="fixed w-44 bg-white border border-slate-200 rounded-lg shadow-lg z-[9999]"
+        <div x-cloak x-show="dropdownVisible" x-transition.origin.top.right id="floating-dropdown" data-dropdown
+            class="absolute w-44 bg-white border border-slate-200 rounded-lg shadow-lg z-[9999]"
             :style="`top:${dropdownPos.top}; left:${dropdownPos.left}`">
             <button @click="window.location = dropdownData.url"
                 class="w-full text-left px-4 py-2 text-sm hover:bg-slate-50 flex items-center gap-2 text-slate-700">
@@ -659,18 +660,29 @@
                     const rect = event.currentTarget.getBoundingClientRect();
                     const dropdownHeight = 120;
 
-                    let top = rect.bottom + 6;
+                    // hitung ruang relatif ke viewport untuk menentukan di atas/di bawah
                     const spaceBelow = window.innerHeight - rect.bottom;
                     const spaceAbove = rect.top;
 
+                    // konversi koordinat viewport -> dokumen
+                    const docTopBelow = rect.bottom + window.scrollY + 6; // posisi jika ditaruh di bawah
+                    const docTopAbove = rect.top + window.scrollY - dropdownHeight - 6; // posisi jika ditaruh di atas
+                    const docLeft = rect.right + window.scrollX - 176;
+
                     if (spaceBelow < dropdownHeight && spaceAbove > dropdownHeight) {
-                        top = rect.top - dropdownHeight - 6;
+                        // tempatkan di atas (menggunakan koordinat dokumen)
+                        this.dropdownPos = {
+                            top: docTopAbove + 'px',
+                            left: docLeft + 'px'
+                        };
+                    } else {
+                        // tempatkan di bawah (menggunakan koordinat dokumen)
+                        this.dropdownPos = {
+                            top: docTopBelow + 'px',
+                            left: docLeft + 'px'
+                        };
                     }
 
-                    this.dropdownPos = {
-                        top: top + 'px',
-                        left: rect.right - 176 + 'px'
-                    };
 
                     this.dropdownVisible = true;
 
@@ -681,9 +693,7 @@
                     }, 0);
 
                     // juga tutup saat resize atau scroll (opsional)
-                    this._scrollHandler = this.closeDropdown.bind(this);
                     this._resizeHandler = this.closeDropdown.bind(this);
-                    window.addEventListener('scroll', this._scrollHandler, true);
                     window.addEventListener('resize', this._resizeHandler);
                 },
 
@@ -708,10 +718,6 @@
                         this._outsideClickHandler = null;
                     }
 
-                    if (this._scrollHandler) {
-                        window.removeEventListener('scroll', this._scrollHandler, true);
-                        this._scrollHandler = null;
-                    }
                     if (this._resizeHandler) {
                         window.removeEventListener('resize', this._resizeHandler);
                         this._resizeHandler = null;
