@@ -3,6 +3,7 @@
 use App\Http\Controllers\GudangController;
 use App\Http\Controllers\ItemController;
 use App\Http\Controllers\KategoriItemController;
+use App\Http\Controllers\MutasiStokController;
 use App\Http\Controllers\PelangganController;
 use App\Http\Controllers\PembayaranController;
 use App\Http\Controllers\PembelianController;
@@ -185,6 +186,15 @@ Route::middleware('auth')->group(function () {
 
     Route::prefix('produksi')->name('produksi.')->group(function () {
         Route::get('/', [ProduksiController::class, 'index'])->name('index'); 
+    });
+
+    Route::prefix('mutasi-stok')->name('mutasi-stok.')->group(function () {
+        Route::get('/', [MutasiStokController::class, 'index'])->name('index');
+        Route::get('/create', [MutasiStokController::class, 'create'])->name('create');
+        Route::post('/store', [MutasiStokController::class, 'store'])->name('store');
+        Route::get('/{id}', [MutasiStokController::class, 'show'])->name('show');
+        Route::put('/{id}/update', [MutasiStokController::class, 'update'])->name('update');
+        Route::delete('/{id}/delete', [MutasiStokController::class, 'destroy'])->name('destroy');
     });
 
     Route::get('/profil', function () {

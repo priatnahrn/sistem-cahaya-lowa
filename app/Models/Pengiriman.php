@@ -15,6 +15,7 @@ class Pengiriman extends Model
         'tanggal_pengiriman',
         'status_pengiriman',
         'created_by',
+        'supir'
     ];
 
     // Relasi ke Penjualan

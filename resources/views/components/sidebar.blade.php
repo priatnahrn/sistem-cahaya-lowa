@@ -286,7 +286,7 @@
                 </a>
                 {{-- Mutasi Stok --}}
                 @php $active = $is('mutasi-stok.*'); @endphp
-                <a href=""
+                <a href="{{ route('mutasi-stok.index') }}"
                     class="mt-2 flex items-center gap-3 px-3 py-[10px] rounded-md transition {{ $active ? 'bg-white text-[#344579]' : 'text-white/85 hover:bg-white/5' }}"
                     :class="{ 'justify-center': collapsed }">
                     <i class="fa-solid fa-right-left" :class="collapsed ? 'text-lg' : ''"></i>

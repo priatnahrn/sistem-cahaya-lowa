@@ -17,6 +17,7 @@ return new class extends Migration
             $table->string('no_pengiriman');
             $table->dateTime('tanggal_pengiriman');
             $table->enum('status_pengiriman', ['perlu_dikirim', 'dalam_pengiriman', 'diterima'])->default('perlu_dikirim');
+            $table->string('supir')->nullable();
             $table->timestamps();
         });
     }

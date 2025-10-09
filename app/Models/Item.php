@@ -58,4 +58,16 @@ class Item extends Model
     {
         return $this->hasMany(ItemPenjualan::class, 'item_id');
     }
+
+    public function itemGudangs()
+    {
+        return $this->hasMany(ItemGudang::class, 'item_id');
+    }
+
+
+    // App\Models\Item.php
+    public function pembelians()
+    {
+        return $this->hasMany(ItemPembelian::class);
+    }
 }

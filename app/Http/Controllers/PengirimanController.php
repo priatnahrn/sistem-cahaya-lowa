@@ -45,6 +45,7 @@ class PengirimanController extends Controller
             'tanggal_kirim' => 'nullable|date',
             'alamat'        => 'nullable|string|max:255',
             'status'        => 'required|in:pending,on_process,delivered,cancelled',
+            'supir' => 'nullable|string|max:255',
         ]);
 
         try {
@@ -52,6 +53,7 @@ class PengirimanController extends Controller
                 'tanggal_kirim' => $data['tanggal_kirim'] ?? $pengiriman->tanggal_kirim,
                 'alamat'        => $data['alamat'] ?? $pengiriman->alamat,
                 'status'        => $data['status'],
+                'supir' =>  $data['supir'] ?? $pengiriman->supir,
             ]);
 
             return redirect()->back()->with('success', 'Pengiriman berhasil diperbarui');
