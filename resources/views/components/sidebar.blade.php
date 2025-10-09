@@ -51,7 +51,7 @@
 
 
             {{-- Penjualan (submenu) --}}
-            @php $openPenjualan = $open(['penjualan.*', 'retur-penjualan.*', 'kasir.*']); @endphp
+            @php $openPenjualan = $open(['penjualan.*', 'retur-penjualan.*']); @endphp
             <div x-data="{ open: {{ $openPenjualan ? 'true' : 'false' }} }" class="mt-2">
                 <button @click="open=!open"
                     class="w-full flex items-center gap-3 px-3 py-[10px] rounded-md transition text-white/85 hover:bg-white/5"
@@ -97,17 +97,49 @@
                         </span>
                     </a>
 
-                    {{-- Kasir --}}
-                    @php $on = $is('kasir.*'); @endphp
-                    <a href=""
-                        class="block px-3 py-2 rounded-md text-[13px] transition {{ $on ? 'bg-white text-[#344579] font-semibold' : 'text-white/80 hover:bg-white/5' }}">
-                        <span class="flex items-center gap-3">
-                            <span
-                                class="inline-block w-[3px] h-5 rounded {{ $on ? 'bg-white' : 'bg-transparent' }}"></span>
-                            <span>Kasir</span>
-                        </span>
-                    </a>
+
                 </div>
+
+                {{-- ======================= --}}
+                {{-- 🔹 KASIR (menu baru) --}}
+                {{-- ======================= --}}
+                @php $openKasir = $open(['kasir.*']); @endphp
+                <div x-data="{ open: {{ $openKasir ? 'true' : 'false' }} }" class="mt-2">
+                    <button @click="open=!open"
+                        class="w-full flex items-center gap-3 px-3 py-[10px] rounded-md transition text-white/85 hover:bg-white/5"
+                        :class="{ 'justify-center': collapsed }">
+                        <i class="fa-solid fa-cart-shopping" :class="collapsed ? 'text-lg' : ''"></i>
+                        <span x-show="!collapsed" class="flex-1 text-left font-medium">Kasir</span>
+                        <i x-show="!collapsed"
+                            class="fa-solid fa-chevron-down text-white/60 transition-transform duration-200"
+                            :class="open ? 'rotate-180' : ''"></i>
+                    </button>
+
+                    <div x-show="open && !collapsed" x-transition class="mt-1 pl-6 space-y-1">
+                        {{-- Penjualan Cepat --}}
+                        @php $onKasir = $is('kasir.penjualan-cepat.*'); @endphp
+                        <a href="{{ route('penjualan-cepat.index') }}"
+                            class="block px-3 py-2 rounded-md text-[13px] transition {{ $onKasir ? 'bg-white text-[#344579] font-semibold' : 'text-white/80 hover:bg-white/5' }}">
+                            <span class="flex items-center gap-3">
+                                <span
+                                    class="inline-block w-[3px] h-5 rounded {{ $onKasir ? 'bg-white' : 'bg-transparent' }}"></span>
+                                <span>Penjualan Cepat</span>
+                            </span>
+                        </a>
+
+                        {{-- Pembayaran --}}
+                        @php $onKasir = $is('kasir.pembayaran.*'); @endphp
+                        <a href="{{ route('pembayaran.index') }}"
+                            class="block px-3 py-2 rounded-md text-[13px] transition {{ $onKasir ? 'bg-white text-[#344579] font-semibold' : 'text-white/80 hover:bg-white/5' }}">
+                            <span class="flex items-center gap-3">
+                                <span
+                                    class="inline-block w-[3px] h-5 rounded {{ $onKasir ? 'bg-white' : 'bg-transparent' }}"></span>
+                                <span>Pembayaran</span>
+                            </span>
+                        </a>
+                    </div>
+                </div>
+
             </div>
 
 
@@ -260,6 +292,16 @@
                     <i class="fa-solid fa-right-left" :class="collapsed ? 'text-lg' : ''"></i>
                     <span x-show="!collapsed" class="font-medium">Mutasi Stok</span>
                 </a>
+
+                {{-- PRODUKSI --}}
+                @php $active = $is('produksi.*'); @endphp
+                <a href="{{ route('produksi.index') }}"
+                    class="mt-2 flex items-center gap-3 px-3 py-[10px] rounded-md transition {{ $active ? 'bg-white text-[#344579]' : 'text-white/85 hover:bg-white/5' }}"
+                    :class="{ 'justify-center': collapsed }">
+                    <i class="fa-solid fa-hammer" :class="collapsed ? 'text-lg' : ''"></i>
+                    <span x-show="!collapsed" class="font-medium">Produksi</span>
+                </a>
+
 
             </div>
 

@@ -6,6 +6,8 @@ use Illuminate\Database\Eloquent\Model;
 
 class Penjualan extends Model
 {
+    protected $table = 'penjualans';
+
     protected $fillable = [
         'no_faktur',
         'tanggal',
@@ -22,33 +24,38 @@ class Penjualan extends Model
     ];
 
     protected $casts = [
-        'tanggal' => 'datetime',  // ← Ini akan auto-convert ke Carbon
+        'tanggal' => 'datetime',  // otomatis ke Carbon
         'sub_total' => 'decimal:2',
         'biaya_transport' => 'decimal:2',
         'total' => 'decimal:2',
     ];
+
+    // 🔹 Relasi ke detail item penjualan
     public function items()
     {
-        return $this->hasMany(ItemPenjualan::class, 'penjualan_id');
+        return $this->hasMany(ItemPenjualan::class, 'penjualan_id', 'id');
     }
 
+    // 🔹 Relasi ke pelanggan
     public function pelanggan()
     {
-        return $this->belongsTo(Pelanggan::class);
+        return $this->belongsTo(Pelanggan::class, 'pelanggan_id');
     }
 
-    public function itemPenjualans()
-    {
-        return $this->hasMany(ItemPenjualan::class);
-    }
-
+    // 🔹 User yang membuat data
     public function createdBy()
     {
         return $this->belongsTo(User::class, 'created_by');
     }
 
+    // 🔹 User yang terakhir mengubah data
     public function updatedBy()
     {
         return $this->belongsTo(User::class, 'updated_by');
+    }
+
+    public function pembayarans()
+    {
+        return $this->hasMany(Pembayaran::class, 'penjualan_id');
     }
 }

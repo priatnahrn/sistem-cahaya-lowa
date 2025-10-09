@@ -120,7 +120,7 @@ class PelangganController extends Controller
 
         try {
             $pelanggan->update($validated);
-            return redirect()->route('pelanggan.show', $id)->with('success', 'Pelanggan berhasil diperbarui.');
+            return redirect()->route('pelanggan.index', $id)->with('success', 'Pelanggan berhasil diperbarui.');
         } catch (\Exception $e) {
             return back()->withErrors(['error' => 'Terjadi kesalahan saat memperbarui data.'])->withInput();
         }

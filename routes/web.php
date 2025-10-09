@@ -4,9 +4,12 @@ use App\Http\Controllers\GudangController;
 use App\Http\Controllers\ItemController;
 use App\Http\Controllers\KategoriItemController;
 use App\Http\Controllers\PelangganController;
+use App\Http\Controllers\PembayaranController;
 use App\Http\Controllers\PembelianController;
 use App\Http\Controllers\PengirimanController;
+use App\Http\Controllers\PenjualanCepatController;
 use App\Http\Controllers\PenjualanController;
+use App\Http\Controllers\ProduksiController;
 use App\Http\Controllers\ReturPembelianController;
 use App\Http\Controllers\SupplierController;
 use App\Http\Controllers\TagihanPembelianController;
@@ -37,6 +40,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/', [PenjualanController::class, 'index'])->name('penjualan.index');
         Route::get('/create', [PenjualanController::class, 'create'])->name('penjualan.create');
         Route::post('/store', [PenjualanController::class, 'store'])->name('penjualan.store');
+        Route::get('/search', [PenjualanController::class, 'searchPenjualan'])->name('penjualan.search');
         Route::get('/{id}', [PenjualanController::class, 'show'])->name('penjualan.show');
         Route::get('/items/search', [PenjualanController::class, 'searchItems']);
 
@@ -48,6 +52,15 @@ Route::middleware('auth')->group(function () {
         Route::delete('/{id}/delete', [PenjualanController::class, 'destroy'])->name('penjualan.destroy');
     });
 
+    Route::prefix('penjualan-cepat')->group(function () {
+        Route::get('/', [PenjualanCepatController::class, 'index'])->name('penjualan-cepat.index');
+        Route::get('/create', [PenjualanCepatController::class, 'create'])->name('penjualan-cepat.create');
+        Route::post('/store', [PenjualanCepatController::class, 'store'])->name('penjualan-cepat.store');
+        Route::get('/{id}', [PenjualanCepatController::class, 'show'])->name('penjualan-cepat.show');
+        Route::put('/{id}/update', [PenjualanCepatController::class, 'update'])->name('penjualan-cepat.update');
+        Route::delete('/{id}/delete', [PenjualanCepatController::class, 'destroy'])->name('penjualan-cepat.destroy');
+    });
+
     Route::prefix('pengiriman')->group(function () {
         Route::get('/', [PengirimanController::class, 'index'])->name('pengiriman.index');
         Route::get('/create', [PengirimanController::class, 'create'])->name('pengiriman.create');
@@ -55,6 +68,23 @@ Route::middleware('auth')->group(function () {
         Route::get('/{id}', [PengirimanController::class, 'show'])->name('pengiriman.show');
         Route::put('/{id}/update', [PengirimanController::class, 'update'])->name('pengiriman.update');
         Route::delete('/{id}/delete', [PengirimanController::class, 'destroy'])->name('pengiriman.destroy');
+    });
+
+    Route::prefix('pembayaran')->name('pembayaran.')->group(function () {
+        // Halaman daftar pembayaran
+        Route::get('/', [PembayaranController::class, 'index'])->name('index');
+
+        // Form tambah pembayaran
+        Route::get('/create', [PembayaranController::class, 'create'])->name('create');
+
+        // Simpan pembayaran baru
+        Route::post('/', [PembayaranController::class, 'store'])->name('store');
+
+        // Detail pembayaran tertentu
+        Route::get('/{id}', [PembayaranController::class, 'show'])->name('show');
+
+        // Hapus pembayaran (AJAX / fetch delete)
+        Route::delete('/{id}/delete', [PembayaranController::class, 'destroy'])->name('destroy');
     });
 
 
@@ -153,6 +183,9 @@ Route::middleware('auth')->group(function () {
         Route::delete('/{id}', [ItemController::class, 'destroy'])->name('destroy');
     });
 
+    Route::prefix('produksi')->name('produksi.')->group(function () {
+        Route::get('/', [ProduksiController::class, 'index'])->name('index'); 
+    });
 
     Route::get('/profil', function () {
         return view('auth.profil.index'); // buat view profil/index.blade.php

@@ -83,6 +83,7 @@ class PenjualanController extends Controller
 
         DB::beginTransaction();
         try {
+            // 🧾 1️⃣ Buat Header Penjualan
             $penjualan = Penjualan::create([
                 'no_faktur'       => $data['no_faktur'],
                 'tanggal'         => $data['tanggal'] . ' ' . now()->format('H:i:s'),
@@ -91,13 +92,13 @@ class PenjualanController extends Controller
                 'sub_total'       => $data['sub_total'],
                 'biaya_transport' => $data['biaya_transport'] ?? 0,
                 'total'           => $data['total'],
-                'status_bayar'    => 'unpaid',
+                'status_bayar'    => 'unpaid', // default
                 'mode'            => $data['mode'],
                 'is_draft'        => $isDraft,
                 'created_by'      => Auth::id(),
             ]);
 
-            // 🟢 Simpan semua item, baik draft maupun tidak
+            // 📦 2️⃣ Simpan Detail Item & Kurangi Stok (jika bukan draft)
             foreach ($data['items'] as $it) {
                 ItemPenjualan::create([
                     'penjualan_id' => $penjualan->id,
@@ -110,7 +111,6 @@ class PenjualanController extends Controller
                     'created_by'   => Auth::id(),
                 ]);
 
-                // 🔒 Kurangi stok hanya jika BUKAN draft
                 if (!$isDraft) {
                     $ig = ItemGudang::where('item_id', $it['item_id'])
                         ->where('gudang_id', $it['gudang_id'])
@@ -125,7 +125,7 @@ class PenjualanController extends Controller
                 }
             }
 
-            // 🚚 Buat pengiriman hanya jika bukan draft & mode antar
+            // 🚚 3️⃣ Buat Pengiriman jika mode = antar
             if (!$isDraft && $data['mode'] === 'antar') {
                 Pengiriman::create([
                     'penjualan_id'       => $penjualan->id,
@@ -135,12 +135,26 @@ class PenjualanController extends Controller
                 ]);
             }
 
+            // 💳 4️⃣ Buat Tagihan Penjualan (karena masih unpaid)
+            if (!$isDraft) {
+                \App\Models\TagihanPenjualan::create([
+                    'penjualan_id'   => $penjualan->id,
+                    'no_tagihan'     => 'TG' . now()->format('dmy') . str_pad($penjualan->id, 3, '0', STR_PAD_LEFT),
+                    'tanggal_tagihan' => now(),
+                    'total'          => $penjualan->total,
+                    'jumlah_bayar'   => 0,
+                    'sisa'           => $penjualan->total,
+                    'status_tagihan' => 'belum_lunas',
+                    'created_by'     => Auth::id(),
+                ]);
+            }
+
             DB::commit();
 
             return response()->json([
                 'message' => $isDraft
-                    ? 'Draft penjualan berhasil disimpan (item juga disimpan, stok belum dikurangi).'
-                    : 'Penjualan berhasil disimpan dan stok dikurangi.',
+                    ? 'Draft penjualan berhasil disimpan (stok belum dikurangi).'
+                    : 'Penjualan berhasil disimpan, stok diperbarui, dan tagihan dibuat.',
                 'id' => $penjualan->id,
             ], 201);
         } catch (\Throwable $e) {
@@ -153,6 +167,7 @@ class PenjualanController extends Controller
             ], 500);
         }
     }
+
 
 
 
@@ -476,5 +491,47 @@ class PenjualanController extends Controller
             Log::error('Update Penjualan error: ' . $e->getMessage());
             return response()->json(['message' => 'Gagal update penjualan', 'error' => $e->getMessage()], 500);
         }
+    }
+
+    /**
+     * API: Cari penjualan berdasarkan kode nota (no_faktur)
+     * Digunakan untuk fitur pembayaran (scan barcode / input manual)
+     */
+    public function searchPenjualan(Request $request)
+    {
+        $kode = $request->get('kode');
+
+        $penjualan = Penjualan::with([
+            'pelanggan:id,nama_pelanggan',
+            'items.item:id,nama_item',
+            'items.satuan:id,nama_satuan',
+            'pembayarans:id,penjualan_id,jumlah_bayar'
+        ])
+            ->where('no_faktur', $kode)
+            ->first();
+
+        if (!$penjualan) {
+            return response()->json(['message' => 'Penjualan tidak ditemukan.'], 404);
+        }
+
+        $dibayar = $penjualan->pembayarans->sum('jumlah_bayar');
+
+        return response()->json([
+            'id' => $penjualan->id,
+            'no_faktur' => $penjualan->no_faktur,
+            'pelanggan' => $penjualan->pelanggan->nama_pelanggan ?? '-',
+            'tanggal' => $penjualan->tanggal->format('Y-m-d H:i:s'),
+            'total' => (float) $penjualan->total,
+            'dibayar' => (float) $dibayar,
+            'sisa' => (float) ($penjualan->sisa ?? max(0, $penjualan->total - $dibayar)),
+            'status_bayar' => $penjualan->status_bayar, // ✅ Langsung ambil dari kolom di database
+            'items' => $penjualan->items->map(fn($it) => [
+                'id' => $it->id,
+                'nama_item' => $it->item->nama_item ?? '-',
+                'qty' => (float) $it->jumlah,
+                'harga' => (float) $it->harga,
+                'subtotal' => (float) $it->total,
+            ]),
+        ]);
     }
 }
