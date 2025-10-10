@@ -70,4 +70,10 @@ class Item extends Model
     {
         return $this->hasMany(ItemPembelian::class);
     }
+
+    public function stok_data()
+    {
+        return $this->hasMany(ItemGudang::class, 'item_id')
+            ->select(['item_id', 'gudang_id', 'satuan_id', 'stok']); // hanya ambil kolom penting
+    }
 }

@@ -34,6 +34,8 @@ class MutasiStok extends Model
         return $this->hasMany(MutasiStokItem::class, 'mutasi_stok_id');
     }
 
-    
+    public function creator()
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
 }
-

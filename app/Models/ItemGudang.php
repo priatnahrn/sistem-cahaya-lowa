@@ -13,6 +13,7 @@ class ItemGudang extends Model
         'gudang_id',
         'satuan_id',
         'stok',
+        'total_stok'
     ];
 
     public function item()

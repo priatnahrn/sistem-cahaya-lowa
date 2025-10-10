@@ -190,31 +190,24 @@
     </div>
 
     @php
-        $itemsJson = $items
+        $itemsArray = $items
             ->map(
                 fn($i) => [
                     'id' => $i->id,
                     'kode_item' => $i->kode_item,
                     'nama_item' => $i->nama_item,
-                    'satuans' => $i->satuans->map(
-                        fn($s) => [
-                            'id' => $s->id,
-                            'nama_satuan' => $s->nama_satuan,
-                        ],
-                    ),
-                    // stok_data sudah array dari controller, jadi langsung ambil aja
+                    'satuans' => $i->satuan_data ?? $i->satuans,
                     'stok_data' => $i->stok_data,
                 ],
             )
             ->toArray();
     @endphp
 
-
     <script>
         function mutasiCreatePage() {
             return {
                 toasts: [],
-                allItems: @json($itemsJson),
+                allItems: @json($itemsArray),
                 form: {
                     no_mutasi: @json($newCode),
                     tanggal: new Date().toISOString().split('T')[0],
@@ -223,44 +216,50 @@
                     items: []
                 },
 
+                // 🔹 INITIALIZATION
                 init() {
                     this.addItem();
-                    console.log('%c[INIT]', 'color: gray;', 'Mutasi page loaded');
+                    console.log('%c[INIT]', 'color: gray;', 'Form Tambah Mutasi dimuat');
                 },
 
+                // 🔹 TAMBAH ITEM BARU
                 addItem() {
                     this.form.items.push({
                         item_id: '',
                         query: '',
                         results: [],
-                        stok: null,
+                        stok: '-',
                         satuan_id: '',
                         satuans: [],
                         jumlah: ''
                     });
-                    console.log('%c[ITEM]', 'color: orange;', 'Item row ditambahkan', this.form.items);
+                    console.log('%c[ITEM]', 'color: orange;', 'Item baru ditambahkan');
                 },
 
+                // 🔹 HAPUS ITEM
                 removeItem(idx) {
-                    console.log('%c[REMOVE]', 'color: red;', 'Menghapus item index:', idx);
                     this.form.items.splice(idx, 1);
+                    console.log('%c[REMOVE]', 'color: red;', 'Menghapus item index:', idx);
                 },
 
+                // 🔹 PENCARIAN ITEM
                 searchItem(idx) {
-                    const q = this.form.items[idx].query.toLowerCase();
+                    const q = this.form.items[idx].query.toLowerCase().trim();
                     if (q.length < 2) {
                         this.form.items[idx].results = [];
                         return;
                     }
 
+                    // filter hasil
                     this.form.items[idx].results = this.allItems.filter(i =>
-                        i.nama_item.toLowerCase().includes(q) || i.kode_item.toLowerCase().includes(q)
+                        i.nama_item.toLowerCase().includes(q) ||
+                        i.kode_item.toLowerCase().includes(q)
                     ).slice(0, 15);
 
-                    console.log('%c[SEARCH ITEM]', 'color: #007acc;', 'Query:', q,
-                        '\nHasil:', this.form.items[idx].results);
+                    console.log('%c[SEARCH ITEM]', 'color: #007acc;', 'Query:', q);
                 },
 
+                // 🔹 PILIH ITEM DARI HASIL PENCARIAN
                 selectItem(idx, item) {
                     const row = this.form.items[idx];
                     row.item_id = item.id;
@@ -268,8 +267,9 @@
                     row.results = [];
                     row.satuans = item.satuans || [];
 
+                    // default pilih satuan pertama jika ada
                     if (row.satuans.length > 0) {
-                        row.satuan_id = row.satuans[0].id;
+                        row.satuan_id = row.satuans[0].id || row.satuans[0].satuan_id;
                     }
 
                     console.log('%c[SELECT ITEM]', 'color: #4CAF50;', {
@@ -281,14 +281,16 @@
                     this.updateStokFromCache(idx);
                 },
 
+                // 🔹 SAAT GUDANG ASAL BERUBAH, UPDATE SEMUA STOK
                 updateAllStok() {
                     console.log('%c[GUDANG ASAL DIPILIH]', 'color: #FF9800;',
                         'Gudang Asal ID:', this.form.gudang_asal_id);
                     this.form.items.forEach((_, idx) => this.updateStokFromCache(idx));
                 },
 
+                // 🔹 FORMAT STOK UNTUK TAMPILAN
                 formatStok(n) {
-                    if (n == null || isNaN(n)) return '-';
+                    if (n === null || n === '-' || n === undefined || isNaN(n)) return '-';
                     const num = parseFloat(n);
                     return Number.isInteger(num) ?
                         num.toString() :
@@ -298,8 +300,15 @@
                         });
                 },
 
+                // 🔹 UPDATE STOK BERDASARKAN GUDANG + SATUAN
                 updateStokFromCache(idx) {
                     const row = this.form.items[idx];
+                    console.log('%c[DEBUG updateStokFromCache]', 'color: orange;', {
+                        gudang_asal_id: this.form.gudang_asal_id,
+                        item_id: row.item_id,
+                        satuan_id: row.satuan_id
+                    });
+
                     if (!this.form.gudang_asal_id || !row.item_id || !row.satuan_id) {
                         row.stok = '-';
                         return;
@@ -312,57 +321,79 @@
                     }
 
                     const stokData = item.stok_data.find(
-                        s => s.gudang_id == this.form.gudang_asal_id && s.satuan_id == row.satuan_id
+                        s => s.gudang_id == this.form.gudang_asal_id &&
+                        s.satuan_id == row.satuan_id
                     );
 
-                    row.stok = this.formatStok(stokData ? stokData.stok : 0);
+                    // isi stok
+                    row.stok = stokData ? parseFloat(stokData.stok) : 0;
 
                     console.log('%c[UPDATE STOK]', 'color: #9C27B0;', {
                         item: row.query,
-                        gudang: this.form.gudang_asal_id,
-                        satuan: row.satuan_id,
                         stokTersedia: row.stok
                     });
                 },
 
+                // 🔹 VALIDASI FORM SEBELUM SIMPAN
                 isValid() {
-                    if (!this.form.no_mutasi || !this.form.tanggal || !this.form.gudang_asal_id ||
+                    if (!this.form.no_mutasi ||
+                        !this.form.tanggal ||
+                        !this.form.gudang_asal_id ||
                         !this.form.gudang_tujuan_id)
                         return false;
-                    if (this.form.gudang_asal_id === this.form.gudang_tujuan_id) return false;
-                    if (this.form.items.length === 0) return false;
+
+                    if (this.form.gudang_asal_id === this.form.gudang_tujuan_id)
+                        return false;
+
+                    if (this.form.items.length === 0)
+                        return false;
+
                     for (let i of this.form.items) {
-                        if (!i.item_id || !i.satuan_id || !i.jumlah || i.jumlah <= 0) return false;
+                        if (!i.item_id || !i.satuan_id || !i.jumlah || i.jumlah <= 0)
+                            return false;
                     }
+
                     return true;
                 },
 
+                // 🔹 SIMPAN DATA KE BACKEND
                 async save() {
-                    if (!this.isValid()) return;
-                    const payload = JSON.stringify(this.form);
+                    if (!this.isValid()) {
+                        this.toasts.push({
+                            type: 'error',
+                            message: 'Lengkapi semua data terlebih dahulu!'
+                        });
+                        return;
+                    }
 
-                    console.log('%c[SAVE]', 'color: #2196F3;', 'Payload dikirim:', this.form);
+                    console.log('%c[SAVE]', 'color: #2196F3;', 'Payload:', this.form);
 
-                    const res = await fetch(`{{ route('mutasi-stok.store') }}`, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-CSRF-TOKEN': '{{ csrf_token() }}'
-                        },
-                        body: payload
-                    });
+                    try {
+                        const res = await fetch(`{{ route('mutasi-stok.store') }}`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                            },
+                            body: JSON.stringify(this.form)
+                        });
 
-                    if (res.ok) {
-                        window.location.href = "{{ route('mutasi-stok.index') }}";
-                    } else {
-                        const err = await res.json().catch(() => null);
-                        (err?.errors ? Object.values(err.errors).flat() : ['Gagal menyimpan mutasi stok']).forEach(
-                            msg => {
-                                this.toasts.push({
-                                    type: 'error',
-                                    message: msg
-                                });
-                            });
+                        if (res.ok) {
+                            window.location.href = "{{ route('mutasi-stok.index') }}";
+                        } else {
+                            const err = await res.json().catch(() => null);
+                            (err?.errors ? Object.values(err.errors).flat() : ['Gagal menyimpan mutasi stok'])
+                            .forEach(msg => this.toasts.push({
+                                type: 'error',
+                                message: msg
+                            }));
+                        }
+                    } catch (e) {
+                        console.error(e);
+                        this.toasts.push({
+                            type: 'error',
+                            message: 'Terjadi kesalahan koneksi ke server.'
+                        });
                     }
                 }
             };

@@ -18,6 +18,8 @@ return new class extends Migration
             $table->foreignId('gudang_asal_id')->constrained('gudangs')->onDelete('cascade');
             $table->foreignId('gudang_tujuan_id')->constrained('gudangs')->onDelete('cascade');
             $table->text('keterangan')->nullable();
+            $table->foreignId('created_by')->nullable()->constrained('users')->nullOnDelete();
+            $table->foreignId('updated_by')->nullable()->constrained('users')->nullOnDelete();
             $table->timestamps();
         });
     }

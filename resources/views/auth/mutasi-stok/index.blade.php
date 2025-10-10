@@ -275,8 +275,8 @@
                 'tanggal' => \Carbon\Carbon::parse($m->tanggal_mutasi)->format('d/m/Y'),
                 'gudang_asal' => $m->gudangAsal->nama_gudang ?? '-',
                 'gudang_tujuan' => $m->gudangTujuan->nama_gudang ?? '-',
-                'admin' => $m->admin->name ?? '-',
-                'url' => route('mutasi.show', $m->id),
+                'admin' => $m->createdBy->name ?? '-',
+                'url' => route('mutasi-stok.show', $m->id),
             ])
             ->toArray();
     @endphp
