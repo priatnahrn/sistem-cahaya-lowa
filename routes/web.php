@@ -66,6 +66,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/', [PengirimanController::class, 'index'])->name('pengiriman.index');
         Route::get('/create', [PengirimanController::class, 'create'])->name('pengiriman.create');
         Route::post('/store', [PengirimanController::class, 'store'])->name('pengiriman.store');
+        Route::get('/search', [PengirimanController::class, 'search'])->name('pengiriman.search');
         Route::get('/{id}', [PengirimanController::class, 'show'])->name('pengiriman.show');
         Route::put('/{id}/update', [PengirimanController::class, 'update'])->name('pengiriman.update');
         Route::delete('/{id}/delete', [PengirimanController::class, 'destroy'])->name('pengiriman.destroy');
