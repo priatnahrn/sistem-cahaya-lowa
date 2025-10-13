@@ -6,9 +6,11 @@ use App\Models\Gudang;
 use App\Models\Item;
 use App\Models\ItemGudang;
 use App\Models\ItemPenjualan;
+use App\Models\ItemProduksi;
 use App\Models\Pelanggan;
 use App\Models\Pengiriman;
 use App\Models\Penjualan;
+use App\Models\Produksi;
 use App\Models\Satuan;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
@@ -92,7 +94,7 @@ class PenjualanController extends Controller
                 'sub_total'       => $data['sub_total'],
                 'biaya_transport' => $data['biaya_transport'] ?? 0,
                 'total'           => $data['total'],
-                'status_bayar'    => 'unpaid', // default
+                'status_bayar'    => 'unpaid',
                 'mode'            => $data['mode'],
                 'is_draft'        => $isDraft,
                 'created_by'      => Auth::id(),
@@ -125,7 +127,39 @@ class PenjualanController extends Controller
                 }
             }
 
-            // 🚚 3️⃣ Buat Pengiriman jika mode = antar
+            // 🧵 3️⃣ Produksi Otomatis untuk Kategori SPANDEX
+            if (!$isDraft) {
+                $itemsSpandex = \App\Models\ItemPenjualan::where('penjualan_id', $penjualan->id)
+                    ->whereHas('item.kategoriItem', function ($q) {
+                        $q->where('nama_kategori', 'SPANDEX');
+                    })
+                    ->get();
+
+                if ($itemsSpandex->isNotEmpty()) {
+                    $produksi = Produksi::create([
+                        'penjualan_id' => $penjualan->id,
+                        'no_produksi'  => $penjualan->no_faktur, // sama dengan nomor faktur
+                        'status'       => 'pending',
+                        'created_by'   => Auth::id(),
+                    ]);
+
+
+                    foreach ($itemsSpandex as $itemPenjualan) {
+                        ItemProduksi::create([
+                            'produksi_id'        => $produksi->id,
+                            'item_id'            => $itemPenjualan->item_id,
+                            'item_penjualan_id'  => $itemPenjualan->id,
+                            'jumlah_dibutuhkan'  => $itemPenjualan->jumlah,
+                            'jumlah_selesai'     => 0,
+                            'status'             => 'pending',
+                        ]);
+                    }
+
+                    Log::info("✅ Produksi otomatis dibuat untuk penjualan {$penjualan->no_faktur}");
+                }
+            }
+
+            // 🚚 4️⃣ Buat Pengiriman jika mode = antar
             if (!$isDraft && $data['mode'] === 'antar') {
                 Pengiriman::create([
                     'penjualan_id'       => $penjualan->id,
@@ -135,17 +169,17 @@ class PenjualanController extends Controller
                 ]);
             }
 
-            // 💳 4️⃣ Buat Tagihan Penjualan (karena masih unpaid)
+            // 💳 5️⃣ Buat Tagihan Penjualan
             if (!$isDraft) {
                 \App\Models\TagihanPenjualan::create([
-                    'penjualan_id'   => $penjualan->id,
-                    'no_tagihan'     => 'TG' . now()->format('dmy') . str_pad($penjualan->id, 3, '0', STR_PAD_LEFT),
+                    'penjualan_id'    => $penjualan->id,
+                    'no_tagihan'      => 'TG' . now()->format('dmy') . str_pad($penjualan->id, 3, '0', STR_PAD_LEFT),
                     'tanggal_tagihan' => now(),
-                    'total'          => $penjualan->total,
-                    'jumlah_bayar'   => 0,
-                    'sisa'           => $penjualan->total,
-                    'status_tagihan' => 'belum_lunas',
-                    'created_by'     => Auth::id(),
+                    'total'           => $penjualan->total,
+                    'jumlah_bayar'    => 0,
+                    'sisa'            => $penjualan->total,
+                    'status_tagihan'  => 'belum_lunas',
+                    'created_by'      => Auth::id(),
                 ]);
             }
 
@@ -154,7 +188,7 @@ class PenjualanController extends Controller
             return response()->json([
                 'message' => $isDraft
                     ? 'Draft penjualan berhasil disimpan (stok belum dikurangi).'
-                    : 'Penjualan berhasil disimpan, stok diperbarui, dan tagihan dibuat.',
+                    : 'Penjualan berhasil disimpan, stok diperbarui, dan produksi SPANDEX otomatis dibuat (jika ada).',
                 'id' => $penjualan->id,
             ], 201);
         } catch (\Throwable $e) {
@@ -167,6 +201,7 @@ class PenjualanController extends Controller
             ], 500);
         }
     }
+
 
 
 
@@ -232,20 +267,21 @@ class PenjualanController extends Controller
             ], 404);
         }
 
-        // Ambil semua gudang & stok yang terkait item ini
+        // Ambil semua gudang & stok terkait
         $gudangs = ItemGudang::where('item_id', $item->id)
-            ->with('gudang', 'satuan')
+            ->with(['gudang:id,nama_gudang', 'satuan:id,nama_satuan,harga_retail,partai_kecil,harga_grosir'])
+            ->orderBy('gudang_id')
             ->get()
             ->map(function ($ig) {
                 return [
-                    'gudang_id'   => $ig->gudang_id,
-                    'nama_gudang' => $ig->gudang->nama_gudang ?? '-',
-                    'satuan_id'   => $ig->satuan_id,
-                    'nama_satuan' => $ig->satuan->nama_satuan ?? '-',
-                    'stok'        => $ig->stok ?? 0,
-                    'harga_retail'   => $ig->satuan->harga_retail ?? 0,
-                    'partai_kecil'   => $ig->satuan->partai_kecil ?? 0,
-                    'harga_grosir'   => $ig->satuan->harga_grosir ?? 0,
+                    'gudang_id'     => $ig->gudang_id,
+                    'nama_gudang'   => $ig->gudang->nama_gudang ?? '-',
+                    'satuan_id'     => $ig->satuan_id,
+                    'nama_satuan'   => $ig->satuan->nama_satuan ?? '-',
+                    'stok'          => (float) ($ig->stok ?? 0),
+                    'harga_retail'  => (float) ($ig->satuan->harga_retail ?? 0),
+                    'partai_kecil'  => (float) ($ig->satuan->partai_kecil ?? 0),
+                    'harga_grosir'  => (float) ($ig->satuan->harga_grosir ?? 0),
                 ];
             });
 
@@ -255,9 +291,10 @@ class PenjualanController extends Controller
             'kode_item' => $item->kode_item,
             'barcode' => $item->barcode,
             'satuan_default' => $item->satuan_id,
-            'gudangs' => $gudangs, // <---- Tambahkan ini
+            'gudangs' => $gudangs,
         ]);
     }
+
 
     /**
      * API: Get stock for specific item, gudang, satuan

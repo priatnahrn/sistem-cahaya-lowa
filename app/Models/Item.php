@@ -76,4 +76,9 @@ class Item extends Model
         return $this->hasMany(ItemGudang::class, 'item_id')
             ->select(['item_id', 'gudang_id', 'satuan_id', 'stok']); // hanya ambil kolom penting
     }
+
+    public function kategoriItem()
+    {
+        return $this->belongsTo(KategoriItem::class, 'kategori_item_id');
+    }
 }

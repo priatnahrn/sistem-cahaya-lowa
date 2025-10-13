@@ -22,6 +22,43 @@
         .no-spinner {
             -moz-appearance: textfield;
         }
+
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .animate-fadeIn {
+            animation: fadeIn 0.3s ease-out;
+        }
+
+        @keyframes drawCircle {
+            to {
+                stroke-dashoffset: 0;
+            }
+        }
+
+        @keyframes drawCheck {
+            to {
+                stroke-dashoffset: 0;
+            }
+        }
+
+        .success-circle {
+            animation: drawCircle 0.8s ease-out forwards;
+        }
+
+        .success-check {
+            animation: drawCheck 0.5s ease-out 0.8s forwards;
+        }
     </style>
 </head>
 
@@ -207,23 +244,9 @@
                 <div class="space-y-3 text-sm">
                     <div class="flex justify-between">
                         <span class="text-slate-600">Subtotal</span>
-                        <span class="text-slate-700 font-medium">Rp <span
-                                x-text="formatRupiah(subtotal)"></span></span>
-                    </div>
-
-                    <div class="flex justify-between items-center">
-                        <span class="text-slate-600">Uang Diterima</span>
-                        <div class="relative w-40">
-                            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-sm">Rp</span>
-                            <input type="number" x-model.number="uangDiterima" @input="updateKembalian()"
-                                class="no-spinner pl-8 pr-2 w-full text-right border border-slate-300 rounded-lg py-2">
-                        </div>
-                    </div>
-
-                    <div class="flex justify-between">
-                        <span class="text-slate-700 font-semibold">Kembalian</span>
-                        <span class="text-green-600 font-bold">Rp <span
-                                x-text="formatRupiah(kembalian)"></span></span>
+                        <span class="text-slate-700 font-medium">
+                            Rp <span x-text="formatRupiah(subtotal)"></span>
+                        </span>
                     </div>
 
                     <div class="border-t border-slate-200 my-2"></div>
@@ -240,13 +263,145 @@
                         Pending
                     </button>
 
+
                     <button @click="save()" type="button"
                         class="w-full bg-[#344579] hover:bg-[#2d3f6b] text-white py-2.5 rounded-md text-sm font-medium flex items-center justify-center gap-2">
                         <i class="fa-solid fa-floppy-disk"></i> Simpan Transaksi
                     </button>
                 </div>
             </div>
+
         </main>
+
+        <!-- 💳 MODAL PEMBAYARAN -->
+        <div x-cloak x-show="showPaymentModal" x-transition.opacity
+            class="fixed inset-0 z-[9999] flex items-center justify-center">
+            <div class="absolute inset-0 bg-black/40 backdrop-blur-sm" @click="showPaymentModal=false"></div>
+
+            <div class="bg-white rounded-2xl shadow-xl w-11/12 md:w-[420px] z-50 overflow-hidden animate-fadeIn">
+                <div class="px-6 py-4 border-b border-slate-200 flex justify-between items-center">
+                    <h3 class="text-lg font-semibold text-[#344579]">Pembayaran</h3>
+                    <button @click="showPaymentModal=false" class="text-slate-400 hover:text-slate-600 transition">
+                        <i class="fa-solid fa-xmark text-lg"></i>
+                    </button>
+                </div>
+
+                <div class="px-6 py-5 space-y-5">
+                    <div class="bg-slate-50 rounded-xl p-4 border border-slate-200 space-y-1">
+                        <p class="text-sm text-slate-600"><span class="font-medium">No Faktur:</span>
+                            <span class="text-slate-800" x-text="penjualanData?.no_faktur || '-'"></span>
+                        </p>
+                        <p class="text-sm text-slate-600"><span class="font-medium">Total Tagihan:</span>
+                            <span class="text-slate-800 font-semibold"
+                                x-text="formatRupiah(penjualanData?.total || 0)"></span>
+                        </p>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-2">Nominal Pembayaran</label>
+                        <div class="relative">
+                            <span
+                                class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-sm font-medium">Rp</span>
+                            <input type="text" x-model="nominalBayarDisplay" @input="handleNominalInput($event)"
+                                placeholder="0" inputmode="numeric"
+                                class="w-full pl-9 pr-3 py-2.5 rounded-lg border border-slate-300 text-slate-700 text-right
+              focus:ring-2 focus:ring-[#344579]/20 focus:border-[#344579] focus:outline-none">
+                        </div>
+                    </div>
+
+                    <div class="space-y-3">
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Metode Pembayaran</label>
+                        <div class="flex gap-2">
+                            <button type="button" @click="pilihMetode('cash')"
+                                :class="metodePembayaran === 'cash'
+                                    ?
+                                    'bg-green-600 text-white border-green-600' :
+                                    'bg-white text-slate-700 border-slate-300 hover:bg-slate-50'"
+                                class="flex-1 px-4 py-2.5 rounded-lg border font-medium transition">
+                                <i class="fa-solid fa-money-bill-wave mr-2"></i> Tunai
+                            </button>
+
+                            <button type="button" @click="pilihMetode('transfer')"
+                                :class="metodePembayaran === 'transfer'
+                                    ?
+                                    'bg-[#344579] text-white border-[#344579]' :
+                                    'bg-white text-slate-700 border-slate-300 hover:bg-slate-50'"
+                                class="flex-1 px-4 py-2.5 rounded-lg border font-medium transition">
+                                <i class="fa-solid fa-building-columns mr-2"></i> Transfer
+                            </button>
+                        </div>
+
+                        <div x-show="metodePembayaran === 'transfer'" x-transition
+                            class="flex gap-3 mt-3 justify-center">
+                            <template x-for="bank in bankList" :key="bank.name">
+                                <button type="button" @click="namaBank = bank.name"
+                                    :class="namaBank === bank.name ? 'ring-2 ring-[#344579] border-[#344579]' :
+                                        'hover:ring-1 hover:ring-slate-300'"
+                                    class="h-14 bg-white border border-slate-300 w-full rounded-md flex items-center justify-center transition relative overflow-hidden ">
+                                    <img :src="bank.logo" :alt="bank.name" class="w-1/2 object-contain">
+                                    <div x-show="namaBank === bank.name" x-transition
+                                        class="absolute inset-0 bg-[#344579]/10 rounded-xl"></div>
+                                </button>
+                            </template>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="px-6 py-4 border-t border-slate-200 flex justify-end gap-3 bg-slate-50">
+                    <button @click="showPaymentModal=false"
+                        class="w-[30%] px-4 py-2 rounded-lg border border-slate-300 text-slate-700 hover:bg-white transition">
+                        Batal
+                    </button>
+                    <button @click="simpanPembayaran()"
+                        class="w-[70%] px-4 py-2 rounded-lg bg-[#344579] text-white hover:bg-[#2e3e6a] shadow transition">
+                        Bayar
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ✅ MODAL PEMBAYARAN BERHASIL -->
+        <div x-cloak x-show="showSuccessModal" x-transition.opacity
+            class="fixed inset-0 z-[99999] flex items-center justify-center">
+            <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" @click="closeSuccessModal()"></div>
+
+            <div
+                class="bg-white rounded-2xl shadow-xl w-11/12 md:w-[420px] z-50 overflow-hidden animate-fadeIn text-center p-6">
+
+                <!-- ✅ ANIMASI SUKSES -->
+                <div class="flex justify-center mb-4">
+                    <svg viewBox="0 0 120 120" class="w-24 h-24">
+                        <circle cx="60" cy="60" r="50" fill="none" stroke="#34D399"
+                            stroke-width="10" stroke-dasharray="314" stroke-dashoffset="314" class="success-circle">
+                        </circle>
+                        <polyline points="40,65 55,80 85,45" fill="none" stroke="#34D399" stroke-width="10"
+                            stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="100"
+                            stroke-dashoffset="100" class="success-check"></polyline>
+                    </svg>
+                </div>
+
+                <h3 class="text-2xl font-semibold text-green-700 mb-2">Pembayaran Berhasil!</h3>
+
+                <!-- 💰 KEMBALIAN -->
+                <div class="bg-green-50 border border-green-200 rounded-lg p-3 mt-3 text-green-700">
+                    <p class="text-sm font-medium">Kembalian:</p>
+                    <p class="text-xl font-bold transition-all duration-300" x-text="formatRupiah(kembalian ?? 0)">
+                    </p>
+                </div>
+
+                <div class="mt-6 flex flex-col gap-3">
+                    <a :href="printUrl" target="_blank"
+                        class="px-4 py-2 rounded-lg bg-[#344579] text-white hover:bg-[#2e3e6a] transition font-medium flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-print"></i> Cetak Nota
+                    </a>
+                    <button @click="closeSuccessModal()"
+                        class="px-4 py-2 rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-100 transition font-medium flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-arrow-left"></i> Kembali ke Kasir
+                    </button>
+                </div>
+            </div>
+        </div>
+
     </div>
 
     <script>
@@ -262,8 +417,32 @@
                 selectedPelangganLevel: 'retail',
                 subtotal: 0,
                 total: 0,
-                uangDiterima: 0,
+                showPaymentModal: false,
+                penjualanId: null,
+                penjualanData: null,
+                metodePembayaran: 'cash',
+                namaBank: '',
+                bankList: [{
+                        name: 'BRI',
+                        logo: '{{ asset('storage/images/bri.png') }}'
+                    },
+                    {
+                        name: 'BNI',
+                        logo: '{{ asset('storage/images/bni.png') }}'
+                    },
+                    {
+                        name: 'Mandiri',
+                        logo: '{{ asset('storage/images/mandiri.png') }}'
+                    },
+                ],
+                nominalBayarDisplay: '',
+                nominalBayar: 0,
                 kembalian: 0,
+                showSuccessModal: false,
+                printUrl: '',
+
+
+
 
 
                 init() {
@@ -495,7 +674,12 @@
                             gudangs: data.gudangs || [],
                             gudang_id: g.gudang_id ? g.gudang_id.toString() : '',
                             satuan_id: g.satuan_id ? g.satuan_id.toString() : '',
-                            filteredSatuans: (data.gudangs || []).filter(gg => gg.gudang_id == g.gudang_id),
+                            filteredSatuans: (data.gudangs || []).filter(gg => gg.gudang_id == g.gudang_id)
+                                .map(gg => ({
+                                    satuan_id: gg.satuan_id,
+                                    nama_satuan: gg.nama_satuan
+                                })),
+
                             qty: 1,
                             stok: parseFloat(g.stok || 0),
                             harga: parseFloat(g.harga_retail || 0), // default retail
@@ -512,27 +696,38 @@
                         // pastikan gudang & satuan terisi default
                         this.$nextTick(() => {
                             const idx = this.form.items.length - 1;
+                            const current = this.form.items[idx];
+                            const g = current.gudangs?.[0] || {};
 
-                            // jika belum ada gudang, ambil default pertama
-                            if (!this.form.items[idx].gudang_id && this.form.items[idx].gudangs.length > 0) {
-                                this.form.items[idx].gudang_id = this.form.items[idx].gudangs[0].gudang_id
-                                    .toString();
+                            // Pastikan gudang terisi
+                            if (!current.gudang_id && current.gudangs.length > 0) {
+                                current.gudang_id = current.gudangs[0].gudang_id.toString();
                             }
 
-                            // update daftar satuan berdasarkan gudang terpilih
+                            // Panggil updateSatuanOptions dulu untuk isi filteredSatuans
                             this.updateSatuanOptions(idx);
 
-                            // jika belum ada satuan, ambil default pertama dari filteredSatuans
-                            if (!this.form.items[idx].satuan_id && this.form.items[idx].filteredSatuans.length >
-                                0) {
-                                this.form.items[idx].satuan_id = this.form.items[idx].filteredSatuans[0]
-                                    .satuan_id.toString();
+                            // Pastikan satuan terisi dari filteredSatuans
+                            if (!current.satuan_id && current.filteredSatuans.length > 0) {
+                                current.satuan_id = current.filteredSatuans[0].satuan_id.toString();
                             }
 
-                            // update stok & harga sesuai level (retail)
+                            // Update stok & harga
                             this.updateStockAndPrice(idx);
+
+                            // Pastikan harga ambil dari retail
+                            current.harga = this.getHargaByLevel(
+                                current.gudangs.find(
+                                    gg => gg.gudang_id == current.gudang_id && gg.satuan_id == current
+                                    .satuan_id
+                                )
+                            );
+
+                            // Update ulang form.items agar Alpine reactive
+                            this.form.items = JSON.parse(JSON.stringify(this.form.items));
                             this.recalc();
                         });
+
 
                         (this.notify || (() => {}))(`${data.nama_item} ditambahkan`, 'success');
                     } catch (err) {
@@ -542,6 +737,169 @@
                         e.target.value = '';
                         setTimeout(() => this.$refs.barcodeInput?.focus(), 100);
                     }
+                },
+
+
+
+                async save() {
+                    try {
+                        const res = await fetch('/penjualan-cepat/store', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                            },
+                            body: JSON.stringify({
+                                no_faktur: this.form.no_faktur,
+                                tanggal: this.form.tanggal,
+                                total: this.total,
+                                items: this.form.items.map(it => ({
+                                    item_id: it.item_id,
+                                    gudang_id: it.gudang_id,
+                                    satuan_id: it.satuan_id,
+                                    jumlah: it.qty,
+                                    harga: it.harga,
+                                    total: it.qty * it.harga,
+                                }))
+                            }),
+                        });
+
+                        const data = await res.json();
+
+                        if (data.success) {
+                            this.showPaymentModal = true;
+                            this.penjualanId = data.id;
+
+                            // 🧠 Tambahkan ini:
+                            this.penjualanData = {
+                                no_faktur: this.form.no_faktur,
+                                total: this.total
+                            };
+
+                            this.notify('Transaksi disimpan. Lanjut ke pembayaran.', 'success');
+
+
+                        } else {
+                            this.notify(data.message || 'Gagal menyimpan transaksi', 'error');
+                        }
+                    } catch (err) {
+                        this.notify('Terjadi kesalahan koneksi', 'error');
+                    }
+                },
+
+                async savePending() {
+                    try {
+                        if (!this.form.items.length) {
+                            this.notify('Belum ada item dalam transaksi.', 'error');
+                            return;
+                        }
+
+                        const res = await fetch('/penjualan-cepat/store', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                            },
+                            body: JSON.stringify({
+                                no_faktur: this.form.no_faktur,
+                                tanggal: this.form.tanggal,
+                                total: this.total,
+                                status_bayar: 'unpaid',
+                                is_draft: 1, // 👈 tambahan penting
+                                items: this.form.items.map(it => ({
+                                    item_id: it.item_id,
+                                    gudang_id: it.gudang_id,
+                                    satuan_id: it.satuan_id,
+                                    jumlah: it.qty,
+                                    harga: it.harga,
+                                    total: it.qty * it.harga,
+                                }))
+                            }),
+                        });
+
+                        const data = await res.json();
+                        if (data.success) {
+                            this.notify('Transaksi disimpan sebagai pending.', 'success');
+                            this.form.items = [];
+                            this.recalc();
+                        } else {
+                            this.notify(data.message || 'Gagal menyimpan transaksi pending', 'error');
+                        }
+                    } catch (err) {
+                        this.notify('Terjadi kesalahan koneksi saat menyimpan pending.', 'error');
+                    }
+                },
+
+
+
+                handleNominalInput(e) {
+                    let value = e.target.value.replace(/\D/g, '');
+                    if (!value) {
+                        this.nominalBayarDisplay = '';
+                        this.nominalBayar = 0;
+                        this.kembalian = 0;
+                        return;
+                    }
+
+                    this.nominalBayar = parseInt(value);
+                    this.nominalBayarDisplay = new Intl.NumberFormat('id-ID').format(this.nominalBayar);
+
+                    // hitung kembalian
+                    if (this.penjualanData) {
+                        const total = parseInt(this.penjualanData.total);
+                        this.kembalian = Math.max(0, this.nominalBayar - total);
+                    }
+                },
+
+                pilihMetode(metode) {
+                    this.metodePembayaran = metode;
+                    this.namaBank = '';
+                },
+
+                async simpanPembayaran() {
+                    if (!this.penjualanId || this.nominalBayar <= 0) {
+                        this.showToast('Nominal pembayaran belum diisi.', 'error');
+                        return;
+                    }
+
+                    const payload = {
+                        penjualan_id: this.penjualanId,
+                        jumlah_bayar: this.nominalBayar,
+                        sisa: 0,
+                        method: this.metodePembayaran,
+                        keterangan: this.metodePembayaran === 'transfer' && this.namaBank ?
+                            `Transfer ke ${this.namaBank}` : this.metodePembayaran === 'cash' ?
+                            'Pembayaran tunai' : this.metodePembayaran === 'qris' ?
+                            'Pembayaran melalui QRIS' : this.metodePembayaran === 'wallet' ?
+                            'Pembayaran melalui E-Wallet' : null,
+                    };
+
+                    try {
+                        const res = await fetch(`/pembayaran`, {
+                            method: 'POST',
+                            headers: {
+                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify(payload),
+                        });
+
+                        const result = await res.json();
+
+                        if (!result.success) throw new Error('Pembayaran gagal disimpan.');
+
+                        this.printUrl = `/pembayaran/${result.data.id}`;
+                        this.showPaymentModal = false;
+                        this.showSuccessModal = true;
+                    } catch (e) {
+                        this.showToast(e.message || 'Gagal menyimpan pembayaran.', 'error');
+                    }
+                },
+
+                closeSuccessModal() {
+                    this.showSuccessModal = false;
+                    // reload halaman kasir supaya form kosong lagi
+                    setTimeout(() => window.location.reload(), 800);
                 },
 
 

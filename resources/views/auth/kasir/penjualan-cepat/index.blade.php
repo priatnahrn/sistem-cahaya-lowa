@@ -145,14 +145,73 @@
                                         <span x-text="statusLabel(r.status)"></span>
                                     </span>
                                 </td>
+
+                                <!-- Aksi -->
+                                <td class="px-2 py-3 text-right relative">
+                                    <button type="button" data-dropdown-open-button @click="openDropdown(r, $event)"
+                                        class="px-2 py-1 rounded hover:bg-slate-100 focus:outline-none transition">
+                                        <i class="fa-solid fa-ellipsis-vertical"></i>
+                                    </button>
+                                </td>
                             </tr>
                         </template>
+
                         <tr x-show="filteredTotal()===0" class="text-center text-slate-500">
                             <td colspan="6" class="px-4 py-6">Tidak ada data penjualan cepat.</td>
                         </tr>
                     </tbody>
                 </table>
             </div>
+
+
+            <!-- ✅ Floating dropdown untuk aksi -->
+            <div x-cloak x-show="dropdownVisible" x-transition.origin.top.right id="floating-dropdown" data-dropdown
+                class="absolute w-44 bg-white border border-slate-200 rounded-lg shadow-lg z-[9999]"
+                :style="`top:${dropdownPos.top}; left:${dropdownPos.left}`">
+
+                <a :href="`/penjualan-cepat/${dropdownData.id}`"
+                    class="w-full text-left px-4 py-2 text-sm hover:bg-slate-50 flex items-center gap-2 text-slate-700">
+                    <i class="fa-solid fa-eye text-blue-500"></i> Detail
+                </a>
+
+
+
+
+
+                <!-- Tombol Bayar (hanya jika belum lunas dan bukan pending) -->
+                <button @click="!['lunas','pending'].includes(dropdownData.status) ? openBayar(dropdownData) : null"
+                    :disabled="['lunas', 'pending'].includes(dropdownData.status)"
+                    class="w-full text-left px-4 py-2 text-sm flex items-center gap-2 rounded transition"
+                    :class="{
+                        'text-slate-400 cursor-not-allowed bg-slate-50': ['lunas', 'pending'].includes(dropdownData
+                            .status),
+                        'text-slate-700 hover:bg-slate-50': !['lunas', 'pending'].includes(dropdownData.status)
+                    }">
+                    <i class="fa-solid fa-money-bill"
+                        :class="['lunas', 'pending'].includes(dropdownData.status) ? 'text-slate-400' : 'text-green-500'"></i>
+                    <span>Bayar</span>
+                </button>
+
+                <!-- Tombol Print (hanya jika lunas) -->
+                <button @click="dropdownData.status === 'lunas' ? openPrintModal(dropdownData) : null"
+                    :disabled="dropdownData.status !== 'lunas'"
+                    class="w-full text-left px-4 py-2 text-sm flex items-center gap-2 rounded transition"
+                    :class="{
+                        'text-slate-400 cursor-not-allowed bg-slate-50': dropdownData.status !== 'lunas',
+                        'text-slate-700 hover:bg-slate-50': dropdownData.status === 'lunas'
+                    }">
+                    <i class="fa-solid fa-print"
+                        :class="dropdownData.status === 'lunas' ? 'text-green-500' : 'text-slate-400'"></i>
+                    <span>Print</span>
+                </button>
+
+                <!-- Tombol Hapus -->
+                <button @click="confirmDelete(dropdownData)"
+                    class="w-full text-left px-4 py-2 text-sm hover:bg-red-50 flex items-center gap-2 text-red-600">
+                    <i class="fa-solid fa-trash"></i> Hapus
+                </button>
+            </div>
+
 
             {{-- PAGINATION --}}
             <div class="px-6 py-4">
@@ -188,24 +247,36 @@
 
     @php
         use Carbon\Carbon;
-        $penjualansJson = $penjualanCepat
-            ->where('no_faktur', 'like', 'JC%')
+
+        $penjualansJson = collect($penjualanCepat)
+            ->filter(fn($p) => str_starts_with($p->no_faktur, 'JC'))
             ->map(function ($p) {
                 $tanggal = $p->tanggal
                     ? Carbon::parse($p->tanggal)->timezone('Asia/Singapore')->format('Y-m-d H:i:s')
                     : null;
+
+                // Tentukan status tampilannya berdasarkan is_draft & status_bayar
+                if ($p->is_draft == 1) {
+                    $status = 'pending';
+                } elseif ($p->status_bayar === 'paid') {
+                    $status = 'lunas';
+                } else {
+                    $status = 'belum';
+                }
+
                 return [
                     'id' => $p->id,
                     'no_faktur' => $p->no_faktur,
                     'tanggal' => $tanggal,
-                    'pelanggan' => optional($p->pelanggan)->nama_pelanggan ?? 'Umum',
+                    'pelanggan' => optional($p->pelanggan)->nama_pelanggan ?? 'Customer',
                     'total' => (float) $p->total ?? 0,
-                    'status' => $p->status_bayar ?? 'belum',
+                    'status' => $status,
                 ];
             })
             ->values()
             ->toArray();
     @endphp
+
 
     <script>
         function penjualanCepatPage() {
@@ -224,6 +295,15 @@
                 sortBy: 'tanggal',
                 sortDir: 'desc',
                 data: @json($penjualansJson),
+
+                openActionId: null,
+                dropdownVisible: false,
+                dropdownData: {},
+                dropdownPos: {
+                    top: 0,
+                    left: 0
+                },
+                _outsideClickHandler: null,
 
                 // --- FILTER + PAGINATION LOGIC ---
                 filteredList() {
@@ -307,19 +387,23 @@
                 },
                 badgeClass(st) {
                     if (st === 'lunas') return 'bg-green-50 text-green-700 border border-green-200';
-                    if (st === 'belum') return 'bg-slate-100 text-slate-600 border border-slate-200';
+                    if (st === 'belum') return 'bg-rose-50 text-rose-700 border border-rose-200';
+                    if (st === 'pending') return 'bg-yellow-50 text-yellow-700 border border-yellow-200';
                     return 'bg-slate-50 text-slate-700';
                 },
                 dotClass(st) {
                     if (st === 'lunas') return 'bg-green-500';
-                    if (st === 'belum') return 'bg-slate-400';
-                    return 'bg-slate-500';
+                    if (st === 'belum') return 'bg-rose-500';
+                    if (st === 'pending') return 'bg-yellow-500';
+                    return 'bg-slate-400';
                 },
                 statusLabel(st) {
                     if (st === 'lunas') return 'Lunas';
                     if (st === 'belum') return 'Belum Lunas';
+                    if (st === 'pending') return 'Pending';
                     return '-';
                 },
+
                 hasActiveFilters() {
                     return Object.values(this.filters).some(v => v);
                 },
@@ -336,7 +420,62 @@
                     this.q = '';
                     this.currentPage = 1;
                 },
-                init() {}
+                init() {},
+
+                openDropdown(row, event) {
+                    if (this.openActionId === row.id) {
+                        this.closeDropdown();
+                        return;
+                    }
+
+                    this.openActionId = row.id;
+                    this.dropdownData = row;
+
+                    const rect = event.currentTarget.getBoundingClientRect();
+                    const dropdownHeight = 120;
+                    const spaceBelow = window.innerHeight - rect.bottom;
+                    const spaceAbove = rect.top;
+
+                    const docTopBelow = rect.bottom + window.scrollY + 6;
+                    const docTopAbove = rect.top + window.scrollY - dropdownHeight - 6;
+                    const docLeft = rect.right + window.scrollX - 176;
+
+                    if (spaceBelow < dropdownHeight && spaceAbove > dropdownHeight) {
+                        this.dropdownPos = {
+                            top: docTopAbove + 'px',
+                            left: docLeft + 'px'
+                        };
+                    } else {
+                        this.dropdownPos = {
+                            top: docTopBelow + 'px',
+                            left: docLeft + 'px'
+                        };
+                    }
+
+                    this.dropdownVisible = true;
+                    this._outsideClickHandler = this.handleOutsideClick.bind(this);
+                    setTimeout(() => {
+                        document.addEventListener('click', this._outsideClickHandler);
+                    }, 0);
+                },
+
+                handleOutsideClick(e) {
+                    const dropdownEl = document.querySelector('[data-dropdown]');
+                    const isInsideDropdown = dropdownEl && dropdownEl.contains(e.target);
+                    const isTriggerButton = !!e.target.closest('[data-dropdown-open-button]');
+                    if (!isInsideDropdown && !isTriggerButton) this.closeDropdown();
+                },
+
+                closeDropdown() {
+                    this.dropdownVisible = false;
+                    this.openActionId = null;
+                    this.dropdownData = {};
+                    if (this._outsideClickHandler) {
+                        document.removeEventListener('click', this._outsideClickHandler);
+                        this._outsideClickHandler = null;
+                    }
+                },
+
             }
         }
     </script>

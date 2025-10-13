@@ -36,6 +36,12 @@ class Penjualan extends Model
         return $this->hasMany(ItemPenjualan::class, 'penjualan_id', 'id');
     }
 
+    // 🔹 Relasi ke detail item penjualan
+    public function itemPenjualans()
+    {
+        return $this->hasMany(ItemPenjualan::class, 'penjualan_id', 'id');
+    }
+
     // 🔹 Relasi ke pelanggan
     public function pelanggan()
     {
@@ -57,5 +63,10 @@ class Penjualan extends Model
     public function pembayarans()
     {
         return $this->hasMany(Pembayaran::class, 'penjualan_id');
+    }
+
+    public function produksi()
+    {
+        return $this->hasOne(Produksi::class);
     }
 }
