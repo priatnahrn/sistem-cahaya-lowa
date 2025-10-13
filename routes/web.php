@@ -76,6 +76,34 @@ Route::middleware('auth')->group(function () {
     });
 
     // ------------------------
+    // Retur Penjualan
+    // ------------------------
+    Route::prefix('penjualan/retur-penjualan')->group(function () {
+        Route::get('/', [App\Http\Controllers\ReturPenjualanController::class, 'index'])
+            ->name('retur-penjualan.index');
+
+        Route::get('/create', [App\Http\Controllers\ReturPenjualanController::class, 'create'])
+            ->name('retur-penjualan.create');
+
+        Route::post('/', [App\Http\Controllers\ReturPenjualanController::class, 'store'])
+            ->name('retur-penjualan.store');
+
+        Route::get('/{id}', [App\Http\Controllers\ReturPenjualanController::class, 'show'])
+            ->name('retur-penjualan.show');
+
+        Route::put('/{id}', [App\Http\Controllers\ReturPenjualanController::class, 'update'])
+            ->name('retur-penjualan.update');
+
+        Route::delete('/{id}', [App\Http\Controllers\ReturPenjualanController::class, 'destroy'])
+            ->name('retur-penjualan.destroy');
+
+        // 🔹 API: ambil item berdasarkan penjualan
+        Route::get('/items/by-penjualan/{id}', [App\Http\Controllers\ReturPenjualanController::class, 'getItemsByPenjualan'])
+            ->name('retur-penjualan.get-items');
+    });
+
+
+    // ------------------------
     // 🚚 Pengiriman
     // ------------------------
     Route::prefix('pengiriman')->name('pengiriman.')->group(function () {

@@ -88,7 +88,7 @@
 
                     {{-- Retur Penjualan --}}
                     @php $on = $is('retur-penjualan.*'); @endphp
-                    <a href=""
+                    <a href="{{ route('retur-penjualan.index') }}"
                         class="block px-3 py-2 rounded-md text-[13px] transition {{ $on ? 'bg-white text-[#344579] font-semibold' : 'text-white/80 hover:bg-white/5' }}">
                         <span class="flex items-center gap-3">
                             <span
@@ -155,15 +155,16 @@
             <div x-data="{ open: {{ $openPembelian ? 'true' : 'false' }} }" class="mt-2 flex flex-col">
 
                 {{-- Menu Utama Pembelian --}}
-                <button @click="open = true; window.location.href='{{ route('pembelian.index') }}';"
+                <button @click="open = !open"
                     class="w-full flex items-center gap-3 px-3 py-[10px] rounded-md transition text-white/85 hover:bg-white/5"
                     :class="{ 'justify-center': collapsed }">
-                    <i class="fa-solid fa-bag-shopping opacity-60" :class="collapsed ? 'text-lg' : ''"></i>
+                    <i class="fa-solid fa-bag-shopping" :class="collapsed ? 'text-lg' : ''"></i>
                     <span x-show="!collapsed" class="flex-1 text-left font-medium">Pembelian</span>
                     <i x-show="!collapsed"
                         class="fa-solid fa-chevron-down text-white/60 transition-transform duration-200"
                         :class="open ? 'rotate-180' : ''"></i>
                 </button>
+
 
                 {{-- Submenu --}}
                 <div x-show="open && !collapsed" x-transition class="mt-1 pl-6 space-y-1">
