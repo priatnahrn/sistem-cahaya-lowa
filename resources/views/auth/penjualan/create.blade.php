@@ -242,8 +242,8 @@
                                 <td class="px-5 py-4 text-center font-medium align-middle" x-text="idx + 1"></td>
 
                                 <!-- ===========================
-         Nama Item (ICON KANAN + HILANG SAAT ITEM DIPILIH)
-         ============================ -->
+                     Nama Item (ICON KANAN + HILANG SAAT ITEM DIPILIH)
+                     ============================ -->
                                 <td class="px-5 py-4 align-middle">
                                     <div class="relative" x-data="{
                                         open: false,
@@ -279,8 +279,7 @@
                     open = false;
                 }"
                                             @focus="open = (item.query && item.query.length >= 2)"
-                                            @click="open = (item.query && item.query.length >= 2)"
-                                            placeholder="Cari item"
+                                            @click="open = (item.query && item.query.length >= 2)" placeholder="Cari item"
                                             class="w-full pl-4 pr-10 py-2.5 rounded-lg border border-slate-300 text-sm 
                    focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition" />
 
@@ -358,7 +357,7 @@
                                                 </div>
 
                                                 <!-- Stok: selalu tampil label. Angka hanya kalau gudang dipilih.
-                                                                         Warna berubah merah kalau gudang dipilih dan stok === 0 -->
+                                                                                     Warna berubah merah kalau gudang dipilih dan stok === 0 -->
                                                 <div
                                                     :class="(item.gudang_id && (parseFloat(item.stok) === 0)) ?
                                                     'text-rose-600 font-semibold text-[11px] mt-[1px]' :
@@ -507,7 +506,7 @@
 
         {{-- Modal Tambah Pelanggan Baru --}}
         <div x-show="showModalTambahPelanggan" x-cloak
-            class="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50">
+            class="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50 min-h-screen">
 
             <div class="bg-white rounded-lg shadow-lg w-full max-w-md p-6">
                 <h2 class="text-lg font-semibold mb-4">Tambah Pelanggan Baru</h2>
@@ -516,25 +515,31 @@
                 <div class="space-y-3">
                     <div>
                         <label class="block text-sm text-slate-600 mb-1">Nama Pelanggan</label>
-                        <input type="text" x-model="newPelanggan.nama_pelanggan"
+                        <input type="text" x-model="newPelanggan.nama_pelanggan" placeholder="Nama pelanggan"
                             class="w-full px-3 py-2 border rounded-lg border-slate-300">
                     </div>
                     <div>
                         <label class="block text-sm text-slate-600 mb-1">Kontak</label>
-                        <input type="text" x-model="newPelanggan.kontak"
+                        <input type="text" x-model="newPelanggan.kontak" placeholder="Contoh: 08XXX / 62XXX"
                             class="w-full px-3 py-2 border rounded-lg border-slate-300">
                     </div>
                     <div>
                         <label class="block text-sm text-slate-600 mb-1">Alamat</label>
-                        <textarea x-model="newPelanggan.alamat" class="w-full px-3 py-2 border rounded-lg border-slate-300"></textarea>
+                        <textarea x-model="newPelanggan.alamat" class="w-full px-3 py-2 border rounded-lg border-slate-300"
+                            placeholder="Alamat pelanggan (opsional)"></textarea>
                     </div>
-                    <div>
-                        <label class="block text-sm text-slate-600 mb-1">Level</label>
-                        <select x-model="newPelanggan.level" class="w-full px-3 py-2 border rounded-lg border-slate-300">
+                    <label class="block text-sm text-slate-600 mb-1">Level</label>
+                    <div class="relative">
+                        <select x-model="newPelanggan.level"
+                            class="w-full border border-gray-300 rounded-lg pl-3 pr-8 py-2.5 text-sm text-slate-700 
+                                        appearance-none focus:outline-none focus:ring-2 focus:ring-[#344579]/20 
+                                        focus:border-[#344579] transition">
                             <option value="retail">Retail</option>
                             <option value="partai_kecil">Partai Kecil</option>
                             <option value="grosir">Grosir</option>
                         </select>
+                        <i
+                            class="fa-solid fa-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"></i>
                     </div>
                 </div>
 
@@ -543,13 +548,14 @@
                     <button type="button" @click="showModalTambahPelanggan=false"
                         class="px-4 py-2 rounded-lg border border-slate-300">Batal</button>
                     <button type="button" @click="savePelangganBaru"
-                        class="px-4 py-2 rounded-lg bg-blue-600 text-white">Simpan</button>
+                        class="px-4 py-2 rounded-lg bg-[#334976] hover:bg-[#2d3f6d] text-white w-full">Simpan</button>
                 </div>
             </div>
         </div>
 
 
-        <div x-show="showPrintModal" x-cloak class="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+        <div x-show="showPrintModal" x-cloak
+            class="fixed inset-0 bg-black/40 min-h-screen flex items-center justify-center z-50">
             <div class="bg-white rounded-lg shadow-lg w-full max-w-md p-6">
                 <h2 class="text-lg font-semibold mb-4">Penjualan Berhasil Disimpan</h2>
                 <p class="text-slate-600 mb-6">Pilih opsi berikut:</p>
@@ -1048,6 +1054,17 @@
                         setTimeout(() => this.$refs.barcodeInput?.focus(), 100);
                     }
                 },
+
+                handlePelangganClickAway() {
+                    this.openResults = false;
+                    if (!this.form.pelanggan_id && this.pelangganQuery) {
+                        this.selectedPelangganNames = 'Customer';
+                        this.selectedPelangganLevel = null;
+                        this.form.is_walkin = true;
+                        this.updateAllItemPrices();
+                    }
+                },
+
 
                 // === HARGA MANUAL ===
                 updateManualPrice(idx, val) {

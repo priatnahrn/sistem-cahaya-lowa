@@ -63,6 +63,9 @@ Route::middleware('auth')->group(function () {
         Route::get('/{id}', [PenjualanController::class, 'show'])->whereNumber('id')->name('show');
     });
 
+    Route::get('/items/barcode/{barcode}', [PenjualanController::class, 'getItemByBarcode']);
+    Route::get('/items/stock', [PenjualanController::class, 'getStock']);
+    Route::get('/items/price', [PenjualanController::class, 'getPrice']);
     // ------------------------
     // ⚡ Penjualan Cepat
     // ------------------------

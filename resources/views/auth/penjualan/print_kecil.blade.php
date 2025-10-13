@@ -159,9 +159,25 @@
             @foreach ($penjualan->items as $it)
                 <div class="item">
                     <div class="item-name">{{ strtoupper($it->item->nama_item) }}</div>
+
+                    {{-- 🔹 Tambahkan keterangan jika ada --}}
+                    @if (!empty($it->keterangan))
+                        <div style="font-size: 14px; margin-top: 2px;">
+                            {{ $it->keterangan }}
+                        </div>
+                    @endif
+
                     <div class="item-line">
                         <div class="left">
-                            {{ $it->jumlah }} {{ $it->satuan->nama_satuan ?? 'PCS' }} x Rp
+                            {{-- 🔹 Format jumlah: tanpa desimal jika bilangan bulat, dua desimal jika tidak --}}
+                            @php
+                                $jumlahFormatted =
+                                    fmod($it->jumlah, 1) == 0
+                                        ? number_format($it->jumlah, 0, ',', '.')
+                                        : number_format($it->jumlah, 2, ',', '.');
+                            @endphp
+
+                            {{ $jumlahFormatted }} {{ $it->satuan->nama_satuan ?? 'PCS' }} x Rp
                             {{ number_format($it->harga, 0, ',', '.') }}
                         </div>
                         <div class="right">
@@ -170,6 +186,7 @@
                     </div>
                 </div>
             @endforeach
+
 
             <div class="line"></div>
             {{-- 🔹 TOTAL --}}
