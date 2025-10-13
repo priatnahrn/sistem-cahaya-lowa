@@ -242,8 +242,8 @@
                                 <td class="px-5 py-4 text-center font-medium align-middle" x-text="idx + 1"></td>
 
                                 <!-- ===========================
-                     Nama Item (ICON KANAN + HILANG SAAT ITEM DIPILIH)
-                     ============================ -->
+                                     Nama Item (ICON KANAN + HILANG SAAT ITEM DIPILIH)
+                                     ============================ -->
                                 <td class="px-5 py-4 align-middle">
                                     <div class="relative" x-data="{
                                         open: false,
@@ -357,7 +357,7 @@
                                                 </div>
 
                                                 <!-- Stok: selalu tampil label. Angka hanya kalau gudang dipilih.
-                                                                                     Warna berubah merah kalau gudang dipilih dan stok === 0 -->
+                                                                                                     Warna berubah merah kalau gudang dipilih dan stok === 0 -->
                                                 <div
                                                     :class="(item.gudang_id && (parseFloat(item.stok) === 0)) ?
                                                     'text-rose-600 font-semibold text-[11px] mt-[1px]' :
@@ -561,18 +561,19 @@
                 <p class="text-slate-600 mb-6">Pilih opsi berikut:</p>
 
                 <div class="flex flex-col gap-3">
-                    <a :href="`/penjualan/${savedPenjualanId}/print?type=kecil`" target="_blank"
+                    <button @click="printNota('kecil')"
                         class="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-center">
                         <i class="fa-solid fa-receipt mr-2"></i> Print Nota Kecil
-                    </a>
-                    <a :href="`/penjualan/${savedPenjualanId}/print?type=besar`" target="_blank"
+                    </button>
+                    <button @click="printNota('besar')"
                         class="px-4 py-2 rounded-lg bg-green-600 hover:bg-green-700 text-white text-center">
                         <i class="fa-solid fa-file-invoice mr-2"></i> Print Nota Besar
-                    </a>
+                    </button>
                     <button @click="window.location.href='/penjualan'"
                         class="px-4 py-2 rounded-lg border border-slate-300 text-slate-600">
-                        Simpan Saja
+                        Kembali
                     </button>
+
                 </div>
             </div>
         </div>
@@ -1064,6 +1065,41 @@
                         this.updateAllItemPrices();
                     }
                 },
+
+                async printNota(type) {
+                    try {
+                        // ambil HTML dari route print
+                        const res = await fetch(`/penjualan/${this.savedPenjualanId}/print?type=${type}`);
+                        if (!res.ok) throw new Error("Gagal memuat nota");
+
+                        const html = await res.text();
+
+                        // buka window popup kecil
+                        const w = window.open('', '_blank', 'width=800,height=600');
+                        w.document.write(html);
+                        w.document.close();
+                        w.focus();
+
+                        // otomatis print begitu siap
+                        w.onload = () => {
+                            w.print();
+                            w.onafterprint = () => {
+                                // Tutup popup
+                                w.close();
+
+                                // Pastikan window utama ada
+                                if (w.opener && !w.opener.closed) {
+                                    w.opener.location.href = '/penjualan';
+                                }
+                            };
+                        };
+
+                    } catch (err) {
+                        console.error(err);
+                        this.notify("Gagal mencetak nota, coba lagi.", "error");
+                    }
+                },
+
 
 
                 // === HARGA MANUAL ===
