@@ -66,14 +66,16 @@
             </div>
         </div>
 
-        {{-- 🧭 Breadcrumb Navigasi --}}
-        <div class="flex items-center gap-3">
-            <a href="{{ route('penjualan.index') }}" class="text-slate-500 hover:underline text-sm">Penjualan</a>
-            <div class="text-sm text-slate-400">/</div>
-            <span class="px-3 py-1 rounded-md bg-blue-50 text-blue-700 border border-blue-200 font-medium text-sm">
-                Tambah Penjualan Baru
-            </span>
+        {{-- 🔙 Tombol Kembali --}}
+        <div>
+            <a href="{{ route('penjualan.index') }}"
+                class="inline-flex items-center gap-2 text-sm text-slate-600 hover:text-[#334976] font-medium transition-colors">
+                <i class="fa-solid fa-arrow-left text-gray-600 hover:text-[#334976]"></i>
+                <span>Kembali</span>
+            </a>
         </div>
+
+
 
         {{-- 🎯 Hidden Input untuk Scanner Barcode --}}
         <input type="text" x-ref="barcodeInput" @keydown.enter.prevent="handleBarcode($event)"
@@ -241,78 +243,48 @@
                                 <!-- Nomor urut -->
                                 <td class="px-5 py-4 text-center font-medium align-middle" x-text="idx + 1"></td>
 
-                                <!-- ===========================
-                                     Nama Item (ICON KANAN + HILANG SAAT ITEM DIPILIH)
-                                     ============================ -->
+                                <!-- ===== TD ITEM - CLEAN VERSION (NO DEBUG) ===== -->
                                 <td class="px-5 py-4 align-middle">
-                                    <div class="relative" x-data="{
-                                        open: false,
-                                        teleStyle() {
-                                            try {
-                                                const el = this.$refs.itemInput;
-                                                if (!el) return 'position:absolute; display:none;';
-                                                const rect = el.getBoundingClientRect();
-                                                const top = rect.bottom + window.scrollY;
-                                                const left = rect.left + window.scrollX;
-                                                const width = rect.width;
-                                                return `position:absolute; top:${top}px; left:${left}px; width:${width}px; z-index:9999;`;
-                                            } catch (e) { return 'position:absolute; display:none;'; }
-                                        }
-                                    }" @keydown.escape="open = false"
-                                        @resize.window="$nextTick(() => {})">
+                                    <div class="relative">
+                                        <div class="flex items-center gap-2">
+                                            <!-- ⭐ TOMBOL KETERANGAN -->
+                                            <button type="button" @click.prevent="toggleItemNote(idx)"
+                                                :title="item.showNote ? 'Sembunyikan keterangan' : 'Tambah keterangan'"
+                                                :class="{
+                                                    'text-blue-600': item.showNote,
+                                                    'text-slate-500 hover:text-blue-600': !item.showNote
+                                                }"
+                                                class="transition focus:outline-none">
+                                                <i class="fa-solid fa-note-sticky text-[15px]"></i>
+                                            </button>
 
-                                        <!-- input pencarian item -->
-                                        <input type="text" x-ref="itemInput" x-model="item.query"
-                                            @input.debounce.300ms="
-                if (item.query.length >= 2) {
-                    searchItem(idx);
-                    open = true;
-                } else {
-                    item.item_id = null;
-                    item.gudang_id = '';
-                    item.satuan_id = '';
-                    item.gudangs = [];
-                    item.filteredSatuans = [];
-                    item.stok = 0;
-                    item.harga = 0;
-                    item.results = [];
-                    open = false;
-                }"
-                                            @focus="open = (item.query && item.query.length >= 2)"
-                                            @click="open = (item.query && item.query.length >= 2)" placeholder="Cari item"
-                                            class="w-full pl-4 pr-10 py-2.5 rounded-lg border border-slate-300 text-sm 
-                   focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition" />
+                                            <!-- Input cari item -->
+                                            <div class="relative flex-1">
+                                                <input type="text" x-model="item.query"
+                                                    @input.debounce.300ms="handleItemInput(idx)"
+                                                    @focus="handleItemFocus(idx)" @click="handleItemClick(idx)"
+                                                    @keydown.escape="handleItemEscape(idx)" placeholder="Cari item"
+                                                    class="w-full pl-4 pr-10 py-2.5 rounded-lg border border-slate-300 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition" />
 
-                                        <!-- 🔍 ICON PENCARIAN KANAN -->
-                                        <span x-show="!item.item_id" x-cloak x-transition.opacity.duration.150ms
-                                            class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 p-1 rounded-full pointer-events-none">
-                                            <i class="fa-solid fa-magnifying-glass"></i>
-                                        </span>
+                                                <!-- Icon pencarian -->
+                                                <span x-show="!item.item_id" x-cloak x-transition.opacity.duration.150ms
+                                                    class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 p-1 rounded-full pointer-events-none">
+                                                    <i class="fa-solid fa-magnifying-glass"></i>
+                                                </span>
 
-                                        <!-- ========== TELEPORT DROPDOWN (muncul di bawah input) ========== -->
-                                        <template x-teleport="body">
-                                            <div x-show="open && item.query.length >= 2 && !item.item_id" x-cloak
-                                                x-transition:enter="transition ease-out duration-150"
-                                                x-transition:enter-start="opacity-0 transform -translate-y-1"
-                                                x-transition:enter-end="opacity-100 transform translate-y-0"
-                                                x-transition:leave="transition ease-in duration-100"
-                                                x-transition:leave-start="opacity-100 transform translate-y-0"
-                                                x-transition:leave-end="opacity-0 transform -translate-y-1"
-                                                :style="teleStyle()"
-                                                class="bg-white border border-slate-200 rounded-lg shadow-lg max-h-60 overflow-y-auto text-sm">
+                                                <!-- Dropdown hasil pencarian -->
+                                                <div x-show="item._dropdownOpen && item.query.length >= 2 && !item.item_id"
+                                                    x-cloak x-transition
+                                                    class="absolute z-50 left-0 right-0 mt-1 bg-white border border-slate-200 rounded-lg shadow-lg max-h-60 overflow-y-auto text-sm">
 
-                                                <div class="p-2">
                                                     <div x-show="item.results.length === 0"
                                                         class="px-3 py-2 text-sm text-slate-400 text-center italic">
                                                         Tidak ada item ditemukan
                                                     </div>
 
                                                     <template x-for="r in item.results" :key="r.id">
-                                                        <div @click="
-                            selectItem(idx, r);
-                            open = false;
-                        "
-                                                            class="px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 cursor-pointer rounded">
+                                                        <div @click="selectItem(idx, r); item._dropdownOpen = false;"
+                                                            class="px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 cursor-pointer rounded transition">
                                                             <div class="font-medium" x-text="r.nama_item"></div>
                                                             <div class="text-xs text-slate-500" x-text="r.kode_item">
                                                             </div>
@@ -320,18 +292,64 @@
                                                     </template>
                                                 </div>
                                             </div>
-                                        </template>
-                                        <!-- ========== END TELEPORT DROPDOWN ========== -->
+                                        </div>
+
+                                        <!-- ✅ FORM KETERANGAN - CLEAN VERSION -->
+                                        <div x-show="item.showNote" x-transition.opacity.duration.300ms x-cloak
+                                            class="mt-3 space-y-3">
+
+                                            <!-- Form untuk Item Spandek -->
+                                            <template x-if="item.is_spandek === true">
+                                                <div class="space-y-3">
+                                                    <div>
+                                                        <label class="block text-xs font-medium text-slate-700 mb-1.5">
+                                                            Keterangan <span class="text-red-500">*</span>
+                                                        </label>
+                                                        <input type="text" x-model="item.keterangan"
+                                                            placeholder="Contoh: Panjang 6m, Lebar 1m"
+                                                            class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm text-slate-700 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition" />
+                                                    </div>
+
+                                                    <div>
+                                                        <label class="block text-xs font-medium text-slate-700 mb-1.5">
+                                                            Jenis Spandek <span class="text-red-500">*</span>
+                                                        </label>
+                                                        <select x-model="item.catatan_produksi"
+                                                            class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm text-slate-700 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition bg-white">
+                                                            <option value="">-- Pilih jenis spandek --</option>
+                                                            <option value="Spandek Biasa">Spandek Biasa</option>
+                                                            <option value="Spandek Pasir">Spandek Pasir</option>
+                                                            <option value="Spandek Laminasi">Spandek Laminasi</option>
+                                                            <option value="Spandek Warna">Spandek Warna</option>
+                                                        </select>
+                                                    </div>
+                                                </div>
+                                            </template>
+
+                                            <!-- Form untuk Item Biasa -->
+                                            <template x-if="item.is_spandek === false">
+                                                <div>
+                                                    <label class="block text-xs font-medium text-slate-700 mb-1.5">
+                                                        Keterangan
+                                                    </label>
+                                                    <input type="text" x-model="item.keterangan"
+                                                        placeholder="Catatan tambahan (opsional)"
+                                                        class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm text-slate-700 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition" />
+                                                </div>
+                                            </template>
+
+                                            <!-- Fallback: Item belum dipilih -->
+                                            <template x-if="item.is_spandek === undefined || item.is_spandek === null">
+                                                <div
+                                                    class="p-3 bg-amber-50 border border-amber-200 rounded-lg text-center">
+                                                    <small class="text-amber-700 text-xs">
+                                                        Pilih item terlebih dahulu
+                                                    </small>
+                                                </div>
+                                            </template>
+                                        </div>
                                     </div>
                                 </td>
-
-
-                                {{-- <!-- Keterangan (opsional) -->
-                                <td class="px-5 py-4 align-middle">
-                                    <input type="text" x-model="item.keterangan" placeholder="Catatan item (opsional)"
-                                        class="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm text-slate-700
-                                    focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition" />
-                                </td> --}}
 
                                 <!-- Gudang -->
                                 <td class="px-5 py-4 align-middle">
@@ -357,7 +375,7 @@
                                                 </div>
 
                                                 <!-- Stok: selalu tampil label. Angka hanya kalau gudang dipilih.
-                                                                                                     Warna berubah merah kalau gudang dipilih dan stok === 0 -->
+                                                                                                                                                                                                                                                                             Warna berubah merah kalau gudang dipilih dan stok === 0 -->
                                                 <div
                                                     :class="(item.gudang_id && (parseFloat(item.stok) === 0)) ?
                                                     'text-rose-600 font-semibold text-[11px] mt-[1px]' :
@@ -535,7 +553,6 @@
                                         appearance-none focus:outline-none focus:ring-2 focus:ring-[#344579]/20 
                                         focus:border-[#344579] transition">
                             <option value="retail">Retail</option>
-                            <option value="partai_kecil">Partai Kecil</option>
                             <option value="grosir">Grosir</option>
                         </select>
                         <i
@@ -554,26 +571,64 @@
         </div>
 
 
-        <div x-show="showPrintModal" x-cloak
-            class="fixed inset-0 bg-black/40 min-h-screen flex items-center justify-center z-50">
-            <div class="bg-white rounded-lg shadow-lg w-full max-w-md p-6">
-                <h2 class="text-lg font-semibold mb-4">Penjualan Berhasil Disimpan</h2>
-                <p class="text-slate-600 mb-6">Pilih opsi berikut:</p>
+        <!-- 🧾 Modal Cetak Nota -->
+        <div x-show="showPrintModal" x-cloak aria-modal="true" role="dialog"
+            class="fixed inset-0 z-50 flex items-center justify-center min-h-screen">
 
-                <div class="flex flex-col gap-3">
-                    <button @click="printNota('kecil')"
-                        class="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-center">
+            <!-- 🌫 Overlay -->
+            <div x-show="showPrintModal" x-transition.opacity.duration.400ms
+                class="absolute inset-0 bg-black/40 backdrop-blur-[2px] transition-all"></div>
+
+            <!-- 💎 Modal Card -->
+            <div x-show="showPrintModal" x-transition:enter="transition ease-out duration-300"
+                x-transition:enter-start="opacity-0 scale-95 translate-y-3"
+                x-transition:enter-end="opacity-100 scale-100 translate-y-0"
+                x-transition:leave="transition ease-in duration-200" x-transition:leave-start="opacity-100 scale-100"
+                x-transition:leave-end="opacity-0 scale-95 translate-y-3"
+                class="relative bg-white/95 backdrop-blur-sm w-[420px]
+               rounded-2xl shadow-[0_10px_35px_-5px_rgba(51,73,118,0.25)]
+               border border-slate-200 transform transition-all overflow-hidden"
+                @click.away="showPrintModal = false">
+
+                <!-- Header -->
+                <div
+                    class="bg-gradient-to-r from-[#f8fafc] to-[#f1f5f9] 
+            border-b border-slate-200 px-5 py-3 flex justify-between items-center rounded-t-2xl">
+                    <h3 class="text-base font-semibold text-[#334976] flex items-center gap-2">
+                        <i class="fa-solid fa-print text-[#334976]"></i>
+                        Penjualan Berhasil Disimpan
+                    </h3>
+                    <button @click="showPrintModal = false" class="text-slate-400 hover:text-slate-600 transition">
+                        <i class="fa-solid fa-xmark text-lg"></i>
+                    </button>
+                </div>
+
+                <!-- Body -->
+                <div class="p-6 space-y-3 bg-white">
+                    <p class="text-slate-600 mb-4">Pilih opsi cetak:</p>
+
+                    <!-- Tombol Print Nota Kecil -->
+                    <button @click="printNota('kecil')" type="button"
+                        class="w-full px-4 py-2.5 rounded-lg text-white bg-blue-600 hover:bg-blue-700
+                font-medium text-center shadow-sm hover:shadow-md transition">
                         <i class="fa-solid fa-receipt mr-2"></i> Print Nota Kecil
                     </button>
-                    <button @click="printNota('besar')"
-                        class="px-4 py-2 rounded-lg bg-green-600 hover:bg-green-700 text-white text-center">
+
+                    <!-- Tombol Print Nota Besar -->
+                    <button @click="printNota('besar')" type="button"
+                        class="w-full px-4 py-2.5 rounded-lg text-white bg-green-600 hover:bg-green-700
+                font-medium text-center shadow-sm hover:shadow-md transition">
                         <i class="fa-solid fa-file-invoice mr-2"></i> Print Nota Besar
                     </button>
-                    <button @click="window.location.href='/penjualan'"
-                        class="px-4 py-2 rounded-lg border border-slate-300 text-slate-600">
+                </div>
+
+                <!-- Footer -->
+                <div class="flex justify-end px-6 py-4 bg-slate-50 border-t border-slate-200 rounded-b-2xl">
+                    <button type="button" @click="window.location.href = '/penjualan'"
+                        class="px-5 py-2.5 rounded-lg border border-slate-300 text-slate-600 
+                hover:bg-slate-100 transition font-medium">
                         Kembali
                     </button>
-
                 </div>
             </div>
         </div>
@@ -587,6 +642,7 @@
                     'id' => $i->id,
                     'kode_item' => $i->kode_item,
                     'nama_item' => $i->nama_item,
+                    'kategori' => $i->kategori?->nama_kategori ?? '', // ✅ TAMBAHKAN INI
                     'gudangs' => $i->gudangItems
                         ->map(
                             fn($ig) => [
@@ -595,7 +651,6 @@
                                 'satuan_id' => $ig->satuan?->id,
                                 'nama_satuan' => $ig->satuan?->nama_satuan,
                                 'stok' => $ig->stok,
-                                // 👇 ambil harga langsung dari relasi satuan, sama kayak di update
                                 'harga_retail' => $ig->satuan?->harga_retail ?? 0,
                                 'harga_partai_kecil' => $ig->satuan?->partai_kecil ?? 0,
                                 'harga_grosir' => $ig->satuan?->harga_grosir ?? 0,
@@ -605,8 +660,8 @@
                 ],
             )
             ->toArray();
-
     @endphp
+
 
 
     {{-- Alpine Component --}}
@@ -664,6 +719,21 @@
                     this.form.items = [];
                     this.allItems = @json($itemsJson ?? []);
 
+                    // ✅ DEBUG: Cek apakah kategori ada
+                    console.log('🔍 Total Items Loaded:', this.allItems.length);
+                    console.log('🔍 Sample Item (First 3):', this.allItems.slice(0, 3));
+
+                    // ✅ DEBUG: Cari item spandek
+                    const spandekItems = this.allItems.filter(i =>
+                        (i.kategori || '').toLowerCase().includes('spandek') ||
+                        (i.kategori || '').toLowerCase().includes('spandex')
+                    );
+                    console.log('🔍 Items dengan kategori Spandek/Spandex:', spandekItems.length);
+                    if (spandekItems.length > 0) {
+                        console.log('🔍 Sample Spandek Item:', spandekItems[0]);
+                    }
+
+                    this.watchModeChange();
                     this.setupSmartScannerFocus();
                     this.recalc();
                 },
@@ -725,6 +795,19 @@
                     const decPart = parts[1] || '';
                     return decPart ? `${intPart},${decPart}` : intPart;
                 },
+
+                watchModeChange() {
+                    this.$watch('form.mode', (newMode, oldMode) => {
+                        if (newMode !== oldMode) {
+                            this.updateAllItemPrices();
+                            this.notify(
+                                `Mode pengiriman diubah ke "${newMode === 'ambil' ? 'Ambil Sendiri' : 'Butuh Pengiriman'}"`,
+                                'success'
+                            );
+                        }
+                    });
+                },
+
 
                 // === SMART SCANNER FOCUS ===
                 setupSmartScannerFocus() {
@@ -792,12 +875,16 @@
                     return Number(selected.harga_retail || 0);
                 },
 
-                // === TAMBAH ITEM MANUAL ===
+                // 1. UPDATE addItemManual() - TAMBAHKAN INISIALISASI LENGKAP
                 addItemManual() {
                     this.form.items.push({
                         item_id: null,
                         query: '',
-                        keterangan: '', // ✅ baru
+                        kategori: '',
+                        is_spandek: false, // ✅ WAJIB ada dari awal
+                        showNote: false, // ✅ WAJIB ada dari awal
+                        keterangan: '',
+                        catatan_produksi: '',
                         results: [],
                         gudang_id: '',
                         gudangs: [],
@@ -806,9 +893,11 @@
                         jumlah: 1,
                         harga: 0,
                         stok: 0,
-                        harga_manual: false
+                        harga_manual: false,
+                        _dropdownOpen: false
                     });
                 },
+
 
 
                 searchItem(idx) {
@@ -826,6 +915,7 @@
                         .slice(0, 20);
                 },
 
+                // 2. UPDATE selectItem() - PASTIKAN showNote TIDAK DIRESET
                 selectItem(idx, item) {
                     const row = this.form.items[idx];
                     row.item_id = item.id;
@@ -833,6 +923,24 @@
                     row.results = [];
                     row.gudangs = item.gudangs || [];
                     row.harga_manual = false;
+
+                    // ✅ JANGAN RESET showNote - PERTAHANKAN NILAI LAMA
+                    // Hanya inisialisasi jika undefined
+                    if (row.showNote === undefined) {
+                        row.showNote = false;
+                    }
+
+                    // ✅ Set kategori dan is_spandek
+                    row.kategori = item.kategori || '';
+                    row.is_spandek = row.kategori &&
+                        (row.kategori.toLowerCase().includes('spandek') ||
+                            row.kategori.toLowerCase().includes('spandex'));
+
+                    // ✅ Jika item baru dipilih dan sebelumnya kosong, reset keterangan
+                    if (!row.keterangan) {
+                        row.keterangan = '';
+                        row.catatan_produksi = '';
+                    }
 
                     if (row.gudangs.length > 0) {
                         row.gudang_id = row.gudangs[0].gudang_id;
@@ -847,6 +955,7 @@
 
                     this.recalc();
                 },
+
 
                 // === GUDANG & SATUAN ===
                 getDistinctGudangs(item) {
@@ -881,23 +990,34 @@
 
                 getHargaByLevel(g) {
                     if (!g) return 0;
+
                     const level = this.selectedPelangganLevel || 'retail';
                     const mode = this.form.mode;
 
-                    if (level === 'grosir') {
-                        return mode === 'ambil' ?
-                            (g.harga_partai_kecil || g.harga_retail || 0) :
-                            (g.harga_grosir || g.harga_retail || 0);
+                    // Jika pelanggan belum dipilih → harga retail
+                    if (!this.form.pelanggan_id || this.form.is_walkin) {
+                        return g.harga_retail || 0;
                     }
 
-                    if (level === 'partai_kecil') {
-                        return mode === 'ambil' ?
-                            (g.harga_partai_kecil || g.harga_retail || 0) :
-                            (g.harga_grosir || g.harga_retail || 0);
+                    // Mode: Ambil Sendiri
+                    if (mode === 'ambil') {
+                        if (level === 'retail') return g.harga_retail || 0;
+                        if (level === 'partai_kecil') return g.harga_partai_kecil || g.harga_retail;
+                        if (level === 'grosir') return g.harga_partai_kecil || g.harga_retail;
                     }
 
+                    // Mode: Butuh Pengiriman
+                    if (mode === 'antar') {
+                        if (level === 'retail') return g.harga_retail || 0;
+                        if (level === 'partai_kecil') return g.harga_grosir || g.harga_partai_kecil || g.harga_retail;
+                        if (level === 'grosir') return g.harga_grosir || g.harga_partai_kecil || g.harga_retail;
+                    }
+
+                    // Default fallback
                     return g.harga_retail || 0;
                 },
+
+
 
 
                 updateStockAndPrice(idx) {
@@ -919,10 +1039,79 @@
 
 
                 updateAllItemPrices() {
-                    this.form.items.forEach((item, idx) => {
-                        this.updateStockAndPrice(idx);
-                        if (!item.harga_manual && item.satuan_id) this.fetchPriceForItem(idx);
+                    this.form.items.forEach((item) => {
+                        const selected = item.gudangs.find(
+                            g => g.gudang_id == item.gudang_id && g.satuan_id == item.satuan_id
+                        );
+                        if (selected && !item.harga_manual) {
+                            item.harga = this.getHargaByLevel(selected);
+                        }
                     });
+                    this.recalc();
+                },
+
+                // 4. UPDATE toggleItemNote() - LEBIH EKSPLISIT
+                toggleItemNote(idx) {
+                    const item = this.form.items[idx];
+                    if (!item) return;
+
+                    // ✅ Toggle dengan eksplisit
+                    item.showNote = !item.showNote;
+
+                    // ✅ Optional: Jika ada validasi spandek yang belum lengkap, tampilkan notif
+                    if (item.showNote && item.is_spandek && (!item.keterangan || !item.catatan_produksi)) {
+                        this.notify('Untuk item spandek, isi KEDUA field: keterangan dan jenis spandek', 'info');
+                    }
+                },
+
+                handleItemInput(idx) {
+                    const item = this.form.items[idx];
+
+                    if (item.query.length >= 2) {
+                        this.searchItem(idx);
+                        item._dropdownOpen = true;
+                    } else {
+                        item.item_id = null;
+                        item.gudang_id = '';
+                        item.satuan_id = '';
+                        item.gudangs = [];
+                        item.filteredSatuans = [];
+                        item.stok = 0;
+                        item.harga = 0;
+                        item.results = [];
+                        item._dropdownOpen = false;
+                    }
+                    this.updateAllItemPrices();
+                },
+
+                handleItemFocus(idx) {
+                    const item = this.form.items[idx];
+                    if (item.query && item.query.length >= 2) {
+                        item._dropdownOpen = true;
+                    }
+                },
+
+                handleItemClick(idx) {
+                    const item = this.form.items[idx];
+                    if (item.query && item.query.length >= 2) {
+                        item._dropdownOpen = true;
+                    }
+                },
+                handleItemEscape(idx) {
+                    this.form.items[idx]._dropdownOpen = false;
+                },
+                // 5. TAMBAHKAN helper function untuk validasi keterangan per item (OPTIONAL tapi BERGUNA)
+                isItemNoteComplete(item) {
+                    if (!item.is_spandek) {
+                        // Item biasa: keterangan OPSIONAL, bisa kosong
+                        return true;
+                    }
+
+                    // Item spandek: KEDUA field WAJIB diisi
+                    return item.keterangan &&
+                        item.keterangan.trim() !== '' &&
+                        item.catatan_produksi &&
+                        item.catatan_produksi.trim() !== '';
                 },
 
                 // === PELANGGAN ===
@@ -1003,7 +1192,7 @@
                     }
                 },
 
-                // === SCANNER ===
+                // 3. UPDATE handleBarcode() - TAMBAHKAN is_spandek dan showNote
                 async handleBarcode(e) {
                     const code = e.target.value.trim();
                     if (!code) return;
@@ -1022,10 +1211,20 @@
                         if (existingIdx !== -1) {
                             this.form.items[existingIdx].jumlah += 1;
                         } else {
+                            // ✅ TAMBAHKAN is_spandek dan showNote saat item baru
+                            const kategori = data.kategori || '';
+                            const isSpandek = kategori &&
+                                (kategori.toLowerCase().includes('spandek') ||
+                                    kategori.toLowerCase().includes('spandex'));
+
                             this.form.items.push({
                                 item_id: data.id,
                                 query: data.nama_item,
-                                keterangan: '', // ✅ baru
+                                kategori: kategori,
+                                is_spandek: isSpandek,
+                                showNote: false,
+                                keterangan: '',
+                                catatan_produksi: '',
                                 gudang_id: data.gudangs?.[0]?.gudang_id || '',
                                 gudangs: data.gudangs || [],
                                 satuan_id: '',
@@ -1034,12 +1233,12 @@
                                 harga: 0,
                                 stok: 0,
                                 results: [],
-                                harga_manual: false
+                                harga_manual: false,
+                                _dropdownOpen: false
                             });
 
-
                             const idx = this.form.items.length - 1;
-                            this.updateSatuanOptions(idx); // ✅ otomatis ambil satuan & harga
+                            this.updateSatuanOptions(idx);
                         }
 
                         this.recalc();
@@ -1053,6 +1252,7 @@
                     }
                 },
 
+
                 handlePelangganClickAway() {
                     this.openResults = false;
                     if (!this.form.pelanggan_id && this.pelangganQuery) {
@@ -1065,30 +1265,41 @@
 
                 async printNota(type) {
                     try {
-                        // ambil HTML dari route print
                         const res = await fetch(`/penjualan/${this.savedPenjualanId}/print?type=${type}`);
                         if (!res.ok) throw new Error("Gagal memuat nota");
 
                         const html = await res.text();
+                        const printWindow = window.open('', '_blank', 'width=800,height=600');
 
-                        // buka window popup kecil
-                        const w = window.open('', '_blank', 'width=800,height=600');
-                        w.document.write(html);
-                        w.document.close();
-                        w.focus();
+                        if (!printWindow) {
+                            this.notify("Popup diblokir, izinkan popup untuk melanjutkan.", "error");
+                            return;
+                        }
 
-                        // otomatis print begitu siap
-                        w.onload = () => {
-                            w.print();
-                            w.onafterprint = () => {
-                                // Tutup popup
-                                w.close();
+                        printWindow.document.write(html);
+                        printWindow.document.close();
 
-                                // Pastikan window utama ada
-                                if (w.opener && !w.opener.closed) {
-                                    w.opener.location.href = '/penjualan';
-                                }
-                            };
+                        // ✅ Tunggu dokumen siap
+                        printWindow.onload = () => {
+                            setTimeout(() => {
+                                printWindow.focus();
+                                printWindow.print();
+
+                                // ✅ Langsung close setelah print dialog muncul
+                                printWindow.onafterprint = () => {
+                                    printWindow.close();
+                                    window.location.href = '/penjualan';
+                                };
+
+                                // ✅ KUNCI: Auto-close cepat (2 detik) - baik user print atau cancel
+                                setTimeout(() => {
+                                    if (!printWindow.closed) {
+                                        printWindow.close();
+                                    }
+                                    window.location.href = '/penjualan';
+                                }, 2000); // ⏱️ 2 detik = cukup untuk print dialog muncul
+
+                            }, 500);
                         };
 
                     } catch (err) {
@@ -1174,23 +1385,69 @@
                 // === VALIDASI & SIMPAN ===
                 isValid() {
                     if (this.form.items.length === 0) return false;
+
+                    // ✅ Validasi tanpa notify - hanya return boolean
+                    for (const i of this.form.items) {
+                        if (i.is_spandek === true) {
+                            if (!i.keterangan || i.keterangan.trim() === '') return false;
+                            if (!i.catatan_produksi || i.catatan_produksi.trim() === '') return false;
+                        }
+                    }
+
                     return this.form.items.every(i =>
                         i.item_id && i.gudang_id && i.satuan_id && i.jumlah > 0 && i.harga >= 0
                     );
                 },
 
-                async save() {
-                    if (!this.isValid()) {
+                // ✅ Fungsi baru untuk validasi + notifikasi (hanya dipanggil saat save)
+                validateBeforeSave() {
+                    if (this.form.items.length === 0) {
                         this.notify('Mohon lengkapi semua data item penjualan.', 'error');
-                        return;
+                        return false;
                     }
 
+                    // ✅ Validasi khusus spandek dengan notifikasi
+                    for (const i of this.form.items) {
+                        if (i.is_spandek === true) {
+                            if (!i.keterangan || i.keterangan.trim() === '') {
+                                this.notify(`Keterangan wajib diisi untuk item: ${i.query}`, 'error');
+                                return false;
+                            }
+                            if (!i.catatan_produksi || i.catatan_produksi.trim() === '') {
+                                this.notify(`Jenis spandek wajib dipilih untuk item: ${i.query}`, 'error');
+                                return false;
+                            }
+                        }
+                    }
+
+                    // ✅ Validasi stok
                     for (const item of this.form.items) {
                         if (item.jumlah > item.stok) {
                             this.notify(`Stok tidak cukup untuk item: ${item.query}`, 'error');
-                            return;
+                            return false;
                         }
                     }
+
+                    // ✅ Validasi umum
+                    const allValid = this.form.items.every(i =>
+                        i.item_id && i.gudang_id && i.satuan_id && i.jumlah > 0 && i.harga >= 0
+                    );
+
+                    if (!allValid) {
+                        this.notify('Mohon lengkapi semua data item penjualan.', 'error');
+                        return false;
+                    }
+
+                    return true;
+                },
+
+
+
+
+                // ✅ SOLUSI 2: Update fungsi save
+                async save() {
+                    // ✅ Gunakan validateBeforeSave() yang ada notifikasi
+                    if (!this.validateBeforeSave()) return;
 
                     const payload = {
                         pelanggan_id: this.form.pelanggan_id,
@@ -1204,16 +1461,28 @@
                         mode: this.form.mode,
                         status_bayar: 'unpaid',
                         is_draft: false,
-                        items: this.form.items.map(i => ({
-                            item_id: i.item_id,
-                            gudang_id: i.gudang_id,
-                            satuan_id: i.satuan_id,
-                            jumlah: parseFloat(i.jumlah),
-                            harga: parseFloat(i.harga),
-                            total: parseFloat(i.jumlah) * parseFloat(i.harga),
-                            keterangan: i.keterangan || '' // ✅ baru
-                        }))
+                        items: this.form.items.map(i => {
+                            // ✅ Gabungkan keterangan dan catatan_produksi
+                            let keteranganFinal = i.keterangan || '';
 
+                            if (i.is_spandek && i.catatan_produksi) {
+                                // Jika ada keterangan sebelumnya, tambah pemisah
+                                if (keteranganFinal) {
+                                    keteranganFinal += ' - ';
+                                }
+                                keteranganFinal += i.catatan_produksi;
+                            }
+
+                            return {
+                                item_id: i.item_id,
+                                gudang_id: i.gudang_id,
+                                satuan_id: i.satuan_id,
+                                jumlah: parseFloat(i.jumlah),
+                                harga: parseFloat(i.harga),
+                                total: parseFloat(i.jumlah) * parseFloat(i.harga),
+                                keterangan: keteranganFinal // ✅ Kirim hasil gabungan
+                            };
+                        })
                     };
 
                     try {
@@ -1257,14 +1526,27 @@
                         sub_total: this.subTotal || 0,
                         total: this.totalPembayaran || 0,
                         is_draft: true,
-                        items: this.form.items.map(i => ({
-                            item_id: i.item_id,
-                            gudang_id: i.gudang_id,
-                            satuan_id: i.satuan_id,
-                            jumlah: parseFloat(i.jumlah),
-                            harga: parseFloat(i.harga),
-                            total: parseFloat(i.jumlah) * parseFloat(i.harga)
-                        }))
+                        items: this.form.items.map(i => {
+                            // ✅ Gabungkan keterangan dan catatan_produksi untuk draft juga
+                            let keteranganFinal = i.keterangan || '';
+
+                            if (i.is_spandek && i.catatan_produksi) {
+                                if (keteranganFinal) {
+                                    keteranganFinal += ' | ';
+                                }
+                                keteranganFinal += i.catatan_produksi;
+                            }
+
+                            return {
+                                item_id: i.item_id,
+                                gudang_id: i.gudang_id,
+                                satuan_id: i.satuan_id,
+                                jumlah: parseFloat(i.jumlah),
+                                harga: parseFloat(i.harga),
+                                total: parseFloat(i.jumlah) * parseFloat(i.harga),
+                                keterangan: keteranganFinal // ✅ Kirim hasil gabungan
+                            };
+                        })
                     };
 
                     try {
@@ -1281,7 +1563,7 @@
                         const result = await res.json();
 
                         if (!res.ok) {
-                            this.notify('Gagal menyimpan draft: ' + (result.message || 'Unknown error'), 'error');
+                            this.notify('Pastikan telah mengisi semua data penjualan dengan benar.', 'error');
                             return;
                         }
 

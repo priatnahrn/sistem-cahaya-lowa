@@ -59,6 +59,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/{id}/print', [PenjualanController::class, 'print'])->name('print');
         Route::get('/{id}/last-price', [PenjualanController::class, 'getLastPrice'])->name('last_price');
         Route::put('/{id}/update', [PenjualanController::class, 'update'])->name('update');
+        Route::put('/{id}/cancel', [PenjualanController::class, 'cancelDraft'])->name('cancel_draft');
         Route::delete('/{id}/delete', [PenjualanController::class, 'destroy'])->name('destroy');
         Route::get('/{id}', [PenjualanController::class, 'show'])->whereNumber('id')->name('show');
     });

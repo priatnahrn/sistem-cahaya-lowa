@@ -352,37 +352,37 @@
 
     @php
         $itemsJson = $items
-            ->map(
-                fn($it) => [
+            ->map(function ($it) {
+                return [
                     'id' => $it->id,
                     'kode' => $it->kode_item,
                     'nama' => $it->nama_item,
                     'kategori' => optional($it->kategori)->nama_kategori,
 
-                    // total_stok = sum semua gudang dalam base unit
-                    'stock' => (int) $it->gudangItems->sum('total_stok'),
+                    // ✅ Ambil total_stok dari baris pertama (karena semua sama sekarang)
+                    'stock' => (int) (optional($it->gudangItems->first())->total_stok ?? 0),
 
                     'stok_minimal' => (int) ($it->stok_minimal ?? 0),
                     'foto_path' => $it->foto_path,
                     'url' => route('items.show', $it->id),
 
-                    // ✅ group per satuan_id
+                    // ✅ Group per satuan_id (buat tampilan list satuan)
                     'satuans' => $it->gudangItems
                         ->groupBy('satuan_id')
-                        ->map(
-                            fn($group) => [
+                        ->map(function ($group) {
+                            return [
                                 'id' => $group->first()->satuan_id,
                                 'nama_satuan' => $group->first()->satuan->nama_satuan,
                                 'stok' => $group->sum('stok'), // jumlah semua gudang utk satuan ini
-                            ],
-                        )
+                            ];
+                        })
                         ->values()
                         ->toArray(),
-                ],
-            )
+                ];
+            })
             ->toArray();
-
     @endphp
+
 
 
 

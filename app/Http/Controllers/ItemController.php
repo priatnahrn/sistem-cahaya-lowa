@@ -204,7 +204,7 @@ class ItemController extends Controller
             return response()->json([]);
         }
 
-        $items = Item::with(['satuans'])
+        $items = Item::with(['satuans', 'kategori'])  // ✅ TAMBAHKAN 'kategori'
             ->where('nama_item', 'like', "%{$q}%")
             ->orWhere('kode_item', 'like', "%{$q}%")
             ->orderByDesc('id')
@@ -231,6 +231,7 @@ class ItemController extends Controller
                 'id' => $it->id,
                 'kode_item' => $it->kode_item,
                 'nama_item' => $it->nama_item,
+                'kategori' => $it->kategori?->nama_kategori ?? '',  // ✅ TAMBAHKAN INI
                 'satuans' => $satuans,
                 'satuan_default' => $satuan_default,
             ];

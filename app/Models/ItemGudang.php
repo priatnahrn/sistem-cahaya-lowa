@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 class ItemGudang extends Model
 {
     protected $table = 'item_gudangs';
+    protected $guarded = ['id'];
 
     protected $fillable = [
         'item_id',

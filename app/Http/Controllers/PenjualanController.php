@@ -21,6 +21,34 @@ use Picqer\Barcode\BarcodeGeneratorSVG;
 
 class PenjualanController extends Controller
 {
+
+    private function recalculateTotalStokGlobal($itemId)
+    {
+        $itemGudangs = ItemGudang::where('item_id', $itemId)
+            ->with('satuan:id,jumlah')
+            ->get();
+
+        if ($itemGudangs->isEmpty()) {
+            Log::warning("❌ Tidak ada data ItemGudang untuk item_id=$itemId");
+            return;
+        }
+
+        // Hitung total stok global (semua gudang)
+        $totalStokGlobal = 0;
+        foreach ($itemGudangs as $ig) {
+            $stok = (float) ($ig->stok ?? 0);
+            $konversi = (float) ($ig->satuan->jumlah ?? 1);
+            $totalStokGlobal += $stok * $konversi;
+        }
+
+        // Update semua baris item ini (di semua gudang)
+        foreach ($itemGudangs as $ig) {
+            $ig->total_stok = $totalStokGlobal;
+            $ig->save();
+        }
+
+        Log::info("🌍 Total stok GLOBAL item_id=$itemId diset ke $totalStokGlobal");
+    }
     public function index()
     {
         $penjualans = Penjualan::with(['pelanggan', 'items.item'])
@@ -34,10 +62,15 @@ class PenjualanController extends Controller
     {
         $pelanggans = Pelanggan::orderBy('nama_pelanggan')->get();
         $gudangs = Gudang::orderBy('nama_gudang')->get();
-        $items = Item::with(['gudangItems.gudang', 'gudangItems.satuan'])
+
+        // ✅ TAMBAHKAN 'kategori' di eager loading
+        $items = Item::with([
+            'kategori',  // ✅ TAMBAHKAN INI
+            'gudangItems.gudang',
+            'gudangItems.satuan'
+        ])
             ->orderBy('nama_item')
             ->get();
-
 
         // preview no faktur
         $today = now()->format('dmy');
@@ -79,6 +112,7 @@ class PenjualanController extends Controller
             'items.*.jumlah'    => 'required|numeric|min:0.01',
             'items.*.harga'     => 'required|numeric|min:0',
             'items.*.total'     => 'required|numeric|min:0',
+            'items.*.keterangan' => 'nullable|string|max:1000',
         ];
 
         $data = $request->validate($rules);
@@ -102,6 +136,7 @@ class PenjualanController extends Controller
 
             // 📦 2️⃣ Simpan Detail Item & Kurangi Stok (jika bukan draft)
             foreach ($data['items'] as $it) {
+                // Simpan detail item
                 ItemPenjualan::create([
                     'penjualan_id' => $penjualan->id,
                     'item_id'      => $it['item_id'],
@@ -110,10 +145,12 @@ class PenjualanController extends Controller
                     'jumlah'       => $it['jumlah'],
                     'harga'        => $it['harga'],
                     'total'        => $it['total'],
+                    'keterangan'   => $it['keterangan'] ?? null,
                     'created_by'   => Auth::id(),
                 ]);
 
                 if (!$isDraft) {
+                    // 🔻 Kurangi stok di satuan yang dijual
                     $ig = ItemGudang::where('item_id', $it['item_id'])
                         ->where('gudang_id', $it['gudang_id'])
                         ->where('satuan_id', $it['satuan_id'])
@@ -121,66 +158,16 @@ class PenjualanController extends Controller
                         ->first();
 
                     if ($ig) {
-                        $ig->stok = max(0, ($ig->stok ?? 0) - $it['jumlah']);
+                        $stokLama = $ig->stok ?? 0;
+                        $ig->stok = max(0, $stokLama - $it['jumlah']);
                         $ig->save();
-                    }
-                }
-            }
 
-            // 🧵 3️⃣ Produksi Otomatis untuk Kategori SPANDEX
-            if (!$isDraft) {
-                $itemsSpandex = \App\Models\ItemPenjualan::where('penjualan_id', $penjualan->id)
-                    ->whereHas('item.kategoriItem', function ($q) {
-                        $q->where('nama_kategori', 'SPANDEX');
-                    })
-                    ->get();
-
-                if ($itemsSpandex->isNotEmpty()) {
-                    $produksi = Produksi::create([
-                        'penjualan_id' => $penjualan->id,
-                        'no_produksi'  => $penjualan->no_faktur, // sama dengan nomor faktur
-                        'status'       => 'pending',
-                        'created_by'   => Auth::id(),
-                    ]);
-
-
-                    foreach ($itemsSpandex as $itemPenjualan) {
-                        ItemProduksi::create([
-                            'produksi_id'        => $produksi->id,
-                            'item_id'            => $itemPenjualan->item_id,
-                            'item_penjualan_id'  => $itemPenjualan->id,
-                            'jumlah_dibutuhkan'  => $itemPenjualan->jumlah,
-                            'jumlah_selesai'     => 0,
-                            'status'             => 'pending',
-                        ]);
+                        Log::info("🧾 Stok berkurang: item_id={$it['item_id']} gudang_id={$it['gudang_id']} satuan_id={$it['satuan_id']} dari {$stokLama} ke {$ig->stok}");
                     }
 
-                    Log::info("✅ Produksi otomatis dibuat untuk penjualan {$penjualan->no_faktur}");
+                    // 🔁 Setelah stok satuan dikurangi, hitung ulang total stok global
+                    $this->recalculateTotalStokGlobal($it['item_id']);
                 }
-            }
-
-            // 🚚 4️⃣ Buat Pengiriman jika mode = antar
-            if (!$isDraft && $data['mode'] === 'antar') {
-                Pengiriman::create([
-                    'penjualan_id'       => $penjualan->id,
-                    'no_pengiriman'      => $penjualan->no_faktur,
-                    'tanggal_pengiriman' => $data['tanggal'] . ' ' . now()->format('H:i:s'),
-                    'status_pengiriman'  => 'perlu_dikirim',
-                ]);
-            }
-
-            // 💳 5️⃣ Buat Tagihan Penjualan
-            if (!$isDraft) {
-                \App\Models\TagihanPenjualan::create([
-                    'penjualan_id'    => $penjualan->id,
-                    'no_tagihan'      => 'TG' . now()->format('dmy') . str_pad($penjualan->id, 3, '0', STR_PAD_LEFT),
-                    'tanggal_tagihan' => now(),
-                    'total'           => $penjualan->total,
-                    'jumlah_bayar'    => 0,
-                    'sisa'            => $penjualan->total,
-                    'status_tagihan'  => 'belum_lunas',
-                    'created_by'      => Auth::id(),
-                ]);
             }
 
             DB::commit();
@@ -188,7 +175,7 @@ class PenjualanController extends Controller
             return response()->json([
                 'message' => $isDraft
                     ? 'Draft penjualan berhasil disimpan (stok belum dikurangi).'
-                    : 'Penjualan berhasil disimpan, stok diperbarui, dan produksi SPANDEX otomatis dibuat (jika ada).',
+                    : 'Penjualan berhasil disimpan, stok diperbarui dan total stok global disinkronkan.',
                 'id' => $penjualan->id,
             ], 201);
         } catch (\Throwable $e) {
@@ -201,7 +188,6 @@ class PenjualanController extends Controller
             ], 500);
         }
     }
-
 
 
 
@@ -221,29 +207,24 @@ class PenjualanController extends Controller
             $q->where('nama_item', 'like', "%{$query}%")
                 ->orWhere('kode_item', 'like', "%{$query}%");
         })
-            ->with('satuans')
-            ->limit(15)
+            ->with(['kategori', 'gudangItems.gudang', 'gudangItems.satuan'])
+            ->limit(20)
             ->get()
             ->map(function ($item) {
-                // Get all satuans for this item
-                $satuans = Satuan::whereIn('id', function ($q) use ($item) {
-                    $q->select('satuan_id')
-                        ->from('item_gudangs')
-                        ->where('item_id', $item->id);
-                })->get();
-
                 return [
                     'id' => $item->id,
                     'nama_item' => $item->nama_item,
                     'kode_item' => $item->kode_item,
-                    'barcode' => $item->barcode,
-                    'satuan_default' => $item->satuan_id,
-                    'satuans' => $satuans->map(fn($s) => [
-                        'id' => $s->id,
-                        'nama_satuan' => $s->nama_satuan,
-                        'harga_retail' => $s->harga_retail ?? 0,
-                        'partai_kecil' => $s->partai_kecil ?? 0,
-                        'harga_grosir' => $s->harga_grosir ?? 0,
+                    'kategori' => $item->kategori?->nama_kategori ?? null, // ✅ kirim kategori
+                    'gudangs' => $item->gudangItems->map(fn($ig) => [
+                        'gudang_id' => $ig->gudang?->id,
+                        'nama_gudang' => $ig->gudang?->nama_gudang,
+                        'satuan_id' => $ig->satuan?->id,
+                        'nama_satuan' => $ig->satuan?->nama_satuan,
+                        'stok' => $ig->stok ?? 0,
+                        'harga_retail' => $ig->satuan?->harga_retail ?? 0,
+                        'harga_partai_kecil' => $ig->satuan?->partai_kecil ?? 0,
+                        'harga_grosir' => $ig->satuan?->harga_grosir ?? 0,
                     ])
                 ];
             });
@@ -251,12 +232,16 @@ class PenjualanController extends Controller
         return response()->json($items);
     }
 
+
+
     /**
      * API: Get item by barcode (untuk scanner)
      */
     public function getItemByBarcode($barcode)
     {
-        $item = Item::where('barcode', $barcode)
+        // ✅ TAMBAHKAN eager load 'kategori'
+        $item = Item::with('kategori')
+            ->where('barcode', $barcode)
             ->orWhere('kode_item', $barcode)
             ->first();
 
@@ -290,6 +275,7 @@ class PenjualanController extends Controller
             'nama_item' => $item->nama_item,
             'kode_item' => $item->kode_item,
             'barcode' => $item->barcode,
+            'kategori' => $item->kategori?->nama_kategori ?? '',  // ✅ TAMBAHKAN INI
             'satuan_default' => $item->satuan_id,
             'gudangs' => $gudangs,
         ]);
@@ -388,17 +374,19 @@ class PenjualanController extends Controller
             }
         ])->findOrFail($id);
 
-        // Debug - hapus setelah berhasil
-        Log::info('Penjualan Data:', [
-            'id' => $penjualan->id,
-            'items_count' => $penjualan->items->count(),
-            'first_item' => $penjualan->items->first() ? [
-                'id' => $penjualan->items->first()->id,
-                'item_id' => $penjualan->items->first()->item_id,
-                'item_name' => $penjualan->items->first()->item->nama_item ?? 'NULL',
-                'gudang_items_count' => $penjualan->items->first()->item->gudangItems->count() ?? 0
-            ] : null
-        ]);
+        foreach ($penjualan->items as $it) {
+            // Jika database masih model lama (catatan_produksi kosong, tapi keterangan digabung)
+            if ($it->keterangan && !$it->catatan_produksi) {
+                $parts = explode(' - ', $it->keterangan, 2);
+                $it->keterangan = trim($parts[0]);
+                $it->catatan_produksi = isset($parts[1]) ? trim($parts[1]) : '';
+            } else {
+                // Gunakan nilai asli dari database
+                $it->keterangan = $it->keterangan ?? '';
+                $it->catatan_produksi = $it->catatan_produksi ?? '';
+            }
+        }
+
 
         $gudangs = Gudang::all();
         $items = Item::with(['gudangItems.gudang', 'gudangItems.satuan'])->get();
@@ -409,6 +397,7 @@ class PenjualanController extends Controller
             'items' => $items,
         ]);
     }
+
 
     public function print(Request $request, $id)
     {
@@ -424,12 +413,9 @@ class PenjualanController extends Controller
             return view('auth.penjualan.print_kecil', compact('penjualan', 'barcode'));
         } else {
             // untuk nota besar masih bisa pakai PDF kalau mau
-            $pdf = Pdf::loadView('auth.penjualan.print_besar', compact('penjualan', 'barcode'))
-                ->setPaper([0, 0, 595.28, 420.94], 'landscape');
-            return $pdf->stream("nota-besar-{$penjualan->no_faktur}.pdf");
+            return view('auth.penjualan.print_besar', compact('penjualan', 'barcode'));
         }
     }
-
 
 
 
@@ -440,64 +426,83 @@ class PenjualanController extends Controller
 
         // === VALIDASI DASAR ===
         $rules = [
-            'pelanggan_id'    => 'nullable|integer|exists:pelanggans,id',
-            'no_faktur'       => 'required|string',
-            'tanggal'         => 'required|date',
-            'deskripsi'       => 'nullable|string',
-            'biaya_transport' => 'nullable|numeric|min:0',
-            'mode'            => 'required|in:ambil,antar',
-            'status_bayar'    => 'nullable|in:paid,unpaid,return',
-            'sub_total'       => 'required|numeric|min:0',
-            'total'           => 'required|numeric|min:0',
-            'items'           => 'required|array|min:1',
-            'items.*.item_id' => 'required|exists:items,id',
+            'pelanggan_id'      => 'nullable|integer|exists:pelanggans,id',
+            'no_faktur'         => 'required|string',
+            'tanggal'           => 'nullable|date',
+            'deskripsi'         => 'nullable|string',
+            'biaya_transport'   => 'nullable|numeric|min:0',
+            'mode'              => 'required|in:ambil,antar',
+            'status_bayar'      => 'nullable|in:paid,unpaid,return',
+            'sub_total'         => 'required|numeric|min:0',
+            'total'             => 'required|numeric|min:0',
+            'items'             => 'required|array|min:1',
+            'items.*.item_id'   => 'required|exists:items,id',
             'items.*.gudang_id' => 'required|exists:gudangs,id',
             'items.*.satuan_id' => 'required|exists:satuans,id',
-            'items.*.jumlah'    => 'required|numeric|min:1',
+            'items.*.jumlah'    => 'required|numeric|min:0.01',
             'items.*.harga'     => 'required|numeric|min:0',
             'items.*.keterangan' => 'nullable|string|max:255',
+            'items.*.catatan_produksi' => 'nullable|string|max:255',
         ];
 
         $data = $request->validate($rules);
 
         DB::beginTransaction();
         try {
-            // === UPDATE HEADER PENJUALAN ===
+            // 🗓️ Tanggal & jam
+            $tanggal = isset($data['tanggal']) && $data['tanggal']
+                ? \Carbon\Carbon::parse($data['tanggal'] . ' ' . now()->format('H:i:s'))
+                : now();
+
+            $statusBayar = $isDraftRequest ? 'unpaid' : ($data['status_bayar'] ?? 'unpaid');
+
+            // 🧾 UPDATE HEADER PENJUALAN
             $penjualan->update([
                 'pelanggan_id'    => $data['pelanggan_id'] ?? null,
                 'no_faktur'       => $data['no_faktur'],
-                'tanggal'         => $data['tanggal'],
+                'tanggal'         => $tanggal,
                 'deskripsi'       => $data['deskripsi'] ?? null,
                 'mode'            => $data['mode'],
                 'sub_total'       => $data['sub_total'],
                 'biaya_transport' => $data['biaya_transport'] ?? 0,
                 'total'           => $data['total'],
-                'status_bayar'    => $data['status_bayar'] ?? 'unpaid',
+                'status_bayar'    => $statusBayar,
                 'is_draft'        => $isDraftRequest,
                 'updated_by'      => Auth::id(),
             ]);
 
-            // === PROSES ITEM ===
+            // 🔁 KEMBALIKAN STOK LAMA
             foreach ($penjualan->items as $oldItem) {
-                // kembalikan stok lama (revert)
                 $gudangItem = ItemGudang::where('item_id', $oldItem->item_id)
                     ->where('gudang_id', $oldItem->gudang_id)
                     ->where('satuan_id', $oldItem->satuan_id)
+                    ->lockForUpdate()
                     ->first();
 
                 if ($gudangItem) {
-                    $gudangItem->increment('stok', $oldItem->jumlah);
+                    $stokSebelum = $gudangItem->stok;
+                    $gudangItem->stok += $oldItem->jumlah;
+                    $gudangItem->save();
+
+                    Log::info("🔙 Stok dikembalikan: item_id={$oldItem->item_id}, gudang_id={$oldItem->gudang_id}, satuan_id={$oldItem->satuan_id} dari {$stokSebelum} ke {$gudangItem->stok}");
                 }
             }
 
-            // hapus semua item lama
+            // 🧹 HAPUS ITEM LAMA
             $penjualan->items()->delete();
 
-            // tambahkan item baru
+            // 📦 TAMBAH ITEM BARU
             foreach ($data['items'] as $it) {
-                $jumlah = floatval($it['jumlah']);
-                $harga = floatval($it['harga']);
-                $total = isset($it['total']) ? floatval($it['total']) : ($jumlah * $harga);
+                $jumlah = (float) $it['jumlah'];
+                $harga = (float) $it['harga'];
+                $total = isset($it['total']) ? (float) $it['total'] : $jumlah * $harga;
+
+                $keteranganGabung = trim(
+                    ($it['keterangan'] ?? '') .
+                        (isset($it['catatan_produksi']) && $it['catatan_produksi']
+                            ? ' - ' . $it['catatan_produksi']
+                            : '')
+                );
 
                 $penjualan->items()->create([
                     'item_id'   => $it['item_id'],
@@ -506,29 +511,42 @@ class PenjualanController extends Controller
                     'jumlah'    => $jumlah,
                     'harga'     => $harga,
                     'total'     => $total,
-                    'keterangan' => $it['keterangan'] ?? null,
+                    'keterangan' => $keteranganGabung ?: null,
                 ]);
 
-                // kurangi stok baru
-                $gudangItem = ItemGudang::where('item_id', $it['item_id'])
-                    ->where('gudang_id', $it['gudang_id'])
-                    ->where('satuan_id', $it['satuan_id'])
-                    ->first();
+                if (!$isDraftRequest) {
+                    $gudangItem = ItemGudang::where('item_id', $it['item_id'])
+                        ->where('gudang_id', $it['gudang_id'])
+                        ->where('satuan_id', $it['satuan_id'])
+                        ->lockForUpdate()
+                        ->first();
 
-                if ($gudangItem) {
-                    $gudangItem->decrement('stok', $jumlah);
+                    if ($gudangItem) {
+                        $stokSebelum = $gudangItem->stok;
+                        $gudangItem->stok = max(0, $stokSebelum - $jumlah);
+                        $gudangItem->save();
+
+                        Log::info("📉 Stok dikurangi: item_id={$it['item_id']}, gudang_id={$it['gudang_id']}, satuan_id={$it['satuan_id']} dari {$stokSebelum} ke {$gudangItem->stok}");
+                    }
+
+                    // ✅ UPDATE TOTAL STOK GLOBAL
+                    $this->recalculateTotalStokGlobal($it['item_id']);
                 }
             }
 
             DB::commit();
 
-            return response()->json(['message' => 'Penjualan berhasil diperbarui'], 200);
+            return response()->json(['message' => 'Penjualan berhasil diperbarui dan total stok disinkronkan.'], 200);
         } catch (\Throwable $e) {
             DB::rollBack();
             Log::error('Update Penjualan error: ' . $e->getMessage());
-            return response()->json(['message' => 'Gagal update penjualan', 'error' => $e->getMessage()], 500);
+            return response()->json([
+                'message' => 'Gagal update penjualan',
+                'error'   => $e->getMessage(),
+            ], 500);
         }
     }
+
 
     /**
      * API: Cari penjualan berdasarkan kode nota (no_faktur)
@@ -570,5 +588,139 @@ class PenjualanController extends Controller
                 'subtotal' => (float) $it->total,
             ]),
         ]);
+    }
+
+    /**
+     * ❌ Batalkan/Hapus Draft Penjualan
+     */
+    public function cancelDraft($id)
+    {
+        DB::beginTransaction();
+        try {
+            $penjualan = Penjualan::with('items')->findOrFail($id);
+
+            // 🛡️ Validasi: Hanya draft yang bisa dibatalkan
+            if ($penjualan->is_draft != 1) {
+                return response()->json([
+                    'message' => 'Hanya transaksi draft yang bisa dibatalkan.'
+                ], 400);
+            }
+
+            // 🔄 Kembalikan stok semua item
+            foreach ($penjualan->items as $item) {
+                $gudangItem = ItemGudang::where('item_id', $item->item_id)
+                    ->where('gudang_id', $item->gudang_id)
+                    ->where('satuan_id', $item->satuan_id)
+                    ->lockForUpdate()
+                    ->first();
+
+                if ($gudangItem) {
+                    $stokLama = $gudangItem->stok;
+                    $gudangItem->stok += $item->jumlah;
+                    $gudangItem->save();
+
+                    Log::info("♻️ Stok dikembalikan (cancel draft): item_id={$item->item_id}, gudang_id={$item->gudang_id}, satuan_id={$item->satuan_id} dari {$stokLama} ke {$gudangItem->stok}");
+                }
+            }
+
+            // 🗑️ Hapus items dan penjualan
+            $penjualan->items()->delete();
+            $penjualan->delete();
+
+            // ✅ Recalculate total stok GLOBAL untuk semua item terkait
+            $affectedItems = $penjualan->items->pluck('item_id')->unique();
+            foreach ($affectedItems as $itemId) {
+                $this->recalculateTotalStokGlobal($itemId);
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'message' => 'Transaksi draft berhasil dibatalkan dan total stok disinkronkan.'
+            ], 200);
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            Log::error('Cancel Draft error: ' . $e->getMessage());
+
+            return response()->json([
+                'message' => 'Gagal membatalkan draft.',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+
+    /**
+     * 🗑️ Hapus Penjualan (dengan pengembalian stok)
+     */
+    public function destroy($id)
+    {
+        DB::beginTransaction();
+        try {
+            $penjualan = Penjualan::with('items')->findOrFail($id);
+
+            // 🛡️ Validasi: Tidak bisa hapus penjualan yang sudah lunas
+            if ($penjualan->status_bayar === 'paid') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Tidak dapat menghapus penjualan yang sudah lunas. Silakan gunakan fitur retur.'
+                ], 400);
+            }
+
+            // 🔄 Kembalikan stok semua item
+            foreach ($penjualan->items as $item) {
+                $gudangItem = ItemGudang::where('item_id', $item->item_id)
+                    ->where('gudang_id', $item->gudang_id)
+                    ->where('satuan_id', $item->satuan_id)
+                    ->lockForUpdate()
+                    ->first();
+
+                if ($gudangItem) {
+                    $stokLama = $gudangItem->stok;
+                    $gudangItem->stok += $item->jumlah;
+                    $gudangItem->save();
+
+                    Log::info("🧩 Stok dikembalikan (hapus penjualan): item_id={$item->item_id}, gudang_id={$item->gudang_id}, satuan_id={$item->satuan_id} dari {$stokLama} ke {$gudangItem->stok}");
+                }
+            }
+
+            // 📝 Simpan info untuk log
+            $noFaktur = $penjualan->no_faktur;
+            $pelanggan = optional($penjualan->pelanggan)->nama_pelanggan ?? 'Customer';
+
+            // 🗑️ Hapus items dan penjualan
+            $penjualan->items()->delete();
+            $penjualan->delete();
+
+            // ✅ Recalculate total stok GLOBAL untuk semua item terkait
+            $affectedItems = $penjualan->items->pluck('item_id')->unique();
+            foreach ($affectedItems as $itemId) {
+                $this->recalculateTotalStokGlobal($itemId);
+            }
+
+            DB::commit();
+
+            Log::info("Penjualan {$noFaktur} untuk {$pelanggan} dihapus oleh user " . Auth::id());
+
+            return response()->json([
+                'success' => true,
+                'message' => "Penjualan {$noFaktur} berhasil dihapus, stok dikembalikan, dan total stok disinkronkan."
+            ], 200);
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            DB::rollBack();
+            return response()->json([
+                'success' => false,
+                'message' => 'Data penjualan tidak ditemukan.'
+            ], 404);
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            Log::error('Delete Penjualan error: ' . $e->getMessage());
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal menghapus penjualan.',
+                'error' => $e->getMessage()
+            ], 500);
+        }
     }
 }
