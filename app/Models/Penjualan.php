@@ -69,4 +69,9 @@ class Penjualan extends Model
     {
         return $this->hasOne(Produksi::class);
     }
+
+    public function pengiriman()
+    {
+        return $this->hasOne(Pengiriman::class);
+    }
 }

@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Detail Penjualan - ' . $penjualan->no_faktur)
+@section('title', 'Detail Penjualan')
 
 @section('content')
     <meta name="csrf-token" content="{{ csrf_token() }}">

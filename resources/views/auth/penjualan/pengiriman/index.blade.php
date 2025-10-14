@@ -227,8 +227,8 @@
         </div>
         <!-- MODAL ANTAR BARANG -->
         <div x-cloak x-show="showAntarModal" x-transition.opacity
-            class="fixed inset-0 z-[9999] flex items-center justify-center">
-            <div class="absolute inset-0 bg-black/40 backdrop-blur-sm" @click="showAntarModal=false"></div>
+            class="fixed inset-0 z-[9999] flex items-center justify-center min-h-screen">
+            <div class="absolute inset-0 bg-black/40 " @click="showAntarModal=false"></div>
 
             <div class="bg-white rounded-2xl shadow-xl w-11/12 md:w-[420px] z-50 overflow-hidden animate-fadeIn">
                 <div class="px-6 py-4 border-b border-slate-200 flex justify-between items-center">
@@ -242,8 +242,9 @@
                     <div class="bg-slate-50 rounded-xl p-4 border border-slate-200 space-y-1">
                         <div class="flex justify-between text-sm"><span class="font-medium">No. Nota :</span> <span
                                 x-text="scanData?.no_faktur || '-'"></span></div>
-                        <div class="flex justify-between text-sm"><span class="font-medium">Tanggal :</span> <span
-                                x-text="scanData?.tanggal || '-'"></span></div>
+                        <div class="flex justify-between text-sm"><span class="font-medium">Tanggal :</span>
+                            <span x-text="fmtTanggal(scanData?.tanggal)"></span>
+                        </div>
                     </div>
 
                     <div class="bg-white rounded-xl border border-slate-200 p-4 space-y-1">
@@ -306,7 +307,7 @@
         <!-- MODAL TERIMA BARANG -->
         <div x-cloak x-show="showTerimaModal" x-transition.opacity
             class="fixed inset-0 z-[9999] flex items-center justify-center">
-            <div class="absolute inset-0 bg-black/40 backdrop-blur-sm" @click="showTerimaModal=false"></div>
+            <div class="absolute inset-0 bg-black/40 min-h-screen " @click="showTerimaModal=false"></div>
 
             <div class="bg-white rounded-2xl shadow-xl w-11/12 md:w-[420px] z-50 overflow-hidden animate-fadeIn">
                 <div class="px-6 py-4 border-b border-slate-200 flex justify-between items-center">
@@ -379,31 +380,6 @@
             </div>
         </div>
 
-        {{-- DELETE CONFIRM MODAL --}}
-        <div x-cloak x-show="showDeleteModal" class="fixed inset-0 z-50 flex items-center justify-center">
-            <div class="absolute inset-0 bg-black/40" @click="closeDelete()"></div>
-            <div x-transition class="bg-white rounded-xl shadow-lg w-11/12 md:w-1/3 z-10 overflow-hidden">
-                <div class="px-6 py-4 border-b border-slate-200">
-                    <h3 class="text-lg font-semibold text-red-600">Konfirmasi Hapus</h3>
-                </div>
-                <div class="px-6 py-4">
-                    <p class="text-slate-600">
-                        Apakah Anda yakin ingin menghapus pengiriman
-                        <span class="font-semibold" x-text="deleteItem.no_faktur"></span>
-                        untuk <span class="text-green-600" x-text="deleteItem.pelanggan"></span>?
-                    </p>
-                </div>
-                <div class="px-6 py-4 border-t border-slate-200 flex justify-end gap-2">
-                    <button type="button" @click="closeDelete()"
-                        class="px-4 py-2 rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50">
-                        Batal
-                    </button>
-                    <button type="button" @click="doDelete()"
-                        class="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700">Hapus</button>
-                </div>
-            </div>
-        </div>
-
         <!-- Floating dropdown portal (sama seperti penjualan) -->
         <div x-cloak x-show="dropdownVisible" x-transition.origin.top.right id="floating-dropdown" data-dropdown
             class="absolute w-44 bg-white border border-slate-200 rounded-lg shadow-lg z-[9999]"
@@ -419,38 +395,88 @@
             </button>
         </div>
 
+        {{-- 🗑️ DELETE MODAL (Modern Design - sama seperti Penjualan) --}}
+        <div x-cloak x-show="showDeleteModal" aria-modal="true" role="dialog"
+            class="fixed inset-0 z-50 flex items-center justify-center min-h-screen">
+
+            <!-- 🌫 Overlay -->
+            <div x-show="showDeleteModal" x-transition.opacity.duration.400ms
+                class="absolute inset-0 bg-black/40 backdrop-blur-[2px] transition-all" @click="closeDelete()"></div>
+
+            <!-- 💎 Modal Card -->
+            <div x-show="showDeleteModal" x-transition:enter="transition ease-out duration-300"
+                x-transition:enter-start="opacity-0 scale-95 translate-y-3"
+                x-transition:enter-end="opacity-100 scale-100 translate-y-0"
+                x-transition:leave="transition ease-in duration-200" x-transition:leave-start="opacity-100 scale-100"
+                x-transition:leave-end="opacity-0 scale-95 translate-y-3"
+                class="relative bg-white/95  w-[480px]
+               rounded-2xl 
+               border border-red-100 transform transition-all overflow-hidden"
+                @click.away="closeDelete()">
+
+                <!-- Header -->
+                <div
+                    class="bg-gradient-to-r from-red-50 to-rose-50 
+            border-b border-red-100 px-5 py-4 flex items-center justify-between rounded-t-2xl">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center">
+                            <i class="fa-solid fa-triangle-exclamation text-red-600 text-lg"></i>
+                        </div>
+                        <h3 class="text-base font-semibold text-red-700">
+                            Konfirmasi Hapus
+                        </h3>
+                    </div>
+                    <button @click="closeDelete()" class="text-red-400 hover:text-red-600 transition">
+                        <i class="fa-solid fa-xmark text-lg"></i>
+                    </button>
+                </div>
+
+                <!-- Body -->
+                <div class="p-6 bg-white">
+                    <p class="text-slate-700 leading-relaxed">
+                        Apakah Anda yakin ingin menghapus pengiriman
+                        <span class="font-semibold text-slate-900 bg-slate-100 px-2 py-0.5 rounded"
+                            x-text="deleteItem.no_faktur"></span>
+                        untuk pelanggan
+                        <span class="font-semibold text-green-600 bg-green-50 px-2 py-0.5 rounded"
+                            x-text="deleteItem.pelanggan"></span>?
+                    </p>
+
+                    <!-- Warning Box -->
+                    <div class="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg flex items-start gap-2">
+                        <i class="fa-solid fa-info-circle text-amber-600 mt-0.5"></i>
+                        <div class="text-sm text-amber-700">
+                            <p class="font-medium">Perhatian:</p>
+                            <p class="mt-1">Tindakan ini akan menghapus data pengiriman secara permanen. Proses ini
+                                <strong>tidak dapat dibatalkan</strong>.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Footer -->
+                <div class="px-6 py-4 bg-slate-50 border-t border-slate-200 flex justify-end gap-3 rounded-b-2xl">
+                    <button type="button" @click="closeDelete()"
+                        class="px-5 py-2.5 rounded-lg border border-slate-300 text-slate-600 
+                hover:bg-white hover:border-slate-400 transition-all font-medium">
+                        <i class="fa-solid fa-xmark mr-1.5"></i> Batal
+                    </button>
+                    <button type="button" @click="doDelete()"
+                        class="px-5 py-2.5 rounded-lg bg-red-600 text-white hover:bg-red-700 
+                transition-all shadow-sm hover:shadow-md font-medium group">
+                        <i class="fa-solid fa-trash mr-1.5 group-hover:scale-110 transition-transform"></i>
+                        Hapus
+                    </button>
+                </div>
+            </div>
+        </div>
+
+
     </div>
 
 
     @php
-        $pengirimanJson = $pengirimans
-            ->map(function ($p) {
-                $pel = $p->penjualan?->pelanggan;
-                $statusMap = [
-                    'perlu_dikirim' => 'Perlu Dikirim',
-                    'dalam_pengiriman' => 'Dalam Pengiriman',
-                    'diterima' => 'Diterima',
-                    'dibatalkan' => 'Dibatalkan',
-                ];
-
-                $tanggal_pengiriman =
-                    $p->tanggal_pengiriman instanceof \Carbon\Carbon
-                        ? $p->tanggal_pengiriman->timezone('Asia/Makassar')->format('Y-m-d H:i:s')
-                        : $p->tanggal_pengiriman ?? null;
-
-                return [
-                    'id' => $p->id,
-                    'no_faktur' => $p->penjualan?->no_faktur ?? '-',
-                    'tanggal' => $tanggal_pengiriman,
-                    'pelanggan' => $pel?->nama_pelanggan ?? 'Customer',
-                    'telepon' => $pel?->kontak ?? null,
-                    'alamat' => $pel?->alamat ?? null,
-                    'status' => $statusMap[$p->status_pengiriman] ?? '-',
-                    'supir' => $p->supir ?? null,
-                    'url' => route('pengiriman.show', $p->id),
-                ];
-            })
-            ->toArray();
+        $pengirimanJson = $pengirimans;
     @endphp
 
 
@@ -887,12 +913,10 @@
                     this.currentPage = 1;
                 },
 
-                fmtTanggal(iso) {
-                    if (!iso) return '-';
-                    const d = new Date(iso);
-                    return isNaN(d) ? iso :
-                        `${String(d.getDate()).padStart(2, '0')}-${String(d.getMonth() + 1).padStart(2, '0')}-${d.getFullYear()}, ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+                fmtTanggal(t) {
+                    return t ? t : '-';
                 },
+
 
                 badgeKirim(st) {
                     if (st === 'Perlu Dikirim') return 'bg-orange-50 text-orange-700 border border-orange-200';
@@ -913,19 +937,47 @@
                     this.openActionId = (this.openActionId === id) ? null : id
                 },
                 confirmDelete(item) {
-                    this.openActionId = null;
+                    if (!item) return;
+
+                    // 🛑 Cek status dulu sebelum buka modal hapus
+                    const status = (item.status || '').toLowerCase();
+
+                    if (status === 'dalam pengiriman' || status === 'dalam_pengiriman' || status === 'diterima') {
+                        this.showNotification(
+                            'error',
+                            'Pengiriman yang sedang dalam pengiriman atau sudah diterima tidak dapat dihapus.'
+                        );
+                        this.closeDropdown();
+                        return; // ⛔ stop di sini
+                    }
+
+                    // ✅ kalau aman → baru tampilkan modal hapus
+                    this.closeDropdown();
                     this.deleteItem = {
                         ...item
                     };
-                    this.showDeleteModal = true
+                    this.showDeleteModal = true;
                 },
+
                 closeDelete() {
                     this.showDeleteModal = false;
                     this.deleteItem = {}
                 },
                 async doDelete() {
                     const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
-                    const url = `{{ url('pengiriman') }}/${this.deleteItem.id}`;
+                    const url = `{{ url('pengiriman') }}/${this.deleteItem.id}/delete`;
+
+                    // 🛑 Cek status dulu sebelum hapus
+                    const status = (this.deleteItem.status || '').toLowerCase();
+                    if (status === 'dalam pengiriman' || status === 'dalam_pengiriman' || status === 'diterima') {
+                        this.showNotification(
+                            'error',
+                            'Pengiriman yang sedang dalam pengiriman atau sudah diterima tidak dapat dihapus.'
+                        );
+                        this.closeDropdown();
+                        return;
+                    }
+
                     try {
                         const res = await fetch(url, {
                             method: 'DELETE',
@@ -934,12 +986,16 @@
                                 'Accept': 'application/json'
                             }
                         });
-                        if (res.ok) {
+
+                        const result = await res.json().catch(() => ({}));
+
+                        if (res.ok && result.success) {
+                            // ✅ sukses hapus
                             const idx = this.data.findIndex(d => d.id === this.deleteItem.id);
                             if (idx !== -1) this.data.splice(idx, 1);
-                            this.showNotification('success', 'Data pengiriman berhasil dihapus');
+                            this.showNotification('success', result.message || 'Data pengiriman berhasil dihapus');
                         } else {
-                            this.showNotification('error', 'Gagal menghapus data');
+                            this.showNotification('error', result.message || 'Gagal menghapus data');
                         }
                     } catch (e) {
                         console.error(e);
@@ -949,6 +1005,7 @@
                         if (this.currentPage > this.totalPages()) this.currentPage = this.totalPages();
                     }
                 },
+
 
                 // --- TOAST / NOTIF ---
                 showNotification(type, message, opts = {}) {

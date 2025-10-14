@@ -18,11 +18,49 @@ class PengirimanController extends Controller
     {
         $pengirimans = Pengiriman::with(['penjualan.pelanggan'])
             ->orderBy('created_at', 'desc')
-            ->get();
+            ->get()
+            ->map(function ($p) {
+                $pel = $p->penjualan?->pelanggan;
+
+                // 🕒 Format tanggal pengiriman ke Asia/Makassar
+                $tanggal_pengiriman = $p->tanggal_pengiriman
+                    ? \Carbon\Carbon::parse($p->tanggal_pengiriman, 'UTC')
+                    ->setTimezone('Asia/Makassar')
+                    ->format('d-m-Y H:i')
+                    : null;
+
+                // 🕒 Format tanggal penjualan juga (biar seragam kalau mau dipakai nanti)
+                $tanggal_penjualan = $p->penjualan?->tanggal
+                    ? \Carbon\Carbon::parse($p->penjualan->tanggal, 'UTC')
+                    ->setTimezone('Asia/Makassar')
+                    ->format('d-m-Y H:i')
+                    : null;
+
+                $statusMap = [
+                    'perlu_dikirim' => 'Perlu Dikirim',
+                    'dalam_pengiriman' => 'Dalam Pengiriman',
+                    'diterima' => 'Diterima',
+                    'dibatalkan' => 'Dibatalkan',
+                ];
+
+                return [
+                    'id' => $p->id,
+                    'no_faktur' => $p->penjualan?->no_faktur ?? '-',
+                    'tanggal' => $tanggal_pengiriman ?? $tanggal_penjualan,
+                    'pelanggan' => $pel?->nama_pelanggan ?? 'Customer',
+                    'telepon' => $pel?->kontak ?? null,
+                    'alamat' => $pel?->alamat ?? null,
+                    'status' => $statusMap[$p->status_pengiriman] ?? '-',
+                    'supir' => $p->supir ?? null,
+                    'url' => route('pengiriman.show', $p->id),
+                ];
+            });
+
         $pelanggan = Penjualan::with('pelanggan')->get();
 
         return view('auth.penjualan.pengiriman.index', compact('pengirimans', 'pelanggan'));
     }
+
 
     /**
      * Tampilkan detail pengiriman tertentu
@@ -31,6 +69,8 @@ class PengirimanController extends Controller
     {
         $pengiriman = Pengiriman::with(['penjualan.items.item', 'penjualan.pelanggan'])
             ->findOrFail($id);
+
+
 
         return view('auth.penjualan.pengiriman.show', compact('pengiriman'));
     }
@@ -43,23 +83,21 @@ class PengirimanController extends Controller
         $pengiriman = Pengiriman::findOrFail($id);
 
         $data = $request->validate([
-            // validasi nama field sesuai kolom di tabel pengirimen
             'tanggal_pengiriman' => 'nullable|date',
             'alamat' => 'nullable|string|max:255',
-            // gunakan nilai status yang ada di DB
             'status' => 'required|string|in:perlu_dikirim,dalam_pengiriman,diterima',
             'supir' => 'nullable|string|max:255',
         ]);
 
         try {
             $pengiriman->update([
-                'tanggal_pengiriman' => $data['tanggal_pengiriman'] ?? $pengiriman->tanggal_pengiriman,
+                'tanggal_pengiriman' => $data['tanggal_pengiriman']
+                    ?? ($data['status'] === 'dalam_pengiriman' ? now() : $pengiriman->tanggal_pengiriman),
                 'alamat' => $data['alamat'] ?? $pengiriman->alamat,
-                'status_pengiriman' => $data['status'], // kolom di DB = status_pengiriman
+                'status_pengiriman' => $data['status'],
                 'supir' => $data['supir'] ?? $pengiriman->supir,
             ]);
 
-            // Jika request AJAX/fetch => kembalikan JSON
             if ($request->wantsJson() || $request->ajax()) {
                 return response()->json([
                     'success' => true,
@@ -70,21 +108,22 @@ class PengirimanController extends Controller
 
             return redirect()->back()->with('success', 'Pengiriman berhasil diperbarui');
         } catch (\Throwable $e) {
-            Log::error('Pengiriman update error: ' . $e->getMessage());
-
-            if ($request->wantsJson() || $request->ajax()) {
-                return response()->json(['success' => false, 'message' => 'Gagal memperbarui pengiriman'], 500);
-            }
-
-            return redirect()->back()->with('error', 'Gagal memperbarui pengiriman');
+            Log::error('Pengiriman update error: ' . $e->getMessage() . ' | Line: ' . $e->getLine());
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal memperbarui pengiriman',
+                'error' => $e->getMessage(),
+                'line' => $e->getLine(),
+            ], 500);
         }
     }
+
 
     public function search(Request $request)
     {
         $kode = $request->query('kode');
 
-        // 1) Coba temukan pengiriman berdasarkan no_pengiriman (jika barcode berisi no_pengiriman)
+        // 1️⃣ Cari pengiriman dulu berdasarkan no_pengiriman
         $pengiriman = Pengiriman::with(['penjualan.pelanggan'])
             ->where('no_pengiriman', $kode)
             ->orderBy('created_at', 'desc')
@@ -93,22 +132,21 @@ class PengirimanController extends Controller
         $penjualan = null;
 
         if ($pengiriman) {
-            // jika ketemu pengiriman langsung, ambil penjualan dari relasi
             $penjualan = $pengiriman->penjualan;
         } else {
-            // 2) jika nggak ketemu, cari penjualan berdasarkan no_faktur
-            $penjualan = Penjualan::with('pelanggan')
+            // 2️⃣ Jika belum ketemu, cari berdasarkan no_faktur di penjualan
+            $penjualan = Penjualan::with(['pelanggan', 'pembayarans'])
                 ->where('no_faktur', $kode)
                 ->first();
 
             if ($penjualan) {
-                // ambil pengiriman terkait (jika ada)
                 $pengiriman = Pengiriman::where('penjualan_id', $penjualan->id)
                     ->orderBy('created_at', 'desc')
                     ->first();
             }
         }
 
+        // Jika tidak ada penjualan sama sekali
         if (! $penjualan) {
             return response()->json(['message' => 'Penjualan tidak ditemukan.'], 404);
         }
@@ -116,11 +154,25 @@ class PengirimanController extends Controller
         $pel = $penjualan->pelanggan;
         $dibayar = $penjualan->pembayarans?->sum('jumlah_bayar') ?? 0;
 
+        // 🕒 Format tanggal penjualan dan pengiriman ke Makassar
+        $tanggal_penjualan = $penjualan->tanggal
+            ? \Carbon\Carbon::parse($penjualan->tanggal, 'UTC')
+            ->setTimezone('Asia/Makassar')
+            ->format('d-m-Y H:i')
+            : null;
+
+        $tanggal_pengiriman = $pengiriman?->tanggal_pengiriman
+            ? \Carbon\Carbon::parse($pengiriman->tanggal_pengiriman, 'UTC')
+            ->setTimezone('Asia/Makassar')
+            ->format('d-m-Y H:i')
+            : null;
+
+        // 🧾 Data JSON final
         return response()->json([
             // data penjualan
             'id' => $penjualan->id,
             'no_faktur' => $penjualan->no_faktur,
-            'tanggal' => $penjualan->tanggal?->format('Y-m-d H:i:s') ?? null,
+            'tanggal' => $tanggal_penjualan,
             'total' => (float) $penjualan->total,
             'status_bayar' => $penjualan->status_bayar ?? null,
             'dibayar' => (float) $dibayar,
@@ -132,7 +184,7 @@ class PengirimanController extends Controller
             'telepon' => $pel?->kontak ?? '-',
             'alamat' => $pel?->alamat ?? '-',
 
-            // items (jika butuh; kalau model items lazy, sesuaikan)
+            // item (optional)
             'items' => $penjualan->items?->map(fn($it) => [
                 'id' => $it->id,
                 'nama_item' => $it->item?->nama_item ?? '-',
@@ -144,8 +196,52 @@ class PengirimanController extends Controller
             // data pengiriman (jika ada)
             'pengiriman_id' => $pengiriman?->id,
             'no_pengiriman' => $pengiriman?->no_pengiriman ?? null,
+            'tanggal_pengiriman' => $tanggal_pengiriman,
             'status_pengiriman' => $pengiriman?->status_pengiriman ?? null,
             'supir' => $pengiriman?->supir ?? null,
         ]);
+    }
+
+
+    /**
+     * Hapus pengiriman
+     */
+    public function destroy($id)
+    {
+        DB::beginTransaction();
+
+        try {
+            $pengiriman = Pengiriman::findOrFail($id);
+
+            // ✅ Cegah hapus jika status sudah diterima
+            if ($pengiriman->status_pengiriman === 'diterima') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Pengiriman yang sudah diterima tidak dapat dihapus.',
+                ], 400);
+            }
+
+            // ✅ Hapus relasi turunan kalau ada (contoh: log, item pengiriman, dsb)
+            // kalau model Pengiriman punya relasi ke tabel lain, hapus dulu di sini.
+            // Contoh:
+            // $pengiriman->detailPengiriman()->delete();
+
+            $pengiriman->delete();
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Data pengiriman berhasil dihapus.',
+            ]);
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            Log::error('Gagal menghapus pengiriman: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan saat menghapus pengiriman.',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
     }
 }

@@ -12,6 +12,7 @@ use App\Models\Pengiriman;
 use App\Models\Penjualan;
 use App\Models\Produksi;
 use App\Models\Satuan;
+use App\Models\TagihanPenjualan;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -51,7 +52,7 @@ class PenjualanController extends Controller
     }
     public function index()
     {
-        $penjualans = Penjualan::with(['pelanggan', 'items.item'])
+        $penjualans = Penjualan::with(['pelanggan', 'items.item', 'pengiriman'])
             ->orderBy('tanggal', 'desc')
             ->get(); // Gunakan get() karena sudah ada pagination di Alpine.js
 
@@ -170,12 +171,53 @@ class PenjualanController extends Controller
                 }
             }
 
+            // 🚚 3️⃣ Buat Data Pengiriman (jika mode = antar dan bukan draft)
+            if ($data['mode'] === 'antar' && !$isDraft) {
+                Pengiriman::create([
+                    'penjualan_id' => $penjualan->id,
+                    'no_pengiriman' => $penjualan->no_faktur, // ✅ Pakai no_faktur penjualan
+                    'tanggal_pengiriman' => $penjualan->tanggal, // Belum dikirim
+                    'status_pengiriman' => 'perlu_dikirim', // pending, dalam_perjalanan, selesai
+                    'supir' => null, // Akan diisi nanti
+                ]);
+
+                Log::info("🚚 Data pengiriman dibuat: no_pengiriman={$penjualan->no_faktur}, penjualan_id={$penjualan->id}");
+            }
+
+            // 💰 4️⃣ Buat Tagihan Penjualan (jika unpaid dan bukan draft)
+            if ($penjualan->status_bayar === 'unpaid' && !$isDraft) {
+                TagihanPenjualan::create([
+                    'penjualan_id' => $penjualan->id,
+                    'no_tagihan' => $penjualan->no_faktur, // ✅ Pakai no_faktur penjualan
+                    'tanggal_tagihan' => now(),
+                    'total' => $penjualan->total,
+                    'jumlah_bayar' => 0,
+                    'sisa' => $penjualan->total,
+                    'status_tagihan' => 'belum_lunas', // belum_lunas, lunas, lewat_jatuh_tempo
+                    'catatan' => 'Tagihan otomatis dari penjualan ' . $penjualan->no_faktur,
+                ]);
+
+                Log::info("💰 Tagihan penjualan dibuat: no_tagihan={$penjualan->no_faktur}, penjualan_id={$penjualan->id}, total={$penjualan->total}");
+            }
+
             DB::commit();
 
+            $message = $isDraft
+                ? 'Draft penjualan berhasil disimpan (stok belum dikurangi).'
+                : 'Penjualan berhasil disimpan, stok diperbarui, dan total stok global disinkronkan.';
+
+            // Tambahkan info tambahan jika ada pengiriman/tagihan
+            if (!$isDraft) {
+                if ($data['mode'] === 'antar') {
+                    $message .= ' Data pengiriman telah dibuat.';
+                }
+                if ($penjualan->status_bayar === 'unpaid') {
+                    $message .= ' Tagihan penjualan telah dibuat.';
+                }
+            }
+
             return response()->json([
-                'message' => $isDraft
-                    ? 'Draft penjualan berhasil disimpan (stok belum dikurangi).'
-                    : 'Penjualan berhasil disimpan, stok diperbarui dan total stok global disinkronkan.',
+                'message' => $message,
                 'id' => $penjualan->id,
             ], 201);
         } catch (\Throwable $e) {
@@ -484,7 +526,7 @@ class PenjualanController extends Controller
                     $gudangItem->stok += $oldItem->jumlah;
                     $gudangItem->save();
 
-                    Log::info("🔙 Stok dikembalikan: item_id={$oldItem->item_id}, gudang_id={$oldItem->gudang_id}, satuan_id={$oldItem->satuan_id} dari {$stokSebelum} ke {$gudangItem->stok}");
+                    Log::info("🔙 Stok dikembalikan: item_id={$oldItem->item_id}, dari {$stokSebelum} ke {$gudangItem->stok}");
                 }
             }
 
@@ -526,7 +568,7 @@ class PenjualanController extends Controller
                         $gudangItem->stok = max(0, $stokSebelum - $jumlah);
                         $gudangItem->save();
 
-                        Log::info("📉 Stok dikurangi: item_id={$it['item_id']}, gudang_id={$it['gudang_id']}, satuan_id={$it['satuan_id']} dari {$stokSebelum} ke {$gudangItem->stok}");
+                        Log::info("📉 Stok dikurangi: item_id={$it['item_id']}, dari {$stokSebelum} ke {$gudangItem->stok}");
                     }
 
                     // ✅ UPDATE TOTAL STOK GLOBAL
@@ -534,9 +576,78 @@ class PenjualanController extends Controller
                 }
             }
 
+            // 🚚 HANDLE PENGIRIMAN
+            $pengiriman = Pengiriman::where('penjualan_id', $penjualan->id)->first();
+
+            if ($data['mode'] === 'antar' && !$isDraftRequest) {
+                if ($pengiriman) {
+                    // Update jika sudah ada
+                    $pengiriman->update([
+                        'no_pengiriman' => $penjualan->no_faktur,
+                        'updated_by' => Auth::id(),
+                    ]);
+                    Log::info("🚚 Pengiriman diupdate: no_pengiriman={$penjualan->no_faktur}");
+                } else {
+                    // Buat baru jika belum ada
+                    Pengiriman::create([
+                        'penjualan_id' => $penjualan->id,
+                        'no_pengiriman' => $penjualan->no_faktur,
+                        'tanggal_pengiriman' => $penjualan->tanggal,
+                        'status_pengiriman' => 'perlu_dikirim',
+                        'created_by' => Auth::id(),
+                        'supir' => null,
+                    ]);
+                    Log::info("🚚 Pengiriman dibuat: no_pengiriman={$penjualan->no_faktur}");
+                }
+            } elseif ($data['mode'] === 'ambil' && $pengiriman) {
+                // Hapus pengiriman jika diubah ke mode ambil
+                $pengiriman->delete();
+                Log::info("🗑️ Pengiriman dihapus karena mode diubah ke 'ambil'");
+            }
+
+            // 💰 HANDLE TAGIHAN PENJUALAN
+            $tagihan = TagihanPenjualan::where('penjualan_id', $penjualan->id)->first();
+
+            if ($statusBayar === 'unpaid' && !$isDraftRequest) {
+                if ($tagihan) {
+                    // Update jika sudah ada
+                    $tagihan->update([
+                        'no_tagihan' => $penjualan->no_faktur,
+                        'total' => $penjualan->total,
+                        'sisa' => max(0, $penjualan->total - ($tagihan->jumlah_bayar ?? 0)),
+                        'status_tagihan' => 'belum_lunas',
+                        'updated_by' => Auth::id(),
+                    ]);
+                    Log::info("💰 Tagihan diupdate: no_tagihan={$penjualan->no_faktur}");
+                } else {
+                    // Buat baru jika belum ada
+                    TagihanPenjualan::create([
+                        'penjualan_id' => $penjualan->id,
+                        'no_tagihan' => $penjualan->no_faktur,
+                        'tanggal_tagihan' => now(),
+                        'total' => $penjualan->total,
+                        'jumlah_bayar' => 0,
+                        'sisa' => $penjualan->total,
+                        'status_tagihan' => 'belum_lunas',
+                        'catatan' => 'Tagihan otomatis dari penjualan ' . $penjualan->no_faktur,
+                        'created_by' => Auth::id(),
+                    ]);
+                    Log::info("💰 Tagihan dibuat: no_tagihan={$penjualan->no_faktur}");
+                }
+            } elseif ($statusBayar === 'paid' && $tagihan) {
+                // Update status tagihan jika sudah lunas
+                $tagihan->update([
+                    'status_tagihan' => 'lunas',
+                    'jumlah_bayar' => $penjualan->total,
+                    'sisa' => 0,
+                    'updated_by' => Auth::id(),
+                ]);
+                Log::info("✅ Tagihan diupdate menjadi lunas");
+            }
+
             DB::commit();
 
-            return response()->json(['message' => 'Penjualan berhasil diperbarui dan total stok disinkronkan.'], 200);
+            return response()->json(['message' => 'Penjualan berhasil diperbarui.'], 200);
         } catch (\Throwable $e) {
             DB::rollBack();
             Log::error('Update Penjualan error: ' . $e->getMessage());
@@ -619,15 +730,17 @@ class PenjualanController extends Controller
                     $gudangItem->stok += $item->jumlah;
                     $gudangItem->save();
 
-                    Log::info("♻️ Stok dikembalikan (cancel draft): item_id={$item->item_id}, gudang_id={$item->gudang_id}, satuan_id={$item->satuan_id} dari {$stokLama} ke {$gudangItem->stok}");
+                    Log::info("♻️ Stok dikembalikan (cancel draft): item_id={$item->item_id} dari {$stokLama} ke {$gudangItem->stok}");
                 }
             }
 
-            // 🗑️ Hapus items dan penjualan
+            // 🗑️ Hapus data terkait (pengiriman & tagihan)
+            Pengiriman::where('penjualan_id', $penjualan->id)->delete();
+            TagihanPenjualan::where('penjualan_id', $penjualan->id)->delete();
             $penjualan->items()->delete();
             $penjualan->delete();
 
-            // ✅ Recalculate total stok GLOBAL untuk semua item terkait
+            // ✅ Recalculate stok global
             $affectedItems = $penjualan->items->pluck('item_id')->unique();
             foreach ($affectedItems as $itemId) {
                 $this->recalculateTotalStokGlobal($itemId);
@@ -636,7 +749,7 @@ class PenjualanController extends Controller
             DB::commit();
 
             return response()->json([
-                'message' => 'Transaksi draft berhasil dibatalkan dan total stok disinkronkan.'
+                'message' => 'Transaksi draft berhasil dibatalkan dan stok dikembalikan.'
             ], 200);
         } catch (\Throwable $e) {
             DB::rollBack();
@@ -680,7 +793,7 @@ class PenjualanController extends Controller
                     $gudangItem->stok += $item->jumlah;
                     $gudangItem->save();
 
-                    Log::info("🧩 Stok dikembalikan (hapus penjualan): item_id={$item->item_id}, gudang_id={$item->gudang_id}, satuan_id={$item->satuan_id} dari {$stokLama} ke {$gudangItem->stok}");
+                    Log::info("🧩 Stok dikembalikan (hapus): item_id={$item->item_id} dari {$stokLama} ke {$gudangItem->stok}");
                 }
             }
 
@@ -688,11 +801,13 @@ class PenjualanController extends Controller
             $noFaktur = $penjualan->no_faktur;
             $pelanggan = optional($penjualan->pelanggan)->nama_pelanggan ?? 'Customer';
 
-            // 🗑️ Hapus items dan penjualan
+            // 🗑️ Hapus data terkait (pengiriman & tagihan)
+            Pengiriman::where('penjualan_id', $penjualan->id)->delete();
+            TagihanPenjualan::where('penjualan_id', $penjualan->id)->delete();
             $penjualan->items()->delete();
             $penjualan->delete();
 
-            // ✅ Recalculate total stok GLOBAL untuk semua item terkait
+            // ✅ Recalculate total stok GLOBAL
             $affectedItems = $penjualan->items->pluck('item_id')->unique();
             foreach ($affectedItems as $itemId) {
                 $this->recalculateTotalStokGlobal($itemId);
@@ -704,7 +819,7 @@ class PenjualanController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => "Penjualan {$noFaktur} berhasil dihapus, stok dikembalikan, dan total stok disinkronkan."
+                'message' => "Penjualan {$noFaktur} berhasil dihapus, stok dikembalikan."
             ], 200);
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
             DB::rollBack();

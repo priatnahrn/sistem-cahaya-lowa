@@ -188,19 +188,6 @@
             @endforeach
 
 
-  
-
-            {{-- 🔹 TAMPILKAN SUBTOTAL HANYA JIKA ADA BIAYA TRANSPORT --}}
-            @if (!empty($penjualan->biaya_transport) && $penjualan->biaya_transport > 0)
-                <div class="total-line">
-                    <div class="left">Subtotal</div>
-                    <div class="right">Rp {{ number_format($penjualan->sub_total, 0, ',', '.') }}</div>
-                </div>
-                <div class="total-line" style="font-weight: normal;">
-                    <div class="left">Biaya Transport</div>
-                    <div class="right">Rp {{ number_format($penjualan->biaya_transport, 0, ',', '.') }}</div>
-                </div>
-            @endif
 
             <div class="line" style="margin: 4px 0;"></div>
 

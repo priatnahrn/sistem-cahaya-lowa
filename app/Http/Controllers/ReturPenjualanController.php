@@ -38,9 +38,10 @@ class ReturPenjualanController extends Controller
     public function getItemsByPenjualan($id)
     {
         try {
-            $penjualan = Penjualan::with(['pelanggan', 'items.item'])->findOrFail($id);
+            // Ganti 'items' dengan nama relasi yang benar
+            $penjualan = Penjualan::with(['pelanggan', 'itemPenjualan.item'])->findOrFail($id);
 
-            $items = $penjualan->items->map(function ($i) {
+            $items = $penjualan->itemPenjualan->map(function ($i) {
                 return [
                     'id' => $i->id, // item_penjualan_id
                     'nama_item' => $i->item->nama_item ?? 'Item tidak ditemukan',
@@ -60,7 +61,6 @@ class ReturPenjualanController extends Controller
             ], 500);
         }
     }
-
     // store retur baru
     public function store(Request $request)
     {
