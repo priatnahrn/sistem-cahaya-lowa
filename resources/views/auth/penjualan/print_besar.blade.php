@@ -73,6 +73,13 @@
         .footer-right .bold {
             font-weight: bold;
         }
+
+        .item-note {
+            font-size: 9px;
+            color: #333;
+            margin-top: -2px;
+            margin-left: 35px;
+        }
     </style>
 </head>
 
@@ -85,7 +92,9 @@
     <table style="width:100%; font-size:10px; margin-top:5px;">
         <tr>
             <td style="width:80px;">NPWP</td>
-            <td style="width:150px;">: 96.340.603.8-808.000</td>
+            <td style="width:150px;">:
+                {{ $penjualan->pelanggan->npwp ?? '0' }}
+            </td>
             <td style="width:80px;">Nota #</td>
             <td>: {{ $penjualan->no_faktur }}</td>
         </tr>
@@ -93,7 +102,7 @@
             <td>Telp</td>
             <td>: 0811 4284 995</td>
             <td>Pelanggan</td>
-            <td>: {{ $penjualan->pelanggan->nama_pelanggan ?? '-' }}</td>
+            <td>: {{ $penjualan->pelanggan->nama_pelanggan ?? 'CUSTOMER' }}</td>
         </tr>
         <tr>
             <td>Tanggal</td>
@@ -115,7 +124,7 @@
     <table>
         <thead>
             <tr>
-                <th style="width:30px;">GD</th>
+                <th style="width:30px;">NO</th>
                 <th>NAMA BARANG</th>
                 <th style="width:90px;">BANYAK</th>
                 <th class="right" style="width:90px;">HARGA</th>
@@ -131,8 +140,16 @@
                 @endphp
                 <tr>
                     <td>{{ str_pad($i + 1, 2, '0', STR_PAD_LEFT) }}</td>
-                    <td>{{ $it->item->nama_item ?? '-' }}</td>
-                    <td>{{ $it->jumlah }} {{ $it->satuan->nama_satuan ?? 'PCS' }}</td>
+                    <td>
+                        {{ strtoupper($it->item->nama_item ?? '-') }}
+                        @if (!empty($it->keterangan))
+                            <div class="item-note">- {{ $it->keterangan }}</div>
+                        @endif
+                    </td>
+                    <td>
+                        {{ number_format($it->jumlah, fmod($it->jumlah, 1) ? 2 : 0, ',', '.') }}
+                        {{ $it->satuan->nama_satuan ?? 'PCS' }}
+                    </td>
                     <td class="right">{{ number_format($it->harga, 0, ',', '.') }}</td>
                     <td class="right">{{ number_format($subtotal, 0, ',', '.') }}</td>
                 </tr>
@@ -147,14 +164,16 @@
         <tr>
             <td class="footer-left" style="width:60%;">
                 <div><b>PERHATIAN :</b></div>
-                <div>1. Barang yang sudah dibeli tidak dapat dikembalikan/ditukar</div>
-                <div>2. Pembayaran dengan Cek/BG dianggap lunas setelah dicairkan</div>
+                <div>1. Barang yang sudah dibeli tidak dapat dikembalikan/ditukar.</div>
+                <div>2. Pembayaran dengan Cek/BG dianggap lunas setelah dicairkan.</div>
+                <div>3. Periksa kembali barang sebelum meninggalkan toko.</div>
             </td>
             <td class="footer-right">
-                <div>Subtotal : Rp {{ number_format($total, 0, ',', '.') }}</div>
+                <div>Subtotal : Rp {{ number_format($penjualan->sub_total ?? $total, 0, ',', '.') }}</div>
                 <div>Biaya Kirim : Rp {{ number_format($penjualan->biaya_transport ?? 0, 0, ',', '.') }}</div>
-                <div class="bold">TOTAL : Rp
-                    {{ number_format($total + ($penjualan->biaya_transport ?? 0), 0, ',', '.') }}</div>
+                <div class="bold">
+                    TOTAL : Rp {{ number_format($penjualan->total ?? $total + ($penjualan->biaya_transport ?? 0), 0, ',', '.') }}
+                </div>
             </td>
         </tr>
     </table>
