@@ -140,9 +140,10 @@ Route::middleware('auth')->group(function () {
         Route::get('/create', [PembelianController::class, 'create'])->name('create');
         Route::post('/', [PembelianController::class, 'store'])->name('store');
         Route::put('/{id}', [PembelianController::class, 'update'])->whereNumber('id')->name('update');
-        Route::delete('/{id}', [PembelianController::class, 'destroy'])->whereNumber('id')->name('destroy');
+        Route::delete('/{id}/delete', [PembelianController::class, 'destroy'])->whereNumber('id')->name('destroy');
         Route::get('/{id}/items', [PembelianController::class, 'getItems'])->whereNumber('id')->name('items');
         Route::get('/{id}', [PembelianController::class, 'show'])->whereNumber('id')->name('show');
+
     });
 
     Route::prefix('pembelian/tagihan')->name('tagihan.pembelian.')->group(function () {
@@ -156,7 +157,7 @@ Route::middleware('auth')->group(function () {
     Route::prefix('pembelian/retur-pembelian')->name('retur-pembelian.')->group(function () {
         Route::get('/', [ReturPembelianController::class, 'index'])->name('index');
         Route::get('/create', [ReturPembelianController::class, 'create'])->name('create');
-        Route::post('/', [ReturPembelianController::class, 'store'])->name('store');
+        Route::post('/store', [ReturPembelianController::class, 'store'])->name('store');
         Route::put('/{id}', [ReturPembelianController::class, 'update'])->whereNumber('id')->name('update');
         Route::delete('/{id}', [ReturPembelianController::class, 'destroy'])->whereNumber('id')->name('destroy');
         Route::get('/{id}', [ReturPembelianController::class, 'show'])->whereNumber('id')->name('show');

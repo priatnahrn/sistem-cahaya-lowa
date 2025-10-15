@@ -10,6 +10,7 @@ use App\Models\ItemPembelian;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class ReturPembelianController extends Controller
 {
@@ -63,7 +64,7 @@ class ReturPembelianController extends Controller
         }
     }
 
-    // 📌 simpan retur baru
+    // 📌 simpan retur baru (TIDAK mengurangi stok, hanya catat)
     public function store(Request $request)
     {
         $request->validate([
@@ -87,7 +88,6 @@ class ReturPembelianController extends Controller
                 ->first();
 
             if ($lastRetur) {
-                // ambil 3 digit terakhir dari nomor
                 $lastNumber = (int) substr($lastRetur->no_retur, -3);
                 $nextNumber = str_pad($lastNumber + 1, 3, '0', STR_PAD_LEFT);
             } else {
@@ -96,14 +96,14 @@ class ReturPembelianController extends Controller
 
             $nomor = 'RB' . $tanggal . $nextNumber;
 
-            // Simpan retur pembelian
+            // Simpan retur pembelian dengan status pending
             $retur = ReturPembelian::create([
                 'pembelian_id' => $request->pembelian_id,
-                'no_retur'  => $nomor,
+                'no_retur'     => $nomor,
                 'tanggal'      => now(),
                 'catatan'      => $request->catatan,
                 'total'        => $request->total,
-                'status'       => 'pending',
+                'status'       => 'pending', // ✅ Status awal: pending
                 'created_by'   => Auth::id(),
             ]);
 
@@ -114,6 +114,7 @@ class ReturPembelianController extends Controller
                 $harga = (float) $itemPembelian->harga_beli;
                 $subtotal = $jumlah * $harga;
 
+                // Validasi: jumlah retur tidak boleh melebihi jumlah pembelian
                 if ($jumlah > $itemPembelian->jumlah) {
                     DB::rollBack();
                     return response()->json([
@@ -129,20 +130,19 @@ class ReturPembelianController extends Controller
                     'item_pembelian_id'  => $itemPembelian->id,
                     'jumlah'             => $jumlah,
                     'harga_beli'         => $harga,
-                    'sub_total'           => $subtotal,
+                    'sub_total'          => $subtotal,
                 ]);
 
-                // Kurangi stok di item_gudangs (bukan di items)
-                $itemGudang = ItemGudang::where('item_id', $itemPembelian->item_id)
-                    ->where('gudang_id', $itemPembelian->gudang_id) // sesuaikan jika ada relasi ke gudang
-                    ->first();
-
-                if ($itemGudang) {
-                    $itemGudang->stok = max(0, $itemGudang->stok - $jumlah);
-                    $itemGudang->total_stok = max(0, $itemGudang->total_stok - $jumlah); // kalau mau ikut update
-                    $itemGudang->save();
-                }
+                // ⚠️ TIDAK mengurangi stok di sini!
+                // Stok baru dikurangi ketika status berubah ke 'taken'
             }
+
+            Log::info('✅ Retur pembelian berhasil dibuat (status: pending)', [
+                'retur_id' => $retur->id,
+                'no_retur' => $nomor,
+                'pembelian_id' => $request->pembelian_id,
+                'total_items' => count($request->items),
+            ]);
 
             DB::commit();
 
@@ -152,6 +152,10 @@ class ReturPembelianController extends Controller
             ], 200);
         } catch (\Exception $e) {
             DB::rollBack();
+            Log::error('❌ Gagal menyimpan retur pembelian', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
 
             return response()->json([
                 'message' => 'Gagal menyimpan retur pembelian',
@@ -160,7 +164,6 @@ class ReturPembelianController extends Controller
         }
     }
 
-
     // 📌 detail retur
     public function show($id)
     {
@@ -168,9 +171,7 @@ class ReturPembelianController extends Controller
         return view('auth.pembelian.retur-pembelian.show', compact('retur'));
     }
 
-
-
-    // 📌 update retur
+    // 📌 update retur (dengan handling stok yang benar)
     public function update(Request $request, $id)
     {
         $retur = ReturPembelian::with('items')->findOrFail($id);
@@ -179,7 +180,7 @@ class ReturPembelianController extends Controller
             'tanggal' => 'required|date',
             'catatan' => 'nullable|string',
             'total'   => 'required|numeric|min:0',
-            'status'  => 'required|in:pending,taken,refund', 
+            'status'  => 'required|in:pending,taken,refund',
             'items'   => 'required|array|min:1',
             'items.*.item_pembelian_id' => 'required|exists:item_pembelians,id',
             'items.*.jumlah' => 'required|numeric|min:0.01',
@@ -188,32 +189,53 @@ class ReturPembelianController extends Controller
         try {
             DB::beginTransaction();
 
-            // 🔹 update header + status
+            $statusLama = $retur->status;
+            $statusBaru = $request->status;
+
+            Log::info('=== [UPDATE RETUR PEMBELIAN] Mulai update ===', [
+                'retur_id' => $retur->id,
+                'status_lama' => $statusLama,
+                'status_baru' => $statusBaru,
+            ]);
+
+            // 🔹 ROLLBACK STOK jika status lama = 'taken'
+            // Ini handle case: taken → pending atau taken → refund
+            if ($statusLama === 'taken') {
+                foreach ($retur->items as $oldItem) {
+                    $itemGudang = ItemGudang::where('item_id', $oldItem->itemPembelian->item_id)
+                        ->where('gudang_id', $oldItem->itemPembelian->gudang_id)
+                        ->where('satuan_id', $oldItem->itemPembelian->satuan_id)
+                        ->first();
+
+                    if ($itemGudang) {
+                        $stokLama = $itemGudang->stok;
+                        $itemGudang->stok += $oldItem->jumlah; // Kembalikan stok
+                        $itemGudang->total_stok = $itemGudang->stok * ($itemGudang->satuan->jumlah ?? 1);
+                        $itemGudang->save();
+
+                        Log::info('📦 Rollback stok (status lama: taken → ' . $statusBaru . ')', [
+                            'item_id' => $oldItem->itemPembelian->item_id,
+                            'gudang_id' => $oldItem->itemPembelian->gudang_id,
+                            'jumlah_dikembalikan' => $oldItem->jumlah,
+                            'stok_lama' => $stokLama,
+                            'stok_baru' => $itemGudang->stok,
+                        ]);
+                    }
+                }
+            }
+
+            // 🔹 Update header retur
             $retur->update([
                 'tanggal'    => $request->tanggal,
                 'catatan'    => $request->catatan,
                 'total'      => $request->total,
-                'status'     => $request->status,  // 👈 simpan status
+                'status'     => $statusBaru,
                 'updated_by' => Auth::id(),
             ]);
 
-            // 🔹 rollback stok lama
-            foreach ($retur->items as $oldItem) {
-                $itemGudang = ItemGudang::where('item_id', $oldItem->itemPembelian->item_id)
-                    ->where('gudang_id', $oldItem->itemPembelian->gudang_id)
-                    ->first();
-
-                if ($itemGudang) {
-                    $itemGudang->stok += $oldItem->jumlah;
-                    $itemGudang->total_stok += $oldItem->jumlah;
-                    $itemGudang->save();
-                }
-            }
-
-            // 🔹 hapus items lama
+            // 🔹 Hapus items lama dan insert ulang
             $retur->items()->delete();
 
-            // 🔹 insert ulang
             foreach ($request->items as $row) {
                 $itemPembelian = ItemPembelian::findOrFail($row['item_pembelian_id']);
                 $jumlah   = (float) $row['jumlah'];
@@ -237,20 +259,45 @@ class ReturPembelianController extends Controller
                     'harga_beli'         => $harga,
                     'sub_total'          => $subtotal,
                 ]);
+            }
 
-                $itemGudang = ItemGudang::where('item_id', $itemPembelian->item_id)
-                    ->where('gudang_id', $itemPembelian->gudang_id)
-                    ->first();
+            // 🔹 KURANGI STOK jika status baru = 'taken'
+            // Ini handle case: pending → taken atau refund → taken
+            if ($statusBaru === 'taken') {
+                foreach ($request->items as $row) {
+                    $itemPembelian = ItemPembelian::findOrFail($row['item_pembelian_id']);
+                    $jumlah = (float) $row['jumlah'];
 
-                if ($itemGudang) {
-                    $itemGudang->stok = max(0, $itemGudang->stok - $jumlah);
-                    $itemGudang->total_stok = max(0, $itemGudang->total_stok - $jumlah);
-                    $itemGudang->save();
+                    $itemGudang = ItemGudang::where('item_id', $itemPembelian->item_id)
+                        ->where('gudang_id', $itemPembelian->gudang_id)
+                        ->where('satuan_id', $itemPembelian->satuan_id)
+                        ->first();
+
+                    if ($itemGudang) {
+                        $stokLama = $itemGudang->stok;
+                        $itemGudang->stok = max(0, $itemGudang->stok - $jumlah);
+                        $itemGudang->total_stok = $itemGudang->stok * ($itemGudang->satuan->jumlah ?? 1);
+                        $itemGudang->save();
+
+                        Log::info('📉 Stok dikurangi (status baru: taken)', [
+                            'item_id' => $itemPembelian->item_id,
+                            'gudang_id' => $itemPembelian->gudang_id,
+                            'jumlah_retur' => $jumlah,
+                            'stok_lama' => $stokLama,
+                            'stok_baru' => $itemGudang->stok,
+                        ]);
+                    }
                 }
             }
 
-            Pembelian::where('id', $retur->pembelian_id)->update([
-                'status' => 'return',
+            // ❌ TIDAK update status pembelian secara otomatis
+            // Status pembelian tetap 'paid' atau apa pun yang sudah ada
+            // Karena retur itu transaksi terpisah dan statusnya bisa berubah-ubah
+
+            Log::info('=== [UPDATE RETUR PEMBELIAN] Update selesai ===', [
+                'retur_id' => $retur->id,
+                'status_final' => $statusBaru,
+                'catatan' => 'Status pembelian TIDAK diubah (tetap independent)',
             ]);
 
             DB::commit();
@@ -262,13 +309,18 @@ class ReturPembelianController extends Controller
             ]);
         } catch (\Exception $e) {
             DB::rollBack();
+            Log::error('❌ Gagal update retur pembelian', [
+                'retur_id' => $id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
             return response()->json([
                 'message' => 'Gagal update retur',
                 'error'   => $e->getMessage()
             ], 500);
         }
     }
-
 
     // 📌 hapus retur
     public function destroy($id)
@@ -278,19 +330,19 @@ class ReturPembelianController extends Controller
 
             $retur = ReturPembelian::with('items.itemPembelian.item')->findOrFail($id);
 
+            // Hanya bisa dihapus jika status = pending
             if ($retur->status !== 'pending') {
                 return redirect()->route('retur-pembelian.index')
-                    ->with('error', 'Retur sudah diproses, tidak bisa dihapus.');
+                    ->with('error', 'Retur sudah diproses, tidak bisa dihapus. Hanya retur dengan status "Pending" yang bisa dihapus.');
             }
 
-            // Kembalikan stok item sebelum dihapus
-            foreach ($retur->items as $returItem) {
-                $item = $returItem->itemPembelian->item;
-                if ($item) {
-                    $item->stock = $item->stock + $returItem->jumlah;
-                    $item->save();
-                }
-            }
+            // Karena status pending, stok tidak pernah dikurangi
+            // Jadi tidak perlu mengembalikan stok
+
+            Log::info('✅ Menghapus retur pembelian (status: pending)', [
+                'retur_id' => $retur->id,
+                'no_retur' => $retur->no_retur,
+            ]);
 
             // Hapus items dan retur
             $retur->items()->delete();
@@ -299,9 +351,14 @@ class ReturPembelianController extends Controller
             DB::commit();
 
             return redirect()->route('retur-pembelian.index')
-                ->with('success', 'Retur berhasil dihapus dan stok dikembalikan.');
+                ->with('success', 'Retur berhasil dihapus.');
         } catch (\Exception $e) {
             DB::rollBack();
+
+            Log::error('❌ Gagal menghapus retur pembelian', [
+                'retur_id' => $id,
+                'error' => $e->getMessage(),
+            ]);
 
             return redirect()->route('retur-pembelian.index')
                 ->with('error', 'Gagal menghapus retur: ' . $e->getMessage());

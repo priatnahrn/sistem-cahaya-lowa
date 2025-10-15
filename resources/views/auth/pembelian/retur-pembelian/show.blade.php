@@ -3,87 +3,130 @@
 @section('title', 'Detail Retur Pembelian')
 
 @section('content')
+    <style>
+        [x-cloak] {
+            display: none !important;
+        }
+    </style>
+
     {{-- Toast Container --}}
-    <div x-data="{ toasts: [] }" x-init="$watch('toasts', () => { setTimeout(() => toasts.shift(), 4000) })" class="fixed top-6 right-6 space-y-3 z-50 w-80">
-        <template x-for="(t, i) in toasts" :key="i">
-            <div x-transition class="px-4 py-3 rounded-lg shadow-lg text-sm font-medium"
-                :class="t.type === 'error' ?
-                    'bg-rose-50 text-rose-700 border border-rose-200' :
-                    'bg-emerald-50 text-emerald-700 border border-emerald-200'">
-                <span x-text="t.message"></span>
+    <div x-data="toastManager()" @toast.window="addToast($event.detail)" class="fixed top-6 right-6 space-y-3 z-50 w-80">
+        <template x-for="(toast, i) in toasts" :key="i">
+            <div x-show="toast.show" x-transition class="flex items-start gap-3 rounded-md border px-4 py-3 text-sm"
+                :class="toast.type === 'error' ?
+                    'bg-rose-50 text-rose-700 border-rose-200' :
+                    'bg-emerald-50 text-emerald-700 border-emerald-200'">
+                <i class="fa-solid mt-0.5" :class="toast.type === 'error' ? 'fa-circle-xmark' : 'fa-circle-check'"></i>
+                <div class="flex-1">
+                    <div class="font-semibold" x-text="toast.type === 'error' ? 'Gagal' : 'Berhasil'"></div>
+                    <div x-text="toast.message"></div>
+                </div>
+                <button @click="toast.show = false" class="ml-auto">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
             </div>
         </template>
     </div>
 
-    <div x-data="returEditPage()" x-init="init()" class="space-y-8">
+    <div x-data="returEditPage()" x-init="init()" class="space-y-6">
 
-        {{-- Breadcrumb --}}
-        <div class="flex items-center gap-3">
-            <a href="{{ route('retur-pembelian.index') }}" class="text-slate-500 hover:underline text-sm">Retur
-                Pembelian</a>
-            <div class="text-sm text-slate-400">/</div>
-            <div class="inline-flex items-center text-sm">
-                <span class="px-3 py-1 rounded-md bg-[#E9F3FF] text-[#1D4ED8] border border-[#BFDBFE] font-medium">
-                    {{ $retur->no_retur }}
-                </span>
-            </div>
+        {{-- 🔙 Tombol Kembali --}}
+        <div>
+            <a href="{{ route('retur-pembelian.index') }}"
+                class="inline-flex items-center gap-2 text-sm text-slate-600 hover:text-[#334976] font-medium transition-colors">
+                <i class="fa-solid fa-arrow-left text-gray-600 hover:text-[#334976]"></i>
+                <span>Kembali</span>
+            </a>
         </div>
 
         <form @submit.prevent="update" class="space-y-6">
             @csrf
 
             {{-- Info Pembelian --}}
-            <div class="bg-white border border-slate-200 rounded-xl px-6 py-5 space-y-4">
-                {{-- Row 1: Tanggal & Status --}}
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                        <label class="block text-sm font-medium text-slate-700 mb-2">Tanggal Retur</label>
-                        <input type="date" x-model="form.tanggal"
-                            class="w-full px-3 py-2 rounded-lg border border-slate-200 text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-slate-700 mb-2">Status Retur</label>
-                        <select x-model="form.status"
-                            class="w-full px-3 py-2.5 rounded-lg border border-slate-200 text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                            <option value="pending">Barang Masih Ada</option>
-                            <option value="taken">Barang Diambil Sales</option>
-                            <option value="refund">Pengembalian Uang Selesai</option>
-                        </select>
-                    </div>
-                </div>
+            <div class="bg-white border border-slate-200 rounded-xl px-6 py-5">
+                <h3 class="text-base font-semibold text-slate-700 mb-4">Informasi Retur</h3>
 
-                {{-- Row 2: No Retur, No Pembelian, Supplier --}}
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div>
-                        <label class="block text-sm font-medium text-slate-700 mb-2">No Retur</label>
-                        <input type="text" :value="form.no_retur" readonly
-                            class="w-full px-3 py-2 rounded-lg border border-slate-200 bg-slate-50 text-slate-700">
+                <div class="space-y-4">
+                    {{-- Row 1: No Retur & Tanggal --}}
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-2">No Retur</label>
+                            <input type="text" :value="form.no_retur" readonly
+                                class="w-full px-4 py-2.5 rounded-lg border border-slate-300 bg-slate-50 text-slate-700 font-medium">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-2">
+                                Tanggal Retur <span class="text-red-500">*</span>
+                            </label>
+                            <input type="date" x-model="form.tanggal"
+                                class="w-full px-4 py-2.5 rounded-lg border border-slate-300 text-slate-700 
+                                       focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                        </div>
                     </div>
-                    <div>
-                        <label class="block text-sm font-medium text-slate-700 mb-2">No Pembelian</label>
-                        <input type="text" :value="pembelianInfo" readonly
-                            class="w-full px-3 py-2 rounded-lg border border-slate-200 bg-slate-50 text-slate-700">
+
+                    {{-- Row 2: No Pembelian & Supplier --}}
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-2">No Pembelian</label>
+                            <input type="text" :value="pembelianInfo" readonly
+                                class="w-full px-4 py-2.5 rounded-lg border border-slate-300 bg-slate-50 text-slate-700">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-2">Supplier</label>
+                            <input type="text" :value="supplier" readonly
+                                class="w-full px-4 py-2.5 rounded-lg border border-slate-300 bg-slate-50 text-slate-700">
+                        </div>
                     </div>
+
+                    {{-- Row 3: Status --}}
                     <div>
-                        <label class="block text-sm font-medium text-slate-700 mb-2">Supplier</label>
-                        <input type="text" :value="supplier" readonly
-                            class="w-full px-3 py-2 rounded-lg border border-slate-200 bg-slate-50 text-slate-700">
+                        <label class="block text-sm font-medium text-slate-700 mb-2">
+                            Status Retur <span class="text-red-500">*</span>
+                        </label>
+                        <div class="relative">
+                            <select x-model="form.status"
+                                class="w-full px-4 py-2.5 pr-10 rounded-lg border border-slate-300 text-slate-700 
+                                       focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent
+                                       appearance-none bg-white cursor-pointer">
+                                <option value="pending">⏳ Pending - Barang Masih Ada</option>
+                                <option value="taken">📦 Taken - Barang Sudah Diambil Supplier</option>
+                                <option value="refund">💰 Refund - Pengembalian Uang Selesai</option>
+                            </select>
+                            <i class="fa-solid fa-chevron-down absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"></i>
+                        </div>
+                        <p class="text-xs text-slate-500 mt-2">
+                            <template x-if="form.status === 'pending'">
+                                <span>💡 Status <strong>Pending</strong>: Retur tercatat, stok belum berubah</span>
+                            </template>
+                            <template x-if="form.status === 'taken'">
+                                <span>⚠️ Status <strong>Taken</strong>: Barang diambil supplier, <strong>stok akan dikurangi</strong></span>
+                            </template>
+                            <template x-if="form.status === 'refund'">
+                                <span>✅ Status <strong>Refund</strong>: Refund uang selesai, stok tidak berubah</span>
+                            </template>
+                        </p>
                     </div>
                 </div>
             </div>
-
 
             {{-- Daftar Item --}}
             <div class="bg-white border border-slate-200 rounded-xl overflow-hidden">
                 <div class="px-6 py-4 border-b border-slate-200 bg-slate-50">
                     <h3 class="text-base font-semibold text-slate-700">Daftar Item Retur</h3>
+                    <p class="text-xs text-slate-500 mt-1">Pilih item yang akan diretur dan tentukan jumlahnya</p>
                 </div>
+
                 <div class="overflow-x-auto">
                     <table class="min-w-full text-sm">
                         <thead class="bg-slate-50 border-b border-slate-200">
                             <tr class="text-slate-600">
-                                <th class="px-4 py-3 text-center font-medium">Pilih</th>
-                                <th class="px-4 py-3 text-left font-medium">Item</th>
+                                <th class="px-4 py-3 text-center font-medium w-16">
+                                    <input type="checkbox" @change="toggleAllItems($event.target.checked)"
+                                        :checked="items.length > 0 && items.every(it => it.selected)"
+                                        :disabled="items.length === 0"
+                                        class="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-2 focus:ring-blue-500">
+                                </th>
+                                <th class="px-4 py-3 text-left font-medium">Nama Item</th>
                                 <th class="px-4 py-3 text-right font-medium">Jumlah Beli</th>
                                 <th class="px-4 py-3 text-right font-medium">Jumlah Retur</th>
                                 <th class="px-4 py-3 text-right font-medium">Harga Beli</th>
@@ -91,48 +134,48 @@
                             </tr>
                         </thead>
                         <tbody>
-                            <template x-for="(it, idx) in items" :key="it.id">
-                                <tr class="border-b border-slate-100 hover:bg-slate-50 transition-colors">
-                                    <td class="px-4 py-3 text-center">
-                                        <input type="checkbox" x-model="it.selected" @change="calcTotal"
-                                            class="w-5 h-5 text-indigo-600 rounded border-gray-300 focus:ring-2 focus:ring-indigo-500">
+                            <template x-if="items.length === 0">
+                                <tr>
+                                    <td colspan="6" class="px-4 py-12 text-center">
+                                        <i class="fa-solid fa-box-open text-5xl text-slate-300 mb-3"></i>
+                                        <p class="text-slate-400 font-medium">Tidak ada item</p>
                                     </td>
-                                    <td class="px-4 py-3" x-text="it.nama_item"></td>
-                                    <td class="px-4 py-3 text-right text-slate-600" x-text="formatNumber(it.jumlah_beli)">
+                                </tr>
+                            </template>
+
+                            <template x-for="(it, idx) in items" :key="it.id">
+                                <tr class="border-b border-slate-100 hover:bg-slate-50 transition-colors"
+                                    :class="{ 'bg-blue-50/30': it.selected }">
+                                    <td class="px-4 py-3 text-center">
+                                        <input type="checkbox" x-model="it.selected" @change="calcTotal()"
+                                            class="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-2 focus:ring-blue-500">
+                                    </td>
+                                    <td class="px-4 py-3">
+                                        <div class="font-medium text-slate-800" x-text="it.nama_item"></div>
+                                    </td>
+                                    <td class="px-4 py-3 text-right text-slate-600">
+                                        <span class="px-2 py-1 bg-slate-100 rounded text-xs font-medium"
+                                            x-text="formatNumber(it.jumlah_beli)"></span>
                                     </td>
                                     <td class="px-4 py-3 text-right">
-                                        <input type="text" :value="it.jumlah_retur"
-                                            @input="e => {
-                                                let val = e.target.value.replace(',', '.'); 
-                                                let num = parseFloat(val);
-                                                if (!isNaN(num)) {
-                                                    it.jumlah_retur = num;
-                                                } else {
-                                                    it.jumlah_retur = '';
-                                                }
-                                                calcTotal();
-                                            }"
-                                                                                    @blur="e => {
-                                                if (it.jumlah_retur !== '' && it.jumlah_retur != null) {
-                                                    it.jumlah_retur = Number.isInteger(it.jumlah_retur) 
-                                                        ? parseInt(it.jumlah_retur) 
-                                                        : parseFloat(it.jumlah_retur);
-                                                    e.target.value = it.jumlah_retur; // rapikan tampilan
-                                                }
-                                            }"
-                                                                                    class="w-24 text-right border border-slate-200 rounded px-2 py-1.5 
-                                                focus:outline-none focus:ring-2 focus:ring-blue-500 
-                                                disabled:bg-slate-50 disabled:text-slate-400">
-
+                                        <input 
+                                            type="text" 
+                                            :value="it.jumlah_retur"
+                                            @input="handleJumlahInput($event, it)"
+                                            @blur="handleJumlahBlur($event, it)"
+                                            :disabled="!it.selected"
+                                            placeholder="0"
+                                            class="w-28 text-right border border-slate-300 rounded-lg px-3 py-1.5 text-sm
+                                                   focus:outline-none focus:ring-2 focus:ring-blue-500 
+                                                   disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed">
                                     </td>
-
-
-
+                                    <td class="px-4 py-3 text-right text-slate-600 font-medium"
+                                        x-text="formatCurrency(it.harga_beli)">
                                     </td>
-                                    <td class="px-4 py-3 text-right text-slate-600" x-text="formatCurrency(it.harga_beli)">
+                                    <td class="px-4 py-3 text-right">
+                                        <span class="font-semibold text-slate-800"
+                                            x-text="formatCurrency(it.subtotal)"></span>
                                     </td>
-                                    <td class="px-4 py-3 text-right font-medium text-slate-700"
-                                        x-text="formatCurrency(it.subtotal)"></td>
                                 </tr>
                             </template>
                         </tbody>
@@ -143,41 +186,78 @@
             {{-- Catatan + Total --}}
             <div class="bg-white border border-slate-200 rounded-xl px-6 py-5 space-y-5">
                 <div>
-                    <label class="block text-sm font-medium text-slate-700 mb-2">Catatan / Alasan Retur</label>
-                    <textarea x-model="form.catatan" rows="3" placeholder="Masukkan alasan atau catatan retur..."
-                        class="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"></textarea>
+                    <label class="block text-sm font-medium text-slate-700 mb-2">
+                        Catatan / Alasan Retur
+                    </label>
+                    <textarea x-model="form.catatan" rows="4"
+                        placeholder="Tuliskan alasan atau catatan retur di sini..."
+                        class="w-full px-4 py-3 rounded-lg border border-slate-300 text-sm 
+                               focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent
+                               placeholder:text-slate-400 resize-none"></textarea>
                 </div>
-                <div class="flex justify-end items-center text-lg pt-3 border-t border-slate-100">
-                    <span class="font-medium text-slate-600">Total Retur:</span>
-                    <span class="ml-3 font-bold text-slate-800 text-xl" x-text="formatCurrency(form.total)"></span>
+
+                <div class="flex items-center justify-between pt-4 border-t border-slate-200">
+                    <div class="text-slate-600">
+                        <div class="text-sm">Total Item: <span class="font-semibold"
+                                x-text="items.filter(it => it.selected).length"></span></div>
+                    </div>
+                    <div class="text-right">
+                        <div class="text-sm text-slate-600 mb-1">Total Retur</div>
+                        <div class="text-2xl font-bold text-slate-800" x-text="formatCurrency(form.total)"></div>
+                    </div>
                 </div>
             </div>
 
             {{-- Actions --}}
-            <div class="flex justify-end gap-3 pt-2">
+            <div class="flex items-center justify-end gap-4 pt-2">
                 <a href="{{ route('retur-pembelian.index') }}"
-                    class="px-5 py-2.5 rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50 transition-colors font-medium">
-                    Kembali
+                    class="px-6 py-2.5 rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50 
+                           transition-colors font-medium inline-flex items-center gap-2">
+                    Batal
                 </a>
+
                 <button type="submit" :disabled="!canSubmit()"
                     :class="canSubmit() ?
                         'bg-[#344579] hover:bg-[#2e3e6a] cursor-pointer' :
                         'bg-slate-300 cursor-not-allowed'"
-                    class="px-5 py-2.5 rounded-lg text-white font-medium">
-                    Simpan Perubahan
+                    class="px-6 py-2.5 rounded-lg text-white font-medium transition-colors
+                           inline-flex items-center gap-2 disabled:cursor-not-allowed">
+                    <i class="fa-solid fa-save"></i>
+                    <span x-text="isSubmitting ? 'Menyimpan...' : 'Simpan Perubahan'"></span>
                 </button>
             </div>
         </form>
     </div>
 
     <script>
+        // Toast Manager Component
+        function toastManager() {
+            return {
+                toasts: [],
+                addToast(detail) {
+                    const toast = {
+                        type: detail.type || 'success',
+                        message: detail.message || '',
+                        show: true
+                    };
+                    this.toasts.push(toast);
+                    setTimeout(() => {
+                        toast.show = false;
+                        setTimeout(() => {
+                            this.toasts = this.toasts.filter(t => t !== toast);
+                        }, 300);
+                    }, 4000);
+                }
+            };
+        }
+
         function returEditPage() {
             return {
                 supplier: {{ Js::from($retur->pembelian->supplier->nama_supplier ?? '') }},
                 pembelianInfo: {{ Js::from($retur->pembelian->no_faktur ?? '') }},
                 items: [],
-                toasts: [],
                 originalForm: {},
+                isSubmitting: false,
 
                 form: {
                     pembelian_id: {{ Js::from($retur->pembelian_id) }},
@@ -189,6 +269,7 @@
                 },
 
                 init() {
+                    console.log('=== Retur Edit Page Initialized ===');
                     this.loadItems();
                 },
 
@@ -196,25 +277,25 @@
                     try {
                         const res = await fetch(`/pembelian/${this.form.pembelian_id}/items`);
                         if (!res.ok) throw new Error("Gagal memuat data item");
+                        
                         const data = await res.json();
-
-                        // Map items dengan data retur yang ada
                         const returItems = {{ Js::from($retur->items->pluck('jumlah', 'item_pembelian_id')) }};
 
                         this.items = data.items.map(it => {
-                            const jumlahRetur = returItems[it.id] || 0;
+                            const jumlahRetur = parseFloat(returItems[it.id]) || 0;
                             return {
                                 id: it.id,
                                 nama_item: it.nama_item,
-                                jumlah_beli: it.jumlah,
+                                jumlah_beli: parseFloat(it.jumlah) || 0,
                                 jumlah_retur: jumlahRetur,
-                                harga_beli: it.harga_beli,
-                                subtotal: jumlahRetur * it.harga_beli,
+                                harga_beli: parseFloat(it.harga_beli) || 0,
+                                subtotal: jumlahRetur * (parseFloat(it.harga_beli) || 0),
                                 selected: jumlahRetur > 0
                             };
                         });
 
                         this.calcTotal();
+
                         // Simpan snapshot awal
                         this.originalForm = JSON.parse(JSON.stringify({
                             ...this.form,
@@ -224,41 +305,99 @@
                                 jumlah_retur: it.jumlah_retur
                             }))
                         }));
+
+                        console.log('Items loaded:', this.items.length);
                     } catch (e) {
-                        this.toasts.push({
-                            type: 'error',
-                            message: e.message
-                        });
+                        console.error('Error loading items:', e);
+                        window.dispatchEvent(new CustomEvent('toast', {
+                            detail: {
+                                type: 'error',
+                                message: e.message || 'Gagal memuat data item'
+                            }
+                        }));
                     }
                 },
 
+                // Handle input jumlah (support desimal dan koma)
+                handleJumlahInput(e, item) {
+                    let val = e.target.value.replace(',', '.');
+                    
+                    // Allow empty or valid number input
+                    if (val === '' || val === '0') {
+                        item.jumlah_retur = 0;
+                    } else {
+                        let num = parseFloat(val);
+                        if (!isNaN(num) && num >= 0) {
+                            item.jumlah_retur = num;
+                        }
+                    }
+                    
+                    this.calcTotal();
+                },
+
+                // Handle blur untuk format ulang tampilan
+                handleJumlahBlur(e, item) {
+                    if (item.jumlah_retur === '' || item.jumlah_retur == null) {
+                        item.jumlah_retur = 0;
+                    }
+                    
+                    // Format tampilan
+                    const formatted = Number.isInteger(item.jumlah_retur) 
+                        ? parseInt(item.jumlah_retur).toString()
+                        : parseFloat(item.jumlah_retur).toString();
+                    
+                    e.target.value = formatted;
+                    this.calcTotal();
+                },
+
+                // Toggle All Items
+                toggleAllItems(checked) {
+                    this.items.forEach(it => {
+                        it.selected = checked;
+                        if (!checked) {
+                            it.jumlah_retur = 0;
+                        }
+                    });
+                    this.calcTotal();
+                },
+
+                // Calculate Total
                 calcTotal() {
                     let total = 0;
                     this.items.forEach(it => {
-                        it.subtotal = (it.jumlah_retur || 0) * it.harga_beli;
-                        if (it.selected) total += it.subtotal;
+                        const jumlahRetur = parseFloat(it.jumlah_retur) || 0;
+                        const hargaBeli = parseFloat(it.harga_beli) || 0;
+
+                        it.subtotal = jumlahRetur * hargaBeli;
+
+                        if (it.selected) {
+                            total += it.subtotal;
+                        }
                     });
                     this.form.total = total;
                 },
 
-                // 👇 Tambahin helper baru
+                // Format Number (untuk jumlah)
                 formatNumber(val) {
-                    return new Intl.NumberFormat('id-ID', {
-                        minimumFractionDigits: 0,
-                        maximumFractionDigits: 2
-                    }).format(val || 0);
+                    const num = parseFloat(val) || 0;
+                    return Number.isInteger(num) 
+                        ? num.toString()
+                        : num.toFixed(2).replace(/\.?0+$/, '');
                 },
 
+                // Format Currency
                 formatCurrency(val) {
                     return new Intl.NumberFormat('id-ID', {
                         style: 'currency',
                         currency: 'IDR',
-                        minimumFractionDigits: 0
+                        minimumFractionDigits: 0,
+                        maximumFractionDigits: 0
                     }).format(val || 0);
                 },
 
+                // Validation
                 isFormValid() {
-                    if (!this.form.pembelian_id || !this.form.tanggal) return false;
+                    if (!this.form.pembelian_id || !this.form.tanggal || !this.form.status) return false;
                     return this.items.some(it => it.selected && it.jumlah_retur > 0);
                 },
 
@@ -278,11 +417,22 @@
                 },
 
                 canSubmit() {
-                    return this.isFormValid() && this.isFormChanged();
+                    return this.isFormValid() && this.isFormChanged() && !this.isSubmitting;
                 },
 
+                // Update Retur
                 async update() {
-                    if (!this.canSubmit()) return;
+                    if (!this.canSubmit()) {
+                        window.dispatchEvent(new CustomEvent('toast', {
+                            detail: {
+                                type: 'error',
+                                message: 'Data belum lengkap atau tidak ada perubahan'
+                            }
+                        }));
+                        return;
+                    }
+
+                    this.isSubmitting = true;
 
                     try {
                         const payload = {
@@ -291,11 +441,15 @@
                             catatan: this.form.catatan,
                             total: this.form.total,
                             status: this.form.status,
-                            items: this.items.filter(it => it.selected && it.jumlah_retur > 0).map(it => ({
-                                item_pembelian_id: it.id,
-                                jumlah: it.jumlah_retur
-                            }))
+                            items: this.items
+                                .filter(it => it.selected && it.jumlah_retur > 0)
+                                .map(it => ({
+                                    item_pembelian_id: it.id,
+                                    jumlah: it.jumlah_retur
+                                }))
                         };
+
+                        console.log('Update payload:', payload);
 
                         const res = await fetch("{{ route('retur-pembelian.update', $retur->id) }}", {
                             method: 'PUT',
@@ -307,42 +461,52 @@
                             body: JSON.stringify(payload)
                         });
 
-
-
+                        const result = await res.json();
 
                         if (res.ok) {
-                            const data = await res.json();
-                            this.toasts.push({
-                                type: 'success',
-                                message: data.message
-                            });
+                            window.dispatchEvent(new CustomEvent('toast', {
+                                detail: {
+                                    type: 'success',
+                                    message: result.message || 'Retur berhasil diperbarui'
+                                }
+                            }));
+
                             setTimeout(() => {
                                 window.location.href = "{{ route('retur-pembelian.index') }}";
-                            }, 1500);
+                            }, 1000);
                         } else {
-                            const err = await res.json().catch(() => null);
-                            if (err?.errors) {
-                                Object.values(err.errors).flat().forEach(msg => {
-                                    this.toasts.push({
-                                        type: 'error',
-                                        message: msg
-                                    });
+                            // Handle validation errors
+                            if (result.errors) {
+                                Object.values(result.errors).flat().forEach(msg => {
+                                    window.dispatchEvent(new CustomEvent('toast', {
+                                        detail: {
+                                            type: 'error',
+                                            message: msg
+                                        }
+                                    }));
                                 });
                             } else {
-                                this.toasts.push({
-                                    type: 'error',
-                                    message: "Gagal menyimpan perubahan!"
-                                });
+                                window.dispatchEvent(new CustomEvent('toast', {
+                                    detail: {
+                                        type: 'error',
+                                        message: result.message || 'Gagal memperbarui retur'
+                                    }
+                                }));
                             }
+                            this.isSubmitting = false;
                         }
                     } catch (e) {
-                        this.toasts.push({
-                            type: 'error',
-                            message: e.message
-                        });
+                        console.error('Update error:', e);
+                        window.dispatchEvent(new CustomEvent('toast', {
+                            detail: {
+                                type: 'error',
+                                message: 'Terjadi kesalahan saat menyimpan: ' + e.message
+                            }
+                        }));
+                        this.isSubmitting = false;
                     }
                 }
-            }
+            };
         }
     </script>
 @endsection

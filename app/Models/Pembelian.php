@@ -25,7 +25,7 @@ class Pembelian extends Model
     ];
 
     protected $casts = [
-        'tanggal' => 'date',
+        'tanggal' => 'datetime',
         'sub_total' => 'decimal:2',
         'biaya_transport' => 'decimal:2',
         'total' => 'decimal:2',
@@ -55,15 +55,12 @@ class Pembelian extends Model
         return $this->belongsTo(User::class, 'updated_by');
     }
 
-
-    protected static function boot()
+    /**
+     * ✅ Relasi ke Tagihan Pembelian
+     */
+    public function tagihan()
     {
-        parent::boot();
-
-        static::updating(function ($model) {
-            if ($model->isDirty('no_faktur')) {
-                throw new \Exception("No Faktur tidak boleh diubah setelah dibuat.");
-            }
-        });
+        return $this->hasMany(TagihanPembelian::class);
     }
+
 }

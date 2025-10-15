@@ -7,9 +7,18 @@
         [x-cloak] {
             display: none !important;
         }
+
+        table,
+        tr,
+        td {
+            overflow: visible !important;
+        }
     </style>
 
-    {{-- Toasts --}}
+    {{-- CSRF meta --}}
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+
+    {{-- TOAST --}}
     <div x-data class="fixed top-6 right-6 space-y-3 z-50 w-80">
         @if (session('success'))
             <div x-data="{ show: true }" x-show="show" x-transition x-init="setTimeout(() => show = false, 4000)"
@@ -57,10 +66,10 @@
                       focus:outline-none focus:ring-2 focus:ring-[#344579]/20 focus:border-[#344579]">
                 </div>
                 <button type="button" @click="showFilter=!showFilter"
-                    class="px-4 py-2 rounded-lg border border-slate-200 text-slate-700 hover:bg-[#2e3e6a] hover:text-white"
-                    :class="{ 'bg-[#344579] text-white': hasActiveFilters() }">
-                    <i class="fa-solid fa-filter mr-2"></i> Filter
-                    <span x-show="hasActiveFilters()" class="ml-1 bg-white text-[#344579] px-1.5 py-0.5 rounded text-xs">
+                    class="px-4 py-2 rounded-lg border border-slate-200 text-slate-700 hover:bg-[#344579] hover:text-white transition"
+                    :class="{ 'bg-[#344579] text-white': showFilter || hasActiveFilters() }">
+                    <i class="fa-solid fa-sliders"></i>
+                    <span x-show="hasActiveFilters()" class="ml-1 bg-white text-[#344579] px-1.5 py-1.5 rounded text-xs">
                         <span x-text="activeFiltersCount()"></span>
                     </span>
                 </button>
@@ -93,10 +102,10 @@
                     <select x-model="filters.status"
                         class="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm text-slate-700 
                 focus:outline-none focus:ring-2 focus:ring-[#344579]/20 focus:border-[#344579]">
-                        <option value="">Semua</option>
-                        <option value="pending">Pending</option>
-                        <option value="taken">Taken</option>
-                        <option value="refund">Refund</option>
+                        <option value="">Pilih Status</option>
+                        <option value="pending">Barang Masih Ada</option>
+                        <option value="taken">Barang Diambil Sales</option>
+                        <option value="refund">Pengembalian Uang Selesai</option>
                     </select>
                 </div>
 
@@ -116,13 +125,8 @@
                 </div>
                 <div class="flex items-center gap-2">
                     <button type="button" @click="resetFilters()"
-                        class="px-4 py-2 rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50">
-                        <i class="fa-solid fa-arrow-rotate-left mr-2"></i>
-                        Reset Filter
-                    </button>
-                    <button type="button" @click="showFilter = false"
-                        class="px-4 py-2 rounded-lg bg-[#344579] text-white hover:bg-[#2e3e6a]">
-                        Terapkan Filter
+                        class="px-4 py-2 rounded-lg border border-slate-200 text-white hover:bg-red-600 bg-red-400">
+                        <i class="fa-solid fa-arrow-rotate-left mr-2"></i> Reset
                     </button>
                 </div>
             </div>
@@ -133,70 +137,62 @@
             <div class="overflow-x-auto">
                 <table class="min-w-full text-sm">
                     <thead class="bg-slate-50 border-b border-slate-200">
-                        <tr class="text-left text-slate-600">
+                        <tr class="text-center text-slate-600">
                             <th class="px-4 py-3 w-[60px]">No.</th>
                             <th class="px-4 py-3 cursor-pointer" @click="toggleSort('nomor_retur')">
                                 Nomor Retur
-                                <i class="fa-solid"
-                                    :class="sortBy === 'nomor_retur' ? (sortDir==='asc' ? 'fa-arrow-up ml-2' :
-                                        'fa-arrow-down ml-2'): 'fa-sort ml-2'"></i>
+                                <i class="fa-solid" :class="sortIcon('nomor_retur')"></i>
                             </th>
                             <th class="px-4 py-3 cursor-pointer" @click="toggleSort('tanggal')">
                                 Tanggal
-                                <i class="fa-solid"
-                                    :class="sortBy === 'tanggal' ? (sortDir==='asc' ? 'fa-arrow-up ml-2' :
-                                        'fa-arrow-down ml-2'): 'fa-sort ml-2'"></i>
+                                <i class="fa-solid" :class="sortIcon('tanggal')"></i>
                             </th>
-                            <th class="px-4 py-3">Supplier</th>
-                            <th class="px-4 py-3">Total</th>
+                            <th class="px-4 py-3 cursor-pointer" @click="toggleSort('supplier')">
+                                Supplier
+                                <i class="fa-solid" :class="sortIcon('supplier')"></i>
+                            </th>
+                            <th class="px-4 py-3 text-right cursor-pointer" @click="toggleSort('total')">
+                                Total
+                                <i class="fa-solid" :class="sortIcon('total')"></i>
+                            </th>
                             <th class="px-4 py-3">Status</th>
                             <th class="px-2 py-3"></th>
                         </tr>
                     </thead>
                     <tbody>
                         <template x-for="(r, idx) in pagedData()" :key="r.id">
-                            <tr class="hover:bg-slate-50 text-slate-700 border-b border-slate-200">
+                            <tr class="hover:bg-slate-50 text-slate-700 border-b border-slate-200 text-center">
                                 <td class="px-4 py-3" x-text="(currentPage-1)*pageSize + idx + 1"></td>
                                 <td class="px-4 py-3 font-mono" x-text="r.nomor_retur"></td>
                                 <td class="px-4 py-3" x-text="r.tanggal"></td>
-                                <td class="px-4 py-3" x-text="r.supplier"></td>
-                                <td class="px-4 py-3" x-text="formatCurrency(r.total)"></td>
+                                <td class="px-4 py-3 text-green-600 font-medium">
+                                    <a :href="r.url" class="hover:underline hover:text-[#2e3e6a] transition"
+                                        x-text="r.supplier"></a>
+                                </td>
+                                <td class="px-4 py-3 text-right font-semibold" x-text="formatCurrency(r.total)"></td>
                                 <td class="px-4 py-3">
-                                    <span :class="statusBadge(r.status)" class="px-2 py-1 rounded text-xs"
-                                        x-text="statusLabel(r.status)"></span>
+                                    <span
+                                        class="inline-flex items-center gap-2 text-xs font-medium px-2.5 py-1 rounded-full"
+                                        :class="badgeClass(r.status)">
+                                        <span class="w-2 h-2 rounded-full" :class="dotClass(r.status)"></span>
+                                        <span x-text="statusLabel(r.status)"></span>
+                                    </span>
                                 </td>
 
                                 {{-- ACTIONS --}}
                                 <td class="px-2 py-3 text-right relative">
-                                    <button type="button" @click="toggleActions(r.id)"
-                                        class="px-2 py-1 rounded hover:bg-slate-100">
+                                    <button type="button" data-dropdown-open-button @click="openDropdown(r, $event)"
+                                        class="px-2 py-1 rounded hover:bg-slate-100 focus:outline-none transition">
                                         <i class="fa-solid fa-ellipsis-vertical"></i>
                                     </button>
-                                    <div x-cloak x-show="openActionId===r.id" @click.away="openActionId=null" x-transition
-                                        class="absolute right-2 mt-2 w-40 bg-white shadow rounded-md border border-slate-200 z-20">
-                                        <ul class="py-1">
-                                            <li>
-                                                <a :href="r.url"
-                                                    class="block px-4 py-2 hover:bg-slate-50 text-left"
-                                                    @click="openActionId=null">
-                                                    <i class="fa-solid fa-eye mr-2"></i> Detail
-                                                </a>
-                                            </li>
-                                            <li>
-                                                <template x-if="r.status === 'pending' || r.status === 'taken' || r.status === 'refund'">
-                                                    <button type="button" @click="confirmDelete(r)"
-                                                        class="w-full text-left px-4 py-2 text-red-500 hover:bg-slate-50">
-                                                        <i class="fa-solid fa-trash mr-2"></i> Hapus
-                                                    </button>
-                                                </template>
-                                            </li>
-                                        </ul>
-                                    </div>
                                 </td>
                             </tr>
                         </template>
                         <tr x-show="filteredTotal()===0" class="text-center text-slate-500">
-                            <td colspan="7" class="px-4 py-6">Tidak ada data retur pembelian.</td>
+                            <td colspan="7" class="px-4 py-8">
+                                <i class="fa-solid fa-inbox text-4xl text-slate-300 mb-2"></i>
+                                <p class="text-slate-400">Tidak ada data retur pembelian.</p>
+                            </td>
                         </tr>
                     </tbody>
                 </table>
@@ -205,29 +201,29 @@
             {{-- PAGINATION --}}
             <div class="px-6 py-4">
                 <nav class="flex items-center justify-center gap-2" aria-label="Pagination">
-                    <button @click="goToPage(1)" :disabled="currentPage === 1"
+                    <button type="button" @click="goToPage(1)" :disabled="currentPage === 1"
                         class="px-3 py-1 rounded border border-slate-200 hover:bg-slate-50 disabled:opacity-50">
                         <i class="fa-solid fa-angles-left"></i>
                     </button>
-                    <button @click="prev()" :disabled="currentPage === 1"
+                    <button type="button" @click="prev()" :disabled="currentPage === 1"
                         class="px-3 py-1 rounded border border-slate-200 hover:bg-slate-50 disabled:opacity-50">
                         <i class="fa-solid fa-chevron-left"></i>
                     </button>
 
                     <template x-for="p in pagesToShow()" :key="p">
                         <span>
-                            <button x-show="p!=='...'" @click="goToPage(p)" x-text="p"
+                            <button type="button" x-show="p!=='...'" @click="goToPage(p)" x-text="p"
                                 :class="{ 'bg-[#344579] text-white': currentPage === p }"
-                                class="mx-0.5 px-3 py-1 rounded border border-slate-200 hover:bg-[#2c3e6b] cursor-pointer"></button>
+                                class="mx-0.5 px-3 py-1 rounded border border-slate-200 hover:bg-[#2c3e6b] hover:text-white cursor-pointer"></button>
                             <span x-show="p==='...'" class="mx-1 px-3 py-1 text-slate-500">...</span>
                         </span>
                     </template>
 
-                    <button @click="next()" :disabled="currentPage === totalPages()"
+                    <button type="button" @click="next()" :disabled="currentPage === totalPages()"
                         class="px-3 py-1 rounded border border-slate-200 hover:bg-slate-50 disabled:opacity-50">
                         <i class="fa-solid fa-chevron-right"></i>
                     </button>
-                    <button @click="goToPage(totalPages())" :disabled="currentPage === totalPages()"
+                    <button type="button" @click="goToPage(totalPages())" :disabled="currentPage === totalPages()"
                         class="px-3 py-1 rounded border border-slate-200 hover:bg-slate-50 disabled:opacity-50">
                         <i class="fa-solid fa-angles-right"></i>
                     </button>
@@ -236,25 +232,93 @@
         </div>
 
         {{-- DELETE CONFIRM MODAL --}}
-        <div x-cloak x-show="showDeleteModal" class="fixed inset-0 z-50 flex items-center justify-center">
-            <div class="absolute inset-0 bg-black/40" @click="closeDelete()"></div>
-            <div x-transition class="bg-white rounded-xl shadow-lg w-11/12 md:w-1/3 z-10 overflow-hidden">
-                <div class="px-6 py-4 border-b border-slate-200">
-                    <h3 class="text-lg font-semibold text-red-600">Konfirmasi Hapus</h3>
+        <div x-cloak x-show="showDeleteModal" aria-modal="true" role="dialog"
+            class="fixed inset-0 z-50 flex items-center justify-center min-h-screen">
+
+            <!-- Overlay -->
+            <div x-show="showDeleteModal" x-transition.opacity.duration.400ms
+                class="absolute inset-0 bg-black/40 backdrop-blur-[2px] transition-all" @click="closeDelete()"></div>
+
+            <!-- Modal Card -->
+            <div x-show="showDeleteModal" x-transition:enter="transition ease-out duration-300"
+                x-transition:enter-start="opacity-0 scale-95 translate-y-3"
+                x-transition:enter-end="opacity-100 scale-100 translate-y-0"
+                x-transition:leave="transition ease-in duration-200" x-transition:leave-start="opacity-100 scale-100"
+                x-transition:leave-end="opacity-0 scale-95 translate-y-3"
+                class="relative bg-white/95 backdrop-blur-sm w-[480px]
+               rounded-2xl shadow-[0_10px_35px_-5px_rgba(239,68,68,0.3)]
+               border border-red-100 transform transition-all overflow-hidden"
+                @click.away="closeDelete()">
+
+                <!-- Header -->
+                <div
+                    class="bg-gradient-to-r from-red-50 to-rose-50 
+                    border-b border-red-100 px-5 py-4 flex items-center justify-between rounded-t-2xl">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center">
+                            <i class="fa-solid fa-triangle-exclamation text-red-600 text-lg"></i>
+                        </div>
+                        <h3 class="text-base font-semibold text-red-700">
+                            Konfirmasi Hapus
+                        </h3>
+                    </div>
+                    <button @click="closeDelete()" class="text-red-400 hover:text-red-600 transition">
+                        <i class="fa-solid fa-xmark text-lg"></i>
+                    </button>
                 </div>
-                <div class="px-6 py-4">
-                    <p class="text-slate-600">
+
+                <!-- Body -->
+                <div class="p-6 bg-white">
+                    <p class="text-slate-700 leading-relaxed">
                         Apakah Anda yakin ingin menghapus retur
-                        <span class="font-semibold" x-text="deleteItem.nomor_retur"></span>?
+                        <span class="font-semibold text-slate-900 bg-slate-100 px-2 py-0.5 rounded"
+                            x-text="deleteItem.nomor_retur"></span>
+                        dari supplier
+                        <span class="font-semibold text-green-600 bg-green-50 px-2 py-0.5 rounded"
+                            x-text="deleteItem.supplier"></span>?
                     </p>
+
+                    <!-- Warning Box -->
+                    <div class="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg flex items-start gap-2">
+                        <i class="fa-solid fa-info-circle text-amber-600 mt-0.5"></i>
+                        <div class="text-sm text-amber-700">
+                            <p class="font-medium">Perhatian:</p>
+                            <p class="mt-1">Tindakan ini akan menghapus data retur. Proses ini
+                                <strong>tidak dapat dibatalkan</strong>.
+                            </p>
+                        </div>
+                    </div>
                 </div>
-                <div class="px-6 py-4 border-t border-slate-200 flex justify-end gap-2">
-                    <button @click="closeDelete()"
-                        class="px-4 py-2 rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50">Batal</button>
-                    <button @click="doDelete()"
-                        class="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700">Hapus</button>
+
+                <!-- Footer -->
+                <div class="px-6 py-4 bg-slate-50 border-t border-slate-200 flex justify-end gap-3 rounded-b-2xl">
+                    <button type="button" @click="closeDelete()"
+                        class="px-5 py-2.5 rounded-lg border border-slate-300 text-slate-600 
+                        hover:bg-white hover:border-slate-400 transition-all font-medium">
+                        <i class="fa-solid fa-xmark mr-1.5"></i> Batal
+                    </button>
+                    <button type="button" @click="doDelete()"
+                        class="px-5 py-2.5 rounded-lg bg-red-600 text-white hover:bg-red-700 
+                        transition-all shadow-sm hover:shadow-md font-medium group">
+                        <i class="fa-solid fa-trash mr-1.5 group-hover:scale-110 transition-transform"></i>
+                        Hapus
+                    </button>
                 </div>
             </div>
+        </div>
+
+        <!-- Floating dropdown portal -->
+        <div x-cloak x-show="dropdownVisible" x-transition.origin.top.right id="floating-dropdown" data-dropdown
+            class="absolute w-44 bg-white border border-slate-200 rounded-lg shadow-lg z-[9999]"
+            :style="`top:${dropdownPos.top}; left:${dropdownPos.left}`">
+            <button @click="window.location = dropdownData.url"
+                class="w-full text-left px-4 py-2 text-sm hover:bg-slate-50 flex items-center gap-2 text-slate-700 rounded-t-lg">
+                <i class="fa-solid fa-eye text-blue-500"></i> Detail
+            </button>
+            <button @click="confirmDelete(dropdownData)"
+                class="w-full text-left px-4 py-2 text-sm hover:bg-red-50 flex items-center gap-2 text-red-600 rounded-b-lg">
+                <i class="fa-solid fa-trash"></i> Hapus
+            </button>
         </div>
     </div>
 
@@ -265,11 +329,10 @@
                     'id' => $r->id,
                     'nomor_retur' => $r->no_retur,
                     'tanggal' => $r->tanggal->format('d/m/Y'),
-                    'supplier' => optional($r->pembelian->supplier)->nama_supplier,
+                    'supplier' => optional($r->pembelian->supplier)->nama_supplier ?? '-',
                     'total' => $r->total,
                     'status' => $r->status,
                     'url' => route('retur-pembelian.show', $r->id),
-                    
                 ],
             )
             ->toArray();
@@ -284,28 +347,56 @@
                 currentPage: 1,
                 maxPageButtons: 7,
                 openActionId: null,
+                dropdownVisible: false,
+                dropdownData: {},
+                dropdownPos: {
+                    top: 0,
+                    left: 0
+                },
+                _outsideClickHandler: null,
+                _resizeHandler: null,
                 showDeleteModal: false,
                 deleteItem: {},
 
                 sortBy: 'tanggal',
                 sortDir: 'desc',
 
-                init() {},
+                filters: {
+                    nomor_retur: '',
+                    supplier: '',
+                    status: '',
+                    tanggal: ''
+                },
+                showFilter: false,
 
+                init() {
+                    window.addEventListener('beforeunload', () => this.closeDropdown());
+                },
+
+                // --- FILTER + SORT ---
                 filteredList() {
                     const q = this.q.trim().toLowerCase();
                     let list = this.data.filter(r => {
                         if (q && !(`${r.nomor_retur} ${r.supplier}`.toLowerCase().includes(q))) return false;
+                        if (this.filters.nomor_retur && !r.nomor_retur.toLowerCase().includes(this.filters
+                                .nomor_retur.toLowerCase())) return false;
+                        if (this.filters.supplier && !r.supplier.toLowerCase().includes(this.filters.supplier
+                                .toLowerCase())) return false;
+                        if (this.filters.status && r.status !== this.filters.status) return false;
+                        if (this.filters.tanggal && r.tanggal !== this.formatDate(this.filters.tanggal))
+                        return false;
                         return true;
                     });
 
-                    const sortKey = this.sortBy;
                     const dir = this.sortDir === 'asc' ? 1 : -1;
-
                     list.sort((a, b) => {
-                        const va = (a[sortKey] ?? '').toString().toLowerCase();
-                        const vb = (b[sortKey] ?? '').toString().toLowerCase();
-                        return va.localeCompare(vb) * dir;
+                        const va = a[this.sortBy] ?? '';
+                        const vb = b[this.sortBy] ?? '';
+
+                        if (!isNaN(parseFloat(va)) && !isNaN(parseFloat(vb)))
+                            return (parseFloat(va) - parseFloat(vb)) * dir;
+
+                        return va.toString().localeCompare(vb.toString()) * dir;
                     });
 
                     return list;
@@ -314,44 +405,60 @@
                 filteredTotal() {
                     return this.filteredList().length;
                 },
+
                 totalPages() {
                     return Math.max(1, Math.ceil(this.filteredTotal() / this.pageSize));
                 },
+
                 pagedData() {
                     const start = (this.currentPage - 1) * this.pageSize;
                     return this.filteredList().slice(start, start + this.pageSize);
                 },
+
                 goToPage(n) {
-                    this.currentPage = Math.min(Math.max(1, n), this.totalPages());
-                    this.openActionId = null;
+                    const t = this.totalPages();
+                    if (n < 1) n = 1;
+                    if (n > t) n = t;
+                    this.currentPage = n;
+                    this.closeDropdown();
                 },
+
                 prev() {
                     if (this.currentPage > 1) this.currentPage--;
+                    this.closeDropdown();
                 },
+
                 next() {
                     if (this.currentPage < this.totalPages()) this.currentPage++;
+                    this.closeDropdown();
                 },
+
                 pagesToShow() {
-                    const total = this.totalPages(),
-                        max = this.maxPageButtons,
-                        cur = this.currentPage;
+                    const total = this.totalPages();
+                    const max = this.maxPageButtons;
+                    const current = this.currentPage;
+
                     if (total <= max) return Array.from({
                         length: total
                     }, (_, i) => i + 1);
+
+                    const pages = [];
                     const side = Math.floor((max - 3) / 2);
-                    const left = Math.max(2, cur - side),
-                        right = Math.min(total - 1, cur + side);
-                    const pages = [1];
+                    const left = Math.max(2, current - side);
+                    const right = Math.min(total - 1, current + side);
+
+                    pages.push(1);
                     if (left > 2) pages.push('...');
                     for (let i = left; i <= right; i++) pages.push(i);
                     if (right < total - 1) pages.push('...');
                     pages.push(total);
+
                     return pages;
                 },
 
                 toggleSort(field) {
                     if (this.sortBy === field) {
-                        this.sortDir = (this.sortDir === 'asc') ? 'desc' : 'asc';
+                        this.sortDir = this.sortDir === 'asc' ? 'desc' : 'asc';
                     } else {
                         this.sortBy = field;
                         this.sortDir = 'asc';
@@ -359,16 +466,127 @@
                     this.currentPage = 1;
                 },
 
-                toggleActions(id) {
-                    this.openActionId = (this.openActionId === id) ? null : id;
+                sortIcon(field) {
+                    if (this.sortBy !== field) return 'fa-sort ml-2 text-slate-400';
+                    return this.sortDir === 'asc' ?
+                        'fa-arrow-up ml-2 text-[#344579]' :
+                        'fa-arrow-down ml-2 text-[#344579]';
                 },
-                confirmDelete(item) {
+
+                // --- FILTER HELPERS ---
+                hasActiveFilters() {
+                    return this.filters.nomor_retur || this.filters.supplier || this.filters.status || this.filters
+                        .tanggal;
+                },
+
+                activeFiltersCount() {
+                    let count = 0;
+                    if (this.filters.nomor_retur) count++;
+                    if (this.filters.supplier) count++;
+                    if (this.filters.status) count++;
+                    if (this.filters.tanggal) count++;
+                    return count;
+                },
+
+                resetFilters() {
+                    this.filters = {
+                        nomor_retur: '',
+                        supplier: '',
+                        status: '',
+                        tanggal: ''
+                    };
+                    this.q = '';
+                    this.currentPage = 1;
+                },
+
+                formatDate(date) {
+                    const d = new Date(date);
+                    if (isNaN(d)) return date;
+                    const dd = String(d.getDate()).padStart(2, '0');
+                    const mm = String(d.getMonth() + 1).padStart(2, '0');
+                    const yyyy = d.getFullYear();
+                    return `${dd}/${mm}/${yyyy}`;
+                },
+
+                // --- DROPDOWN FLOATING ---
+                openDropdown(row, event) {
+                    if (this.openActionId === row.id) {
+                        this.closeDropdown();
+                        return;
+                    }
+
+                    this.openActionId = row.id;
+                    this.dropdownData = row;
+
+                    const rect = event.currentTarget.getBoundingClientRect();
+                    const dropdownHeight = 90;
+
+                    const spaceBelow = window.innerHeight - rect.bottom;
+                    const spaceAbove = rect.top;
+
+                    const docTopBelow = rect.bottom + window.scrollY + 6;
+                    const docTopAbove = rect.top + window.scrollY - dropdownHeight - 6;
+                    const docLeft = rect.right + window.scrollX - 176;
+
+                    if (spaceBelow < dropdownHeight && spaceAbove > dropdownHeight) {
+                        this.dropdownPos = {
+                            top: docTopAbove + 'px',
+                            left: docLeft + 'px'
+                        };
+                    } else {
+                        this.dropdownPos = {
+                            top: docTopBelow + 'px',
+                            left: docLeft + 'px'
+                        };
+                    }
+
+                    this.dropdownVisible = true;
+
+                    this._outsideClickHandler = this.handleOutsideClick.bind(this);
+                    setTimeout(() => {
+                        document.addEventListener('click', this._outsideClickHandler);
+                    }, 0);
+
+                    this._resizeHandler = this.closeDropdown.bind(this);
+                    window.addEventListener('resize', this._resizeHandler);
+                },
+
+                handleOutsideClick(e) {
+                    const dropdownEl = document.querySelector('[data-dropdown]');
+                    const isInsideDropdown = dropdownEl && dropdownEl.contains(e.target);
+                    const isTriggerButton = !!e.target.closest('[data-dropdown-open-button]');
+
+                    if (!isInsideDropdown && !isTriggerButton) {
+                        this.closeDropdown();
+                    }
+                },
+
+                closeDropdown() {
+                    this.dropdownVisible = false;
                     this.openActionId = null;
+                    this.dropdownData = {};
+
+                    if (this._outsideClickHandler) {
+                        document.removeEventListener('click', this._outsideClickHandler);
+                        this._outsideClickHandler = null;
+                    }
+
+                    if (this._resizeHandler) {
+                        window.removeEventListener('resize', this._resizeHandler);
+                        this._resizeHandler = null;
+                    }
+                },
+
+                // --- DELETE ---
+                confirmDelete(item) {
+                    if (!item) return;
+                    this.closeDropdown();
                     this.deleteItem = {
                         ...item
                     };
                     this.showDeleteModal = true;
                 },
+
                 closeDelete() {
                     this.showDeleteModal = false;
                     this.deleteItem = {};
@@ -486,7 +704,7 @@
 
                         // filter tanggal (simple exact match)
                         if (this.filters.tanggal && r.tanggal !== this.formatDate(this.filters.tanggal))
-                        return false;
+                            return false;
 
                         return true;
                     });
