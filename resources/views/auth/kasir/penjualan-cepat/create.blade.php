@@ -59,6 +59,24 @@
         .success-check {
             animation: drawCheck 0.5s ease-out 0.8s forwards;
         }
+
+        /* Hilangkan spinner di Chrome, Safari, Edge (WebKit/Blink) */
+        .no-spinner::-webkit-outer-spin-button,
+        .no-spinner::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+
+        /* Hilangkan spinner di Firefox */
+        .no-spinner {
+            -moz-appearance: textfield;
+        }
+
+        /* Hilangkan tombol di IE / old Edge */
+        .no-spinner::-ms-clear,
+        .no-spinner::-ms-expand {
+            display: none;
+        }
     </style>
 </head>
 
@@ -68,10 +86,10 @@
         <!-- HEADER -->
         <header class="bg-[#344579] text-white py-4 px-6 flex items-center justify-between gap-4">
             <div class="flex items-center gap-3">
-                <button @click="back()"
+                <a href="{{ route('penjualan-cepat.index') }}"
                     class="bg-[#2c3e6b] hover:bg-[#24355b] px-3 py-2 rounded-md flex items-center gap-2 text-sm">
                     <i class="fa-solid fa-arrow-left"></i> Kembali
-                </button>
+                </a>
                 <h1 class="font-semibold text-lg">Penjualan Cepat</h1>
             </div>
 
@@ -88,152 +106,257 @@
         <!-- MAIN -->
         <main class="max-w-[95%] mx-auto mt-6 grid grid-cols-1 lg:grid-cols-3 gap-6 pb-8">
             <!-- LEFT: Items (2/3) -->
-            <div class="lg:col-span-2 bg-white border border-slate-200 rounded-xl  p-6">
+            <div class="lg:col-span-2 bg-white border border-slate-200 rounded-xl p-6">
                 <div class="flex items-center justify-between mb-4">
                     <h2 class="font-semibold text-slate-700">Daftar Item</h2>
-
-
                 </div>
 
                 <div class="overflow-x-auto">
                     <table class="min-w-full text-sm">
                         <thead class="bg-slate-50 border-b border-slate-200">
-                            <tr class="text-left text-slate-600">
-                                <th class="px-3 py-3 w-10 text-center">No</th>
-                                <th class="px-3 py-3">Nama Item</th>
-                                <th class="px-3 py-3 text-center w-40">Gudang</th>
-                                <th class="px-3 py-3 text-center w-32">Satuan</th>
-                                <th class="px-3 py-3 text-center w-20">Jumlah</th>
-                                <th class="px-3 py-3 text-center w-32">Harga</th>
-                                <th class="px-3 py-3 text-center w-32">Total</th>
-                                <th class="px-3 py-3 w-10"></th>
+                            <tr class="text-slate-600">
+                                <th class="px-4 py-3 w-12 text-center">No.</th>
+                                <th class="px-4 py-3">Item</th>
+                                <th class="px-4 py-3 w-40 text-center">Gudang</th>
+                                <th class="px-4 py-3 w-28 text-center">Jumlah</th>
+                                <th class="px-4 py-3 w-32 text-center">Satuan</th>
+                                <th class="px-4 py-3 w-40 text-center">Harga</th>
+                                <th class="px-4 py-3 w-40 text-center">Total</th>
+                                <th class="px-2 py-3 w-12"></th>
                             </tr>
                         </thead>
 
-                        <tbody>
-                            <template x-for="(it, idx) in form.items" :key="idx">
-                                <tr class="border-b border-slate-100 hover:bg-slate-50 text-slate-700">
-                                    <td class="px-3 py-2 text-center font-medium" x-text="idx + 1"></td>
+                        <tbody class="align-middle">
+                            <template x-for="(item, idx) in form.items" :key="idx">
+                                <tr class="hover:bg-slate-50 text-slate-700 border-b border-slate-100 transition">
+                                    <!-- Nomor urut -->
+                                    <td class="px-5 py-4 text-center font-medium align-middle" x-text="idx + 1"></td>
 
-                                    <!-- Item search -->
-                                    <td class="px-3 py-2">
-                                        <div class="relative" x-data="{ open: false }" @click.away="open=false">
-                                            <input type="text" x-model="it.query"
-                                                @input.debounce.300ms="searchItem(idx)"
-                                                @focus="it.query.length>=2 && searchItem(idx); open = true"
-                                                placeholder="Cari Item..."
-                                                class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:border-[#344579] focus:ring-2 focus:ring-[#344579]/20 text-sm">
-                                            <i
-                                                class="fa-solid fa-magnifying-glass absolute right-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                                    <!-- Item dengan Keterangan -->
+                                    <td class="px-5 py-4 align-middle">
+                                        <div class="relative">
+                                            <div class="flex items-center gap-2">
+                                                <!-- Tombol Keterangan -->
+                                                <button type="button" @click.prevent="toggleItemNote(idx)"
+                                                    :title="item.showNote ? 'Sembunyikan keterangan' : 'Tambah keterangan'"
+                                                    :class="{
+                                                        'text-blue-600': item.showNote,
+                                                        'text-slate-500 hover:text-blue-600': !item.showNote
+                                                    }"
+                                                    class="transition focus:outline-none">
+                                                    <i class="fa-solid fa-note-sticky text-[15px]"></i>
+                                                </button>
 
-                                            <!-- dropdown results -->
-                                            <div x-show="it.results && it.results.length > 0 && open" x-transition
-                                                class="absolute z-30 bg-white border border-slate-200 rounded-lg  w-full mt-1 max-h-56 overflow-auto text-sm">
-                                                <template x-for="r in it.results" :key="r.id">
-                                                    <div @click="selectItem(idx, r); open=false"
-                                                        class="px-3 py-2 hover:bg-blue-50 cursor-pointer">
-                                                        <div class="font-medium text-slate-800" x-text="r.nama_item">
-                                                        </div>
-                                                        <div class="text-xs text-slate-500" x-text="r.kode_item"></div>
+                                                <!-- Input cari item -->
+                                                <div class="relative flex-1">
+                                                    <input type="text" x-model="item.query"
+                                                        @input.debounce.300ms="searchItem(idx)"
+                                                        @focus="item.query.length >= 2 && searchItem(idx); item._dropdownOpen = true"
+                                                        @click="item.query.length >= 2 ? item._dropdownOpen = true : null"
+                                                        @keydown.escape="item._dropdownOpen = false"
+                                                        placeholder="Cari item"
+                                                        class="w-full pl-4 pr-10 py-2.5 rounded-lg border border-slate-300 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition" />
+
+                                                    <!-- Icon pencarian -->
+                                                    <span x-show="!item.item_id" x-cloak
+                                                        x-transition.opacity.duration.150ms
+                                                        class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 p-1 rounded-full pointer-events-none">
+                                                        <i class="fa-solid fa-magnifying-glass"></i>
+                                                    </span>
+
+                                                    <!-- Dropdown hasil pencarian -->
+                                                    <div x-show="item._dropdownOpen && item.query.length >= 2 && item.results && item.results.length > 0"
+                                                        x-cloak x-transition
+                                                        class="absolute z-50 left-0 right-0 mt-1 bg-white border border-slate-200 rounded-lg shadow-lg max-h-60 overflow-y-auto text-sm">
+
+                                                        <template x-for="r in item.results" :key="r.id">
+                                                            <div @click="selectItem(idx, r); item._dropdownOpen = false"
+                                                                class="px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 cursor-pointer rounded transition">
+                                                                <div class="font-medium" x-text="r.nama_item"></div>
+                                                                <div class="text-xs text-slate-500"
+                                                                    x-text="r.kode_item"></div>
+                                                            </div>
+                                                        </template>
                                                     </div>
-                                                </template>
+                                                </div>
                                             </div>
+
+                                            <!-- Form Keterangan -->
+                                            <template x-if="item.showNote">
+                                                <div class="mt-3 space-y-3"
+                                                    x-transition:enter="transition ease-out duration-300"
+                                                    x-transition:enter-start="opacity-0"
+                                                    x-transition:enter-end="opacity-100">
+
+                                                    <!-- Form untuk Item Spandek -->
+                                                    <template x-if="item.is_spandek === true">
+                                                        <div class="space-y-3">
+                                                            <div>
+                                                                <label
+                                                                    class="block text-xs font-medium text-slate-700 mb-1.5">
+                                                                    Keterangan <span class="text-red-500">*</span>
+                                                                </label>
+                                                                <input type="text" x-model="item.keterangan"
+                                                                    placeholder="Contoh: Panjang 6m, Lebar 1m"
+                                                                    class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm text-slate-700 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition" />
+                                                            </div>
+
+                                                            <div>
+                                                                <label
+                                                                    class="block text-xs font-medium text-slate-700 mb-1.5">
+                                                                    Jenis Spandek <span class="text-red-500">*</span>
+                                                                </label>
+                                                                <select x-model="item.catatan_produksi"
+                                                                    class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm text-slate-700 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition bg-white">
+                                                                    <option value="">-- Pilih jenis spandek --
+                                                                    </option>
+                                                                    <option value="Spandek Biasa">Spandek Biasa</option>
+                                                                    <option value="Spandek Pasir">Spandek Pasir</option>
+                                                                    <option value="Spandek Laminasi">Spandek Laminasi
+                                                                    </option>
+                                                                    <option value="Spandek Warna">Spandek Warna</option>
+                                                                </select>
+                                                            </div>
+                                                        </div>
+                                                    </template>
+
+                                                    <!-- Form untuk Item Biasa -->
+                                                    <template x-if="item.is_spandek === false">
+                                                        <div>
+                                                            <label
+                                                                class="block text-xs font-medium text-slate-700 mb-1.5">
+                                                                Keterangan
+                                                            </label>
+                                                            <input type="text" x-model="item.keterangan"
+                                                                placeholder="Catatan tambahan (opsional)"
+                                                                class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm text-slate-700 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition" />
+                                                        </div>
+                                                    </template>
+
+                                                    <!-- Fallback: Item belum dipilih -->
+                                                    <template
+                                                        x-if="item.is_spandek === undefined || item.is_spandek === null">
+                                                        <div
+                                                            class="p-3 bg-amber-50 border border-amber-200 rounded-lg text-center">
+                                                            <small class="text-amber-700 text-xs">
+                                                                Pilih item terlebih dahulu
+                                                            </small>
+                                                        </div>
+                                                    </template>
+                                                </div>
+                                            </template>
                                         </div>
                                     </td>
 
                                     <!-- Gudang -->
-                                    <td class="px-3 py-2 text-center">
-                                        <div class="relative">
-                                            <select x-model="it.gudang_id" @change="updateSatuanOptions(idx)"
-                                                class="border border-slate-300 rounded-lg h-[42px] px-3 pr-10 w-full bg-white appearance-none">
-                                                <option value="">Pilih</option>
-                                                <template x-for="g in getDistinctGudangs(it)" :key="g.gudang_id">
-                                                    <option :value="g.gudang_id.toString()" x-text="g.nama_gudang">
-                                                    </option>
-                                                </template>
-                                            </select>
+                                    <td class="px-5 py-4 align-middle">
+                                        <div class="relative w-full">
+                                            <div
+                                                class="border border-slate-300 rounded-lg px-3 pr-8 py-[6px] text-sm text-slate-700 
+                                        focus-within:ring-2 focus-within:ring-[#344579]/20 focus-within:border-[#344579] transition">
+                                                <div class="flex flex-col leading-tight">
+                                                    <!-- Nama gudang -->
+                                                    <div class="text-[13px] text-slate-700">
+                                                        <span
+                                                            x-text="(getDistinctGudangs(item).find(g => g.gudang_id == item.gudang_id) || getDistinctGudangs(item)[0] || {}).nama_gudang || '-'">
+                                                        </span>
 
-                                            <svg class="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none"
-                                                fill="none" stroke="currentColor" stroke-width="2"
-                                                viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round"
-                                                    d="M19 9l-7 7-7-7" />
-                                            </svg>
+                                                        <!-- Select transparan -->
+                                                        <select x-model="item.gudang_id"
+                                                            @change="updateSatuanOptions(idx)"
+                                                            class="absolute inset-0 opacity-0 cursor-pointer">
+                                                            <template x-for="g in getDistinctGudangs(item)"
+                                                                :key="g.gudang_id">
+                                                                <option :value="g.gudang_id" x-text="g.nama_gudang">
+                                                                </option>
+                                                            </template>
+                                                        </select>
+                                                    </div>
+
+                                                    <!-- Stok -->
+                                                    <div
+                                                        :class="(item.gudang_id && (parseFloat(item.stok) === 0)) ?
+                                                        'text-rose-600 font-semibold text-[11px] mt-[1px]' :
+                                                        'text-slate-500 text-[11px] mt-[1px]'">
+                                                        Stok: <span
+                                                            x-text="item.gudang_id ? formatStok(item.stok) : ''"></span>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <!-- Ikon dropdown -->
+                                            <i
+                                                class="fa-solid fa-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none text-[12px]"></i>
                                         </div>
-                                        <div class="text-xs text-slate-500 mt-1" x-show="it.gudang_id">
-                                            Stok: <span x-text="formatStok(getStockForSelected(it))"></span>
-                                        </div>
+                                    </td>
+
+                                    <!-- Jumlah -->
+                                    <td class="px-5 py-4 text-center align-middle">
+                                        <input type="text" :value="item.qty ? formatJumlah(item.qty) : ''"
+                                            @input="updateQtyFormatted(idx, $event.target.value)"
+                                            class="no-spinner w-24 text-center border border-slate-300 rounded-lg px-2 py-2.5 
+                                        focus:border-blue-500 focus:ring-1 focus:ring-blue-200"
+                                            inputmode="numeric" pattern="[0-9]*" />
                                     </td>
 
                                     <!-- Satuan -->
-                                    <td class="px-3 py-2 text-center">
+                                    <td class="px-5 py-4 align-middle">
                                         <div class="relative">
-                                            <select x-model="it.satuan_id" @change="updateHarga(idx)"
-                                                class="border border-slate-300 rounded-lg h-[42px] px-3 pr-10 w-full bg-white appearance-none">
-                                                <option value="">Pilih</option>
-                                                <template x-for="s in it.filteredSatuans" :key="s.satuan_id">
-                                                    <option :value="s.satuan_id.toString()" x-text="s.nama_satuan">
-                                                    </option>
+                                            <select x-model="item.satuan_id" @change="updateHarga(idx)"
+                                                class="w-full border border-gray-300 rounded-lg pl-3 pr-8 py-2.5 text-sm text-slate-700 
+                                            appearance-none focus:outline-none focus:ring-2 focus:ring-[#344579]/20 
+                                            focus:border-[#344579] transition">
+                                                <template x-for="s in item.filteredSatuans" :key="s.satuan_id">
+                                                    <option :value="s.satuan_id" x-text="s.nama_satuan"></option>
                                                 </template>
                                             </select>
-
-                                            <svg class="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none"
-                                                fill="none" stroke="currentColor" stroke-width="2"
-                                                viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round"
-                                                    d="M19 9l-7 7-7-7" />
-                                            </svg>
+                                            <i
+                                                class="fa-solid fa-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"></i>
                                         </div>
                                     </td>
 
-
-                                    <!-- Qty -->
-                                    <td class="px-3 py-2 text-center">
-                                        <input type="number" min="1" x-model.number="it.qty"
-                                            @input="recalc()"
-                                            class="no-spinner w-16 text-center border border-slate-300 rounded-lg py-2">
-                                    </td>
-
                                     <!-- Harga -->
-                                    <td class="px-3 py-2 text-right">
+                                    <td class="px-5 py-4 text-right align-middle">
                                         <div class="relative">
                                             <span
-                                                class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-sm">Rp</span>
-                                            <input type="text" :value="formatRupiah(it.harga)"
+                                                class="absolute left-2 top-1/2 -translate-y-1/2 text-slate-500 text-sm">Rp</span>
+                                            <input type="text" :value="formatRupiah(item.harga)"
                                                 @input="
-                            const clean = $event.target.value.replace(/\D/g, '');
-                            it.harga = parseInt(clean || 0);
-                            it.manual = true;
-                            recalc();
-                        "
-                                                class="no-spinner pl-8 pr-2 w-full text-right border border-slate-300 rounded-lg py-2">
+                                            const clean = $event.target.value.replace(/\D/g, '');
+                                            item.harga = parseInt(clean || 0);
+                                            item.manual = true;
+                                            recalc();
+                                        "
+                                                class="pl-7 pr-2 w-full text-right border border-slate-300 rounded-lg py-2.5 
+                                            focus:border-blue-500 focus:ring-1 focus:ring-blue-200" />
                                         </div>
                                     </td>
 
                                     <!-- Total -->
-                                    <td class="px-3 py-2 text-right font-semibold">
-                                        Rp <span x-text="formatRupiah((it.qty||0) * (it.harga||0))"></span>
+                                    <td
+                                        class="px-5 py-4 text-right font-semibold text-slate-800 align-middle whitespace-nowrap">
+                                        Rp <span x-text="formatRupiah((item.qty||0) * (item.harga||0))"></span>
                                     </td>
 
-                                    <!-- Delete -->
-                                    <td class="px-3 py-2 text-center">
-                                        <button @click="removeItem(idx)" class="text-rose-600 hover:text-rose-800">
+                                    <!-- Hapus -->
+                                    <td class="px-3 py-4 text-center align-middle">
+                                        <button type="button" @click="removeItem(idx)"
+                                            class="text-rose-600 hover:text-rose-800 transition">
                                             <i class="fa-solid fa-trash"></i>
                                         </button>
                                     </td>
                                 </tr>
                             </template>
                         </tbody>
-
                     </table>
-                </div>
 
-                <!-- add item button -->
-                <div class="mt-4">
-                    <button @click="addItem()"
-                        class="w-full border-2 border-dashed border-slate-300 rounded-lg py-3 text-slate-600 hover:bg-slate-50 flex items-center justify-center gap-2">
-                        <i class="fa-solid fa-plus"></i> Tambah Item
-                    </button>
+                    <!-- Button Tambah Item Manual -->
+                    <div class="m-4">
+                        <button type="button" @click="addItem"
+                            class="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded border-2 border-dashed border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100 transition">
+                            <i class="fa-solid fa-plus"></i> Tambah Item Baru
+                        </button>
+                    </div>
                 </div>
             </div>
 
@@ -263,16 +386,13 @@
                         Pending
                     </button>
 
-
                     <button @click="save()" type="button"
                         class="w-full bg-[#344579] hover:bg-[#2d3f6b] text-white py-2.5 rounded-md text-sm font-medium flex items-center justify-center gap-2">
                         <i class="fa-solid fa-floppy-disk"></i> Simpan Transaksi
                     </button>
                 </div>
             </div>
-
         </main>
-
         <!-- 💳 MODAL PEMBAYARAN -->
         <div x-cloak x-show="showPaymentModal" x-transition.opacity
             class="fixed inset-0 z-[9999] flex items-center justify-center">
@@ -441,15 +561,20 @@
                 showSuccessModal: false,
                 printUrl: '',
 
-
-
-
-
                 init() {
                     this.form.no_faktur = @json($noFaktur ?? '');
                     this.form.tanggal = @json(now()->format('Y-m-d'));
                     this.allItems = @json($itemsJson ?? []);
 
+                    // Debug kategori
+                    console.log('🔍 Total Items Loaded:', this.allItems.length);
+                    console.log('🔍 Sample Item (First 3):', this.allItems.slice(0, 3));
+
+                    const spandekItems = this.allItems.filter(i =>
+                        (i.kategori || '').toLowerCase().includes('spandek') ||
+                        (i.kategori || '').toLowerCase().includes('spandex')
+                    );
+                    console.log('🔍 Items dengan kategori Spandek:', spandekItems.length);
 
                     this.focusScanner();
                     document.addEventListener('click', (e) => {
@@ -457,15 +582,14 @@
                         if (!['input', 'textarea', 'select'].includes(tag)) this.focusScanner();
                     });
                 },
+
                 focusScanner() {
                     setTimeout(() => this.$refs.barcodeInput?.focus(), 100);
                 },
 
-
-
                 recalc() {
                     this.subtotal = this.form.items.reduce(
-                        (sum, it) => sum + ((+it.jumlah || +it.qty || 0) * (+it.harga || 0)),
+                        (sum, it) => sum + ((+it.qty || 0) * (+it.harga || 0)),
                         0
                     );
                     this.total = this.subtotal;
@@ -473,34 +597,106 @@
                 },
 
                 updateKembalian() {
-                    this.kembalian = Math.max(0, (this.uangDiterima || 0) - (this.total || 0));
+                    this.kembalian = Math.max(0, (this.nominalBayar || 0) - (this.total || 0));
                 },
+
+                // === FORMAT JUMLAH ===
+                formatJumlah(val) {
+                    if (val == null || val === '') return '';
+                    const s = val.toString();
+                    const parts = s.split('.');
+                    const intPart = (parts[0] || '0').replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+                    const decPart = parts[1] || '';
+                    return decPart ? `${intPart},${decPart}` : intPart;
+                },
+
+                updateQtyFormatted(idx, val) {
+                    val = (val || '').toString();
+                    if (val.startsWith(',')) val = '0' + val;
+                    val = val.replace(/[^0-9,]/g, '');
+
+                    let parts = val.split(',');
+                    if (parts.length > 2) {
+                        parts = [parts[0], parts.slice(1).join('')];
+                    }
+
+                    parts[0] = parts[0].replace(/^0+(?=\d)/, '');
+                    if (parts[1]) {
+                        parts[1] = parts[1].replace(/[^0-9]/g, '');
+                    }
+
+                    const numericStr = (parts[0] ? parts[0].replace(/\./g, '') : '0') + (parts[1] ? '.' + parts[1] : '');
+                    const numeric = parseFloat(numericStr) || 0;
+                    this.form.items[idx].qty = numeric;
+
+                    this.recalc();
+                },
+
+                // === TOGGLE KETERANGAN ===
+                toggleItemNote(idx) {
+                    console.log('🔍 toggleItemNote called with idx:', idx);
+
+                    const item = this.form.items[idx];
+                    if (!item) {
+                        console.error('❌ Item not found at index:', idx);
+                        return;
+                    }
+
+                    // ✅ Toggle dengan explicit value
+                    const currentValue = item.showNote || false;
+                    item.showNote = !currentValue;
+
+                    // Debug log
+                    console.log('✅ Toggle Note:', {
+                        idx: idx,
+                        showNote: item.showNote,
+                        is_spandek: item.is_spandek,
+                        item_id: item.item_id,
+                        query: item.query,
+                        kategori: item.kategori
+                    });
+
+                    // ✅ Force reactivity dengan $nextTick
+                    this.$nextTick(() => {
+                        this.form.items = [...this.form.items];
+                        console.log('🔄 Form items updated, total:', this.form.items.length);
+                    });
+
+                    // ✅ Notif jika spandek belum lengkap
+                    if (item.showNote && item.is_spandek && (!item.keterangan || !item.catatan_produksi)) {
+                        this.notify('Untuk item spandek, isi KEDUA field: keterangan dan jenis spandek', 'info');
+                    }
+                },
+
                 // === TAMBAH ITEM MANUAL ===
                 addItem() {
                     this.form.items.push({
                         item_id: null,
                         query: '',
+                        kategori: '',
+                        is_spandek: false, // ✅ WAJIB ada dari awal
+                        showNote: false, // ✅ WAJIB ada dari awal
                         keterangan: '',
+                        catatan_produksi: '',
                         results: [],
                         gudang_id: '',
                         gudangs: [],
                         satuan_id: '',
                         filteredSatuans: [],
-                        qty: 1, // 👈 ganti jumlah ke qty
+                        qty: 1, // Note: di penjualan-cepat pakai 'qty'
                         harga: 0,
                         stok: 0,
-                        harga_manual: false
+                        harga_manual: false,
+                        _dropdownOpen: false
                     });
-
-
-
                 },
 
                 removeItem(i) {
                     this.form.items.splice(i, 1);
+                    this.recalc();
                 },
 
-                // === SEARCH ITEM (SAMA PERSIS DENGAN PENJUALAN BIASA) ===
+                // === SEARCH ITEM ===
                 searchItem(idx) {
                     const q = this.form.items[idx].query.toLowerCase();
                     if (!q || q.length < 2) {
@@ -516,7 +712,7 @@
                         .slice(0, 20);
                 },
 
-                // === PILIH ITEM DARI DROPDOWN ===
+                // === PILIH ITEM ===
                 selectItem(idx, item) {
                     const row = this.form.items[idx];
                     row.item_id = item.id;
@@ -524,6 +720,23 @@
                     row.results = [];
                     row.gudangs = item.gudangs || [];
                     row.harga_manual = false;
+
+                    // ✅ PENTING: JANGAN RESET showNote - PERTAHANKAN NILAI LAMA
+                    if (row.showNote === undefined) {
+                        row.showNote = false;
+                    }
+
+                    // ✅ Set kategori dan is_spandek
+                    row.kategori = item.kategori || '';
+                    row.is_spandek = row.kategori &&
+                        (row.kategori.toLowerCase().includes('spandek') ||
+                            row.kategori.toLowerCase().includes('spandex'));
+
+                    // ✅ Reset keterangan hanya jika kosong
+                    if (!row.keterangan) {
+                        row.keterangan = '';
+                        row.catatan_produksi = '';
+                    }
 
                     if (row.gudangs.length > 0) {
                         row.gudang_id = row.gudangs[0].gudang_id;
@@ -535,9 +748,11 @@
                         row.stok = 0;
                         row.harga = 0;
                     }
+
+                    this.recalc();
                 },
 
-                // === FILTER GUDANG TANPA DUPLIKAT ===
+                // === FILTER GUDANG ===
                 getDistinctGudangs(item) {
                     if (!item.gudangs || item.gudangs.length === 0) return [];
                     const seen = new Set();
@@ -548,7 +763,7 @@
                     });
                 },
 
-                // === UPDATE DROPDOWN SATUAN ===
+                // === UPDATE SATUAN ===
                 updateSatuanOptions(idx) {
                     const item = this.form.items[idx];
                     if (!item.gudangs || item.gudangs.length === 0) {
@@ -556,16 +771,12 @@
                         return;
                     }
 
-                    // filter satuan berdasarkan gudang
                     item.filteredSatuans = item.gudangs.filter(g => g.gudang_id == item.gudang_id);
 
                     if (item.filteredSatuans.length > 0) {
-                        // ambil default satuan kalau belum ada
                         if (!item.satuan_id) {
                             item.satuan_id = item.filteredSatuans[0].satuan_id;
                         }
-
-                        // selalu update stok & harga walau satuan sudah terisi
                         this.updateStockAndPrice(idx);
                     } else {
                         item.satuan_id = '';
@@ -574,7 +785,12 @@
                     }
                 },
 
-                // === HARGA BERDASARKAN LEVEL ===
+                updateHarga(idx) {
+                    this.updateStockAndPrice(idx);
+                    this.recalc();
+                },
+
+                // === HARGA BY LEVEL ===
                 getHargaByLevel(g) {
                     if (!g) return 0;
                     const level = (this.selectedPelangganLevel || 'retail').toLowerCase();
@@ -582,10 +798,8 @@
                     if (level === 'grosir') return parseFloat(g.harga_grosir || g.harga_retail || 0);
                     if (level === 'partai_kecil') return parseFloat(g.partai_kecil || g.harga_retail || 0);
 
-                    // default ke harga retail
                     return parseFloat(g.harga_retail || 0);
                 },
-
 
                 // === UPDATE STOK & HARGA ===
                 updateStockAndPrice(idx) {
@@ -601,18 +815,11 @@
                         item.stok = 0;
                         item.harga = 0;
                     }
+
+                    this.recalc();
                 },
 
-                getStockForSelected(it) {
-                    if (!it.gudang_id || !it.satuan_id) return 0;
-                    const found = it.gudangs.find(
-                        g => g.gudang_id == it.gudang_id && g.satuan_id == it.satuan_id
-                    );
-                    return found ? found.stok || 0 : 0;
-                },
-
-
-                // === UTIL ===
+                // === FORMAT UTIL ===
                 formatRupiah(val) {
                     const num = parseFloat(val) || 0;
                     return new Intl.NumberFormat('id-ID').format(num);
@@ -627,17 +834,30 @@
                             maximumFractionDigits: 2
                         }).replace('.', ',');
                 },
+                fmtDate(dateStr) {
+                    if (!dateStr) return '-';
 
-                fmtDate(v) {
-                    if (!v) return '-';
-                    const d = new Date(v);
-                    return d.toLocaleDateString('id-ID', {
-                        year: 'numeric',
-                        month: 'long',
-                        day: 'numeric'
-                    });
+                    try {
+                        const date = new Date(dateStr);
+
+                        // Cek apakah tanggal valid
+                        if (isNaN(date.getTime())) return '-';
+
+                        const options = {
+                            weekday: 'long', // Senin, Selasa, dst
+                            day: 'numeric', // 1, 2, 3, dst
+                            month: 'long', // Januari, Februari, dst
+                            year: 'numeric' // 2025
+                        };
+
+                        return date.toLocaleDateString('id-ID', options);
+                    } catch (e) {
+                        console.error('Error formatting date:', e);
+                        return '-';
+                    }
                 },
 
+                // === BARCODE ===
                 async handleBarcode(e) {
                     const code = e.target.value.trim();
                     if (!code) return;
@@ -645,15 +865,13 @@
                     try {
                         const res = await fetch(`/items/barcode/${encodeURIComponent(code)}`);
                         if (!res.ok) {
-                            (this.notify || (() => {}))(`Item dengan kode "${code}" tidak ditemukan`, 'error');
+                            this.notify(`Item dengan kode "${code}" tidak ditemukan`, 'error');
                             e.target.value = '';
                             return;
                         }
 
                         const data = await res.json();
-                        console.log('DATA SCAN:', data);
 
-                        // jika item sudah ada, cukup tambah qty
                         const existingIdx = this.form.items.findIndex(i => i.item_id === data.id);
                         if (existingIdx !== -1) {
                             this.form.items[existingIdx].qty += 1;
@@ -663,85 +881,101 @@
                             return;
                         }
 
-                        // ambil gudang pertama (default)
-                        const g = data.gudangs?.[0] || {};
+                        // ✅ TAMBAHKAN inisialisasi lengkap untuk item baru
+                        const kategori = data.kategori || '';
+                        const isSpandek = kategori &&
+                            (kategori.toLowerCase().includes('spandek') ||
+                                kategori.toLowerCase().includes('spandex'));
 
-                        // buat item baru
-                        const newItem = {
+                        this.form.items.push({
                             item_id: data.id,
                             query: data.nama_item,
+                            kategori: kategori,
+                            is_spandek: isSpandek,
+                            showNote: false, // ✅ WAJIB
                             keterangan: '',
+                            catatan_produksi: '',
+                            gudang_id: data.gudangs?.[0]?.gudang_id || '',
                             gudangs: data.gudangs || [],
-                            gudang_id: g.gudang_id ? g.gudang_id.toString() : '',
-                            satuan_id: g.satuan_id ? g.satuan_id.toString() : '',
-                            filteredSatuans: (data.gudangs || []).filter(gg => gg.gudang_id == g.gudang_id)
-                                .map(gg => ({
-                                    satuan_id: gg.satuan_id,
-                                    nama_satuan: gg.nama_satuan
-                                })),
-
+                            satuan_id: '',
+                            filteredSatuans: [],
                             qty: 1,
-                            stok: parseFloat(g.stok || 0),
-                            harga: parseFloat(g.harga_retail || 0), // default retail
+                            harga: 0,
+                            stok: 0,
+                            results: [],
                             harga_manual: false,
-                            results: []
-                        };
-
-                        // push item baru
-                        this.form.items.push(newItem);
-
-                        // trigger reactivity
-                        this.form.items = JSON.parse(JSON.stringify(this.form.items));
-
-                        // pastikan gudang & satuan terisi default
-                        this.$nextTick(() => {
-                            const idx = this.form.items.length - 1;
-                            const current = this.form.items[idx];
-                            const g = current.gudangs?.[0] || {};
-
-                            // Pastikan gudang terisi
-                            if (!current.gudang_id && current.gudangs.length > 0) {
-                                current.gudang_id = current.gudangs[0].gudang_id.toString();
-                            }
-
-                            // Panggil updateSatuanOptions dulu untuk isi filteredSatuans
-                            this.updateSatuanOptions(idx);
-
-                            // Pastikan satuan terisi dari filteredSatuans
-                            if (!current.satuan_id && current.filteredSatuans.length > 0) {
-                                current.satuan_id = current.filteredSatuans[0].satuan_id.toString();
-                            }
-
-                            // Update stok & harga
-                            this.updateStockAndPrice(idx);
-
-                            // Pastikan harga ambil dari retail
-                            current.harga = this.getHargaByLevel(
-                                current.gudangs.find(
-                                    gg => gg.gudang_id == current.gudang_id && gg.satuan_id == current
-                                    .satuan_id
-                                )
-                            );
-
-                            // Update ulang form.items agar Alpine reactive
-                            this.form.items = JSON.parse(JSON.stringify(this.form.items));
-                            this.recalc();
+                            _dropdownOpen: false
                         });
 
-
-                        (this.notify || (() => {}))(`${data.nama_item} ditambahkan`, 'success');
+                        const idx = this.form.items.length - 1;
+                        this.updateSatuanOptions(idx);
+                        this.recalc();
+                        this.notify(`${data.nama_item} ditambahkan`, 'success');
                     } catch (err) {
                         console.error("Error handleBarcode:", err);
-                        (this.notify || (() => {}))('Terjadi kesalahan saat memproses barcode', 'error');
+                        this.notify('Terjadi kesalahan saat memproses barcode', 'error');
                     } finally {
                         e.target.value = '';
                         setTimeout(() => this.$refs.barcodeInput?.focus(), 100);
                     }
                 },
 
+                // === VALIDASI ===
+                isItemNoteComplete(item) {
+                    if (!item.is_spandek) {
+                        return true;
+                    }
+                    return item.keterangan &&
+                        item.keterangan.trim() !== '' &&
+                        item.catatan_produksi &&
+                        item.catatan_produksi.trim() !== '';
+                },
 
+                validateBeforeSave() {
+                    if (this.form.items.length === 0) {
+                        this.notify('Belum ada item yang ditambahkan', 'error');
+                        return false;
+                    }
 
+                    // Validasi khusus spandek
+                    for (const item of this.form.items) {
+                        if (item.is_spandek === true) {
+                            if (!item.keterangan || item.keterangan.trim() === '') {
+                                this.notify(`Keterangan wajib diisi untuk item: ${item.query}`, 'error');
+                                return false;
+                            }
+                            if (!item.catatan_produksi || item.catatan_produksi.trim() === '') {
+                                this.notify(`Jenis spandek wajib dipilih untuk item: ${item.query}`, 'error');
+                                return false;
+                            }
+                        }
+                    }
+
+                    // Validasi stok
+                    for (const item of this.form.items) {
+                        if (item.qty > item.stok) {
+                            this.notify(`Stok tidak cukup untuk item: ${item.query}`, 'error');
+                            return false;
+                        }
+                    }
+
+                    // Validasi umum
+                    const allValid = this.form.items.every(i =>
+                        i.item_id && i.gudang_id && i.satuan_id && i.qty > 0 && i.harga >= 0
+                    );
+
+                    if (!allValid) {
+                        this.notify('Mohon lengkapi semua data item penjualan.', 'error');
+                        return false;
+                    }
+
+                    return true;
+                },
+
+                // === SAVE ===
                 async save() {
+                    if (!this.validateBeforeSave()) return;
+
                     try {
                         const res = await fetch('/penjualan-cepat/store', {
                             method: 'POST',
@@ -753,14 +987,27 @@
                                 no_faktur: this.form.no_faktur,
                                 tanggal: this.form.tanggal,
                                 total: this.total,
-                                items: this.form.items.map(it => ({
-                                    item_id: it.item_id,
-                                    gudang_id: it.gudang_id,
-                                    satuan_id: it.satuan_id,
-                                    jumlah: it.qty,
-                                    harga: it.harga,
-                                    total: it.qty * it.harga,
-                                }))
+                                items: this.form.items.map(it => {
+                                    // Gabungkan keterangan dan catatan_produksi
+                                    let keteranganFinal = it.keterangan || '';
+
+                                    if (it.is_spandek && it.catatan_produksi) {
+                                        if (keteranganFinal) {
+                                            keteranganFinal += ' - ';
+                                        }
+                                        keteranganFinal += it.catatan_produksi;
+                                    }
+
+                                    return {
+                                        item_id: it.item_id,
+                                        gudang_id: it.gudang_id,
+                                        satuan_id: it.satuan_id,
+                                        jumlah: it.qty,
+                                        harga: it.harga,
+                                        total: it.qty * it.harga,
+                                        keterangan: keteranganFinal
+                                    };
+                                })
                             }),
                         });
 
@@ -769,16 +1016,11 @@
                         if (data.success) {
                             this.showPaymentModal = true;
                             this.penjualanId = data.id;
-
-                            // 🧠 Tambahkan ini:
                             this.penjualanData = {
                                 no_faktur: this.form.no_faktur,
                                 total: this.total
                             };
-
                             this.notify('Transaksi disimpan. Lanjut ke pembayaran.', 'success');
-
-
                         } else {
                             this.notify(data.message || 'Gagal menyimpan transaksi', 'error');
                         }
@@ -788,12 +1030,12 @@
                 },
 
                 async savePending() {
-                    try {
-                        if (!this.form.items.length) {
-                            this.notify('Belum ada item dalam transaksi.', 'error');
-                            return;
-                        }
+                    if (this.form.items.length === 0) {
+                        this.notify('Belum ada item dalam transaksi.', 'error');
+                        return;
+                    }
 
+                    try {
                         const res = await fetch('/penjualan-cepat/store', {
                             method: 'POST',
                             headers: {
@@ -805,15 +1047,27 @@
                                 tanggal: this.form.tanggal,
                                 total: this.total,
                                 status_bayar: 'unpaid',
-                                is_draft: 1, // 👈 tambahan penting
-                                items: this.form.items.map(it => ({
-                                    item_id: it.item_id,
-                                    gudang_id: it.gudang_id,
-                                    satuan_id: it.satuan_id,
-                                    jumlah: it.qty,
-                                    harga: it.harga,
-                                    total: it.qty * it.harga,
-                                }))
+                                is_draft: 1,
+                                items: this.form.items.map(it => {
+                                    let keteranganFinal = it.keterangan || '';
+
+                                    if (it.is_spandek && it.catatan_produksi) {
+                                        if (keteranganFinal) {
+                                            keteranganFinal += ' - ';
+                                        }
+                                        keteranganFinal += it.catatan_produksi;
+                                    }
+
+                                    return {
+                                        item_id: it.item_id,
+                                        gudang_id: it.gudang_id,
+                                        satuan_id: it.satuan_id,
+                                        jumlah: it.qty,
+                                        harga: it.harga,
+                                        total: it.qty * it.harga,
+                                        keterangan: keteranganFinal
+                                    };
+                                })
                             }),
                         });
 
@@ -830,8 +1084,7 @@
                     }
                 },
 
-
-
+                // === PEMBAYARAN ===
                 handleNominalInput(e) {
                     let value = e.target.value.replace(/\D/g, '');
                     if (!value) {
@@ -844,7 +1097,6 @@
                     this.nominalBayar = parseInt(value);
                     this.nominalBayarDisplay = new Intl.NumberFormat('id-ID').format(this.nominalBayar);
 
-                    // hitung kembalian
                     if (this.penjualanData) {
                         const total = parseInt(this.penjualanData.total);
                         this.kembalian = Math.max(0, this.nominalBayar - total);
@@ -858,7 +1110,7 @@
 
                 async simpanPembayaran() {
                     if (!this.penjualanId || this.nominalBayar <= 0) {
-                        this.showToast('Nominal pembayaran belum diisi.', 'error');
+                        this.notify('Nominal pembayaran belum diisi.', 'error');
                         return;
                     }
 
@@ -892,16 +1144,14 @@
                         this.showPaymentModal = false;
                         this.showSuccessModal = true;
                     } catch (e) {
-                        this.showToast(e.message || 'Gagal menyimpan pembayaran.', 'error');
+                        this.notify(e.message || 'Gagal menyimpan pembayaran.', 'error');
                     }
                 },
 
                 closeSuccessModal() {
                     this.showSuccessModal = false;
-                    // reload halaman kasir supaya form kosong lagi
                     setTimeout(() => window.location.reload(), 800);
                 },
-
 
                 notify(message, type = 'info') {
                     console.log(`[${type.toUpperCase()}] ${message}`);
@@ -917,13 +1167,9 @@
                     document.body.appendChild(el);
                     setTimeout(() => el.remove(), 2500);
                 },
-
-
             };
         }
     </script>
-
-
 </body>
 
 </html>

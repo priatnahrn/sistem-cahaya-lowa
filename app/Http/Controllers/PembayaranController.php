@@ -88,58 +88,190 @@ class PembayaranController extends Controller
     {
         $request->validate([
             'penjualan_id' => 'required|exists:penjualans,id',
-            'jumlah_bayar' => 'required|numeric|min:1',
+            'jumlah_bayar' => 'required|numeric',
             'method' => 'required|in:cash,transfer,qris,wallet',
             'keterangan' => 'nullable|string|max:255',
+            'is_adjustment' => 'nullable|boolean',
+            'adjustment_amount' => 'nullable|numeric',
         ]);
 
-        $penjualan = Penjualan::findOrFail($request->penjualan_id);
+        DB::beginTransaction();
 
-        // Hitung total pembayaran sebelumnya
-        $totalSebelumnya = Pembayaran::where('penjualan_id', $penjualan->id)->sum('jumlah_bayar');
+        try {
+            $penjualan = Penjualan::findOrFail($request->penjualan_id);
+            $isAdjustment = $request->boolean('is_adjustment', false);
+            $adjustmentAmount = $request->input('adjustment_amount', 0);
 
-        // Batasi agar tidak melebihi total penjualan
-        $jumlahBayar = min($request->jumlah_bayar, $penjualan->total - $totalSebelumnya);
+            // ✅ FIX: Hitung HANYA pembayaran positif (exclude pengembalian)
+            $totalPembayaranSebelumnya = Pembayaran::where('penjualan_id', $penjualan->id)
+                ->where('jumlah_bayar', '>', 0) // ✅ HANYA pembayaran, BUKAN pengembalian
+                ->sum('jumlah_bayar');
 
-        $totalSekarang = $totalSebelumnya + $jumlahBayar;
-        $sisa = max(0, $penjualan->total - $totalSekarang);
-        $isLunas = $totalSekarang >= $penjualan->total;
-
-        // Simpan pembayaran
-        $pembayaran = Pembayaran::create([
-            'penjualan_id' => $penjualan->id,
-            'tanggal' => now(),
-            'jumlah_bayar' => $jumlahBayar,
-            'sisa' => $sisa,
-            'method' => $request->method,
-            'keterangan' => $request->keterangan,
-            'created_by' => Auth::id(),
-            'updated_by' => Auth::id(),
-        ]);
-
-        // Update sisa semua pembayaran terkait
-        Pembayaran::where('penjualan_id', $penjualan->id)->update(['sisa' => $sisa]);
-
-        // Update status penjualan & tagihan
-        $penjualan->update([
-            'status_bayar' => $isLunas ? 'paid' : 'unpaid',
-        ]);
-
-        if ($tagihan = TagihanPenjualan::where('penjualan_id', $penjualan->id)->first()) {
-            $tagihan->update([
-                'status_tagihan' => $isLunas ? 'lunas' : 'belum_lunas',
-                'sisa' => $sisa,
+            Log::info('📊 Debug Pembayaran:', [
+                'penjualan_id' => $penjualan->id,
+                'total_penjualan' => $penjualan->total,
+                'total_pembayaran_sebelumnya' => $totalPembayaranSebelumnya,
+                'is_adjustment' => $isAdjustment,
+                'adjustment_amount' => $adjustmentAmount,
+                'jumlah_bayar_request' => $request->jumlah_bayar,
             ]);
+
+            if ($isAdjustment) {
+                // === ADJUSTMENT LOGIC ===
+
+                if ($adjustmentAmount > 0) {
+                    // ✅ TOTAL NAIK → Perlu pembayaran tambahan
+                    $jumlahBayar = $request->jumlah_bayar;
+
+                    if ($jumlahBayar < $adjustmentAmount) {
+                        DB::rollBack();
+                        return response()->json([
+                            'success' => false,
+                            'message' => 'Nominal pembayaran kurang dari kekurangan yang harus dibayar.',
+                        ], 400);
+                    }
+
+                    // ✅ HITUNG TOTAL SETELAH PEMBAYARAN TAMBAHAN
+                    $totalSekarang = $totalPembayaranSebelumnya + $jumlahBayar;
+
+                    // ✅ HITUNG SISA
+                    $sisa = max(0, $penjualan->total - $totalSekarang);
+
+                    // ✅ CEK LUNAS
+                    $isLunas = $sisa == 0;
+
+                    Log::info('💰 Perhitungan Adjustment (Total Naik):', [
+                        'total_pembayaran_sebelumnya' => $totalPembayaranSebelumnya,
+                        'jumlah_bayar_tambahan' => $jumlahBayar,
+                        'total_sekarang' => $totalSekarang,
+                        'total_penjualan' => $penjualan->total,
+                        'sisa' => $sisa,
+                        'is_lunas' => $isLunas,
+                    ]);
+
+                    // Simpan pembayaran tambahan
+                    $pembayaran = Pembayaran::create([
+                        'penjualan_id' => $penjualan->id,
+                        'tanggal' => now(),
+                        'jumlah_bayar' => $jumlahBayar,
+                        'sisa' => $sisa,
+                        'method' => $request->method,
+                        'keterangan' => $request->keterangan ?? "Pembayaran tambahan karena perubahan total transaksi (kekurangan Rp " . number_format($adjustmentAmount, 0, ',', '.') . ")",
+                        'created_by' => Auth::id(),
+                        'updated_by' => Auth::id(),
+                    ]);
+
+                    // ✅ Update sisa SEMUA pembayaran terkait
+                    Pembayaran::where('penjualan_id', $penjualan->id)->update(['sisa' => $sisa]);
+
+                    // ✅ Update status penjualan
+                    $penjualan->update([
+                        'status_bayar' => $isLunas ? 'paid' : 'unpaid',
+                    ]);
+
+                    Log::info('✅ Status Penjualan Updated:', [
+                        'status_bayar' => $penjualan->status_bayar,
+                        'sisa' => $sisa,
+                    ]);
+
+                    // ✅ Update tagihan jika ada
+                    if ($tagihan = TagihanPenjualan::where('penjualan_id', $penjualan->id)->first()) {
+                        $tagihan->update([
+                            'status_tagihan' => $isLunas ? 'lunas' : 'belum_lunas',
+                            'sisa' => $sisa,
+                        ]);
+                    }
+                } elseif ($adjustmentAmount < 0) {
+                    // ✅ TOTAL TURUN → Ada pengembalian dana
+                    $pengembalian = abs($adjustmentAmount);
+
+                    // Catat sebagai pembayaran negatif (pengembalian)
+                    $pembayaran = Pembayaran::create([
+                        'penjualan_id' => $penjualan->id,
+                        'tanggal' => now(),
+                        'jumlah_bayar' => -$pengembalian, // ✅ Nilai negatif untuk pengembalian
+                        'sisa' => 0,
+                        'method' => 'cash',
+                        'keterangan' => $request->keterangan ?? "Pengembalian dana karena pengurangan total transaksi (kelebihan bayar Rp " . number_format($pengembalian, 0, ',', '.') . ")",
+                        'created_by' => Auth::id(),
+                        'updated_by' => Auth::id(),
+                    ]);
+
+                    // ✅ Update sisa semua pembayaran (tetap 0 karena sudah lunas)
+                    Pembayaran::where('penjualan_id', $penjualan->id)->update(['sisa' => 0]);
+
+                    // ✅ Status PASTI LUNAS
+                    $penjualan->update([
+                        'status_bayar' => 'paid',
+                    ]);
+
+                    // ✅ Update tagihan jika ada
+                    if ($tagihan = TagihanPenjualan::where('penjualan_id', $penjualan->id)->first()) {
+                        $tagihan->update([
+                            'status_tagihan' => 'lunas',
+                            'sisa' => 0,
+                        ]);
+                    }
+                } else {
+                    DB::rollBack();
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Tidak ada perubahan total yang memerlukan adjustment.',
+                    ], 400);
+                }
+            } else {
+                // === PEMBAYARAN NORMAL ===
+
+                // ✅ FIX: Gunakan total pembayaran yang sudah exclude pengembalian
+                $jumlahBayar = min($request->jumlah_bayar, $penjualan->total - $totalPembayaranSebelumnya);
+                $totalSekarang = $totalPembayaranSebelumnya + $jumlahBayar;
+                $sisa = max(0, $penjualan->total - $totalSekarang);
+                $isLunas = $totalSekarang >= $penjualan->total;
+
+                $pembayaran = Pembayaran::create([
+                    'penjualan_id' => $penjualan->id,
+                    'tanggal' => now(),
+                    'jumlah_bayar' => $jumlahBayar,
+                    'sisa' => $sisa,
+                    'method' => $request->method,
+                    'keterangan' => $request->keterangan,
+                    'created_by' => Auth::id(),
+                    'updated_by' => Auth::id(),
+                ]);
+
+                Pembayaran::where('penjualan_id', $penjualan->id)->update(['sisa' => $sisa]);
+
+                $penjualan->update([
+                    'status_bayar' => $isLunas ? 'paid' : 'unpaid',
+                ]);
+
+                if ($tagihan = TagihanPenjualan::where('penjualan_id', $penjualan->id)->first()) {
+                    $tagihan->update([
+                        'status_tagihan' => $isLunas ? 'lunas' : 'belum_lunas',
+                        'sisa' => $sisa,
+                    ]);
+                }
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => $isAdjustment ?
+                    'Pembayaran adjustment berhasil disimpan.' :
+                    'Pembayaran berhasil disimpan dan status disinkronkan.',
+                'data' => $pembayaran,
+            ]);
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            Log::error('Store Pembayaran error: ' . $e->getMessage());
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal menyimpan pembayaran: ' . $e->getMessage(),
+            ], 500);
         }
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Pembayaran berhasil disimpan dan status disinkronkan.',
-            'data' => $pembayaran,
-        ]);
     }
-
-
 
 
     /**

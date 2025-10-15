@@ -139,7 +139,7 @@
                                 <i class="fa-solid" :class="sortIcon('tanggal')"></i>
                             </th>
                             <th class="px-4 py-3 cursor-pointer" @click="toggleSort('penjualan')">
-                                Penjualan
+                                Pelanggan
                                 <i class="fa-solid" :class="sortIcon('penjualan')"></i>
                             </th>
                             <th class="px-4 py-3 text-right cursor-pointer" @click="toggleSort('total_penjualan')">
@@ -418,8 +418,8 @@
         {{-- MODAL INFO SUDAH LUNAS --}}
         {{-- ========================= --}}
         <div x-cloak x-show="showLunasModal" x-transition.opacity
-            class="fixed inset-0 z-[99999] flex items-center justify-center">
-            <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" @click="closeLunasModal()"></div>
+            class="fixed inset-0 z-[99999] flex items-center justify-center min-h-screen">
+            <div class="absolute inset-0 bg-black/50 " @click="closeLunasModal()"></div>
 
             <div
                 class="bg-white rounded-2xl shadow-xl w-11/12 md:w-[420px] z-50 overflow-hidden animate-fadeIn text-center p-6">
@@ -499,7 +499,7 @@
                     'id' => $p->id,
                     'no_transaksi' => optional($p->penjualan)->no_faktur ?? '-',
                     'tanggal' => $tanggal,
-                    'penjualan' => optional($p->penjualan->pelanggan)->nama_pelanggan ?? '-',
+                    'penjualan' => optional($p->penjualan->pelanggan)->nama_pelanggan ?? 'Customer',
                     'total_penjualan' => (float) optional($p->penjualan)->total ?? 0, // ✅ tambahkan ini
                     'total_bayar' => (float) $p->jumlah_bayar ?? 0,
                     'status' => $p->sisa == 0 ? 'lunas' : 'belum_lunas',
