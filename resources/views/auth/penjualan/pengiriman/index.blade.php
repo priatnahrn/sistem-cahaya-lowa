@@ -389,14 +389,14 @@
                 <i class="fa-solid fa-eye text-blue-500"></i> Detail
             </button>
 
-            <button @click="confirmDelete(dropdownData)"
+            {{-- <button @click="confirmDelete(dropdownData)"
                 class="w-full text-left px-4 py-2 text-sm hover:bg-red-50 flex items-center gap-2 text-red-600">
                 <i class="fa-solid fa-trash"></i> Hapus
-            </button>
+            </button> --}}
         </div>
 
         {{-- 🗑️ DELETE MODAL (Modern Design - sama seperti Penjualan) --}}
-        <div x-cloak x-show="showDeleteModal" aria-modal="true" role="dialog"
+        {{-- <div x-cloak x-show="showDeleteModal" aria-modal="true" role="dialog"
             class="fixed inset-0 z-50 flex items-center justify-center min-h-screen">
 
             <!-- 🌫 Overlay -->
@@ -469,7 +469,7 @@
                     </button>
                 </div>
             </div>
-        </div>
+        </div> --}}
 
 
     </div>

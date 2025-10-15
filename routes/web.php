@@ -19,6 +19,7 @@ use App\Http\Controllers\KategoriItemController;
 use App\Http\Controllers\GudangController;
 use App\Http\Controllers\ProduksiController;
 use App\Http\Controllers\MutasiStokController;
+use App\Http\Controllers\ReturPenjualanController;
 
 // ========================
 // 🔹 Root Route
@@ -83,26 +84,26 @@ Route::middleware('auth')->group(function () {
     // Retur Penjualan
     // ------------------------
     Route::prefix('penjualan/retur-penjualan')->group(function () {
-        Route::get('/', [App\Http\Controllers\ReturPenjualanController::class, 'index'])
+        Route::get('/', [ReturPenjualanController::class, 'index'])
             ->name('retur-penjualan.index');
 
-        Route::get('/create', [App\Http\Controllers\ReturPenjualanController::class, 'create'])
+        Route::get('/create', [ReturPenjualanController::class, 'create'])
             ->name('retur-penjualan.create');
 
-        Route::post('/', [App\Http\Controllers\ReturPenjualanController::class, 'store'])
+        Route::post('/', [ReturPenjualanController::class, 'store'])
             ->name('retur-penjualan.store');
 
-        Route::get('/{id}', [App\Http\Controllers\ReturPenjualanController::class, 'show'])
+        Route::get('/{id}', [ReturPenjualanController::class, 'show'])
             ->name('retur-penjualan.show');
 
-        Route::put('/{id}', [App\Http\Controllers\ReturPenjualanController::class, 'update'])
+        Route::put('/{id}', [ReturPenjualanController::class, 'update'])
             ->name('retur-penjualan.update');
 
-        Route::delete('/{id}', [App\Http\Controllers\ReturPenjualanController::class, 'destroy'])
+        Route::delete('/{id}', [ReturPenjualanController::class, 'destroy'])
             ->name('retur-penjualan.destroy');
 
         // 🔹 API: ambil item berdasarkan penjualan
-        Route::get('/items/by-penjualan/{id}', [App\Http\Controllers\ReturPenjualanController::class, 'getItemsByPenjualan'])
+        Route::get('/items/by-penjualan/{id}', [ReturPenjualanController::class, 'getItemsByPenjualan'])
             ->name('retur-penjualan.get-items');
     });
 

@@ -23,33 +23,33 @@ use Picqer\Barcode\BarcodeGeneratorSVG;
 class PenjualanController extends Controller
 {
 
-    private function recalculateTotalStokGlobal($itemId)
+    /**
+     * Update total_stok untuk 1 baris ItemGudang
+     * total_stok = stok × konversi satuan ke satuan base
+     */
+    private function updateTotalStok($itemId, $gudangId, $satuanId)
     {
-        $itemGudangs = ItemGudang::where('item_id', $itemId)
+        $ig = ItemGudang::where('item_id', $itemId)
+            ->where('gudang_id', $gudangId)
+            ->where('satuan_id', $satuanId)
             ->with('satuan:id,jumlah')
-            ->get();
+            ->first();
 
-        if ($itemGudangs->isEmpty()) {
-            Log::warning("❌ Tidak ada data ItemGudang untuk item_id=$itemId");
+        if (!$ig) {
+            Log::warning("❌ ItemGudang tidak ditemukan: item_id=$itemId, gudang_id=$gudangId, satuan_id=$satuanId");
             return;
         }
 
-        // Hitung total stok global (semua gudang)
-        $totalStokGlobal = 0;
-        foreach ($itemGudangs as $ig) {
-            $stok = (float) ($ig->stok ?? 0);
-            $konversi = (float) ($ig->satuan->jumlah ?? 1);
-            $totalStokGlobal += $stok * $konversi;
-        }
+        $stok = (float) ($ig->stok ?? 0);
+        $konversi = (float) ($ig->satuan->jumlah ?? 1);
+        $totalStokBaru = $stok * $konversi;
 
-        // Update semua baris item ini (di semua gudang)
-        foreach ($itemGudangs as $ig) {
-            $ig->total_stok = $totalStokGlobal;
-            $ig->save();
-        }
+        $ig->total_stok = $totalStokBaru;
+        $ig->save();
 
-        Log::info("🌍 Total stok GLOBAL item_id=$itemId diset ke $totalStokGlobal");
+        Log::info("📊 Total stok diupdate: item_id=$itemId, gudang_id=$gudangId, satuan_id=$satuanId → stok=$stok × konversi=$konversi = total_stok=$totalStokBaru");
     }
+
     public function index()
     {
         $penjualans = Penjualan::with(['pelanggan', 'items.item', 'pengiriman'])
@@ -166,8 +166,8 @@ class PenjualanController extends Controller
                         Log::info("🧾 Stok berkurang: item_id={$it['item_id']} gudang_id={$it['gudang_id']} satuan_id={$it['satuan_id']} dari {$stokLama} ke {$ig->stok}");
                     }
 
-                    // 🔁 Setelah stok satuan dikurangi, hitung ulang total stok global
-                    $this->recalculateTotalStokGlobal($it['item_id']);
+                    // ✅ Update total_stok untuk baris ini
+                    $this->updateTotalStok($it['item_id'], $it['gudang_id'], $it['satuan_id']);
                 }
             }
 
@@ -175,10 +175,10 @@ class PenjualanController extends Controller
             if ($data['mode'] === 'antar' && !$isDraft) {
                 Pengiriman::create([
                     'penjualan_id' => $penjualan->id,
-                    'no_pengiriman' => $penjualan->no_faktur, // ✅ Pakai no_faktur penjualan
-                    'tanggal_pengiriman' => $penjualan->tanggal, // Belum dikirim
-                    'status_pengiriman' => 'perlu_dikirim', // pending, dalam_perjalanan, selesai
-                    'supir' => null, // Akan diisi nanti
+                    'no_pengiriman' => $penjualan->no_faktur,
+                    'tanggal_pengiriman' => $penjualan->tanggal,
+                    'status_pengiriman' => 'perlu_dikirim',
+                    'supir' => null,
                 ]);
 
                 Log::info("🚚 Data pengiriman dibuat: no_pengiriman={$penjualan->no_faktur}, penjualan_id={$penjualan->id}");
@@ -188,12 +188,12 @@ class PenjualanController extends Controller
             if ($penjualan->status_bayar === 'unpaid' && !$isDraft) {
                 TagihanPenjualan::create([
                     'penjualan_id' => $penjualan->id,
-                    'no_tagihan' => $penjualan->no_faktur, // ✅ Pakai no_faktur penjualan
+                    'no_tagihan' => $penjualan->no_faktur,
                     'tanggal_tagihan' => now(),
                     'total' => $penjualan->total,
                     'jumlah_bayar' => 0,
                     'sisa' => $penjualan->total,
-                    'status_tagihan' => 'belum_lunas', // belum_lunas, lunas, lewat_jatuh_tempo
+                    'status_tagihan' => 'belum_lunas',
                     'catatan' => 'Tagihan otomatis dari penjualan ' . $penjualan->no_faktur,
                 ]);
 
@@ -204,9 +204,8 @@ class PenjualanController extends Controller
 
             $message = $isDraft
                 ? 'Draft penjualan berhasil disimpan (stok belum dikurangi).'
-                : 'Penjualan berhasil disimpan, stok diperbarui, dan total stok global disinkronkan.';
+                : 'Penjualan berhasil disimpan, stok diperbarui.';
 
-            // Tambahkan info tambahan jika ada pengiriman/tagihan
             if (!$isDraft) {
                 if ($data['mode'] === 'antar') {
                     $message .= ' Data pengiriman telah dibuat.';
@@ -466,7 +465,6 @@ class PenjualanController extends Controller
         $penjualan = Penjualan::with('items')->findOrFail($id);
         $isDraftRequest = $request->boolean('is_draft', false);
 
-        // === VALIDASI DASAR ===
         $rules = [
             'pelanggan_id'      => 'nullable|integer|exists:pelanggans,id',
             'no_faktur'         => 'required|string',
@@ -491,7 +489,6 @@ class PenjualanController extends Controller
 
         DB::beginTransaction();
         try {
-            // 🗓️ Tanggal & jam
             $tanggal = isset($data['tanggal']) && $data['tanggal']
                 ? \Carbon\Carbon::parse($data['tanggal'] . ' ' . now()->format('H:i:s'))
                 : now();
@@ -513,7 +510,7 @@ class PenjualanController extends Controller
                 'updated_by'      => Auth::id(),
             ]);
 
-            // 🔁 KEMBALIKAN STOK LAMA
+            // 🔁 KEMBALIKAN STOK LAMA & UPDATE TOTAL_STOK
             foreach ($penjualan->items as $oldItem) {
                 $gudangItem = ItemGudang::where('item_id', $oldItem->item_id)
                     ->where('gudang_id', $oldItem->gudang_id)
@@ -527,6 +524,9 @@ class PenjualanController extends Controller
                     $gudangItem->save();
 
                     Log::info("🔙 Stok dikembalikan: item_id={$oldItem->item_id}, dari {$stokSebelum} ke {$gudangItem->stok}");
+
+                    // ✅ Update total_stok setelah stok dikembalikan
+                    $this->updateTotalStok($oldItem->item_id, $oldItem->gudang_id, $oldItem->satuan_id);
                 }
             }
 
@@ -571,8 +571,8 @@ class PenjualanController extends Controller
                         Log::info("📉 Stok dikurangi: item_id={$it['item_id']}, dari {$stokSebelum} ke {$gudangItem->stok}");
                     }
 
-                    // ✅ UPDATE TOTAL STOK GLOBAL
-                    $this->recalculateTotalStokGlobal($it['item_id']);
+                    // ✅ Update total_stok setelah stok dikurangi
+                    $this->updateTotalStok($it['item_id'], $it['gudang_id'], $it['satuan_id']);
                 }
             }
 
@@ -581,14 +581,12 @@ class PenjualanController extends Controller
 
             if ($data['mode'] === 'antar' && !$isDraftRequest) {
                 if ($pengiriman) {
-                    // Update jika sudah ada
                     $pengiriman->update([
                         'no_pengiriman' => $penjualan->no_faktur,
                         'updated_by' => Auth::id(),
                     ]);
                     Log::info("🚚 Pengiriman diupdate: no_pengiriman={$penjualan->no_faktur}");
                 } else {
-                    // Buat baru jika belum ada
                     Pengiriman::create([
                         'penjualan_id' => $penjualan->id,
                         'no_pengiriman' => $penjualan->no_faktur,
@@ -600,7 +598,6 @@ class PenjualanController extends Controller
                     Log::info("🚚 Pengiriman dibuat: no_pengiriman={$penjualan->no_faktur}");
                 }
             } elseif ($data['mode'] === 'ambil' && $pengiriman) {
-                // Hapus pengiriman jika diubah ke mode ambil
                 $pengiriman->delete();
                 Log::info("🗑️ Pengiriman dihapus karena mode diubah ke 'ambil'");
             }
@@ -610,7 +607,6 @@ class PenjualanController extends Controller
 
             if ($statusBayar === 'unpaid' && !$isDraftRequest) {
                 if ($tagihan) {
-                    // Update jika sudah ada
                     $tagihan->update([
                         'no_tagihan' => $penjualan->no_faktur,
                         'total' => $penjualan->total,
@@ -620,7 +616,6 @@ class PenjualanController extends Controller
                     ]);
                     Log::info("💰 Tagihan diupdate: no_tagihan={$penjualan->no_faktur}");
                 } else {
-                    // Buat baru jika belum ada
                     TagihanPenjualan::create([
                         'penjualan_id' => $penjualan->id,
                         'no_tagihan' => $penjualan->no_faktur,
@@ -635,7 +630,6 @@ class PenjualanController extends Controller
                     Log::info("💰 Tagihan dibuat: no_tagihan={$penjualan->no_faktur}");
                 }
             } elseif ($statusBayar === 'paid' && $tagihan) {
-                // Update status tagihan jika sudah lunas
                 $tagihan->update([
                     'status_tagihan' => 'lunas',
                     'jumlah_bayar' => $penjualan->total,
@@ -717,7 +711,7 @@ class PenjualanController extends Controller
                 ], 400);
             }
 
-            // 🔄 Kembalikan stok semua item
+            // 🔄 Kembalikan stok semua item & update total_stok
             foreach ($penjualan->items as $item) {
                 $gudangItem = ItemGudang::where('item_id', $item->item_id)
                     ->where('gudang_id', $item->gudang_id)
@@ -731,6 +725,9 @@ class PenjualanController extends Controller
                     $gudangItem->save();
 
                     Log::info("♻️ Stok dikembalikan (cancel draft): item_id={$item->item_id} dari {$stokLama} ke {$gudangItem->stok}");
+
+                    // ✅ Update total_stok setelah stok dikembalikan
+                    $this->updateTotalStok($item->item_id, $item->gudang_id, $item->satuan_id);
                 }
             }
 
@@ -739,12 +736,6 @@ class PenjualanController extends Controller
             TagihanPenjualan::where('penjualan_id', $penjualan->id)->delete();
             $penjualan->items()->delete();
             $penjualan->delete();
-
-            // ✅ Recalculate stok global
-            $affectedItems = $penjualan->items->pluck('item_id')->unique();
-            foreach ($affectedItems as $itemId) {
-                $this->recalculateTotalStokGlobal($itemId);
-            }
 
             DB::commit();
 
@@ -780,7 +771,7 @@ class PenjualanController extends Controller
                 ], 400);
             }
 
-            // 🔄 Kembalikan stok semua item
+            // 🔄 Kembalikan stok semua item & update total_stok
             foreach ($penjualan->items as $item) {
                 $gudangItem = ItemGudang::where('item_id', $item->item_id)
                     ->where('gudang_id', $item->gudang_id)
@@ -794,6 +785,9 @@ class PenjualanController extends Controller
                     $gudangItem->save();
 
                     Log::info("🧩 Stok dikembalikan (hapus): item_id={$item->item_id} dari {$stokLama} ke {$gudangItem->stok}");
+
+                    // ✅ Update total_stok setelah stok dikembalikan
+                    $this->updateTotalStok($item->item_id, $item->gudang_id, $item->satuan_id);
                 }
             }
 
@@ -806,12 +800,6 @@ class PenjualanController extends Controller
             TagihanPenjualan::where('penjualan_id', $penjualan->id)->delete();
             $penjualan->items()->delete();
             $penjualan->delete();
-
-            // ✅ Recalculate total stok GLOBAL
-            $affectedItems = $penjualan->items->pluck('item_id')->unique();
-            foreach ($affectedItems as $itemId) {
-                $this->recalculateTotalStokGlobal($itemId);
-            }
 
             DB::commit();
 

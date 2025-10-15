@@ -359,8 +359,8 @@
                     'nama' => $it->nama_item,
                     'kategori' => optional($it->kategori)->nama_kategori,
 
-                    // ✅ Ambil total_stok dari baris pertama (karena semua sama sekarang)
-                    'stock' => (int) (optional($it->gudangItems->first())->total_stok ?? 0),
+                    // ✅ BENAR - Jumlahkan semua total_stok dari semua gudang
+                    'stock' => (float) ($it->gudangItems->sum('total_stok') ?? 0),
 
                     'stok_minimal' => (int) ($it->stok_minimal ?? 0),
                     'foto_path' => $it->foto_path,

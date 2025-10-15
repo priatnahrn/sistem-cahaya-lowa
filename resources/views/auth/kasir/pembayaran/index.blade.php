@@ -32,34 +32,33 @@
         {{-- ACTION BAR --}}
         <div
             class="bg-white border border-slate-200 rounded-xl px-6 py-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-            <div class="flex items-center gap-3">
-                <div class="flex items-center gap-2">
-                    <div class="relative">
-                        <i class="fa-solid fa-receipt absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
-                        <input type="text" placeholder="Masukkan kode faktur (mis. PJ-20251008-0001)" x-model="kodeNota"
-                            @keydown.enter.prevent="cariPenjualan()"
-                            class="w-72 pl-10 pr-3 py-2 rounded-lg border border-slate-300 text-slate-700 placeholder-slate-400 
-            focus:outline-none focus:ring-2 focus:ring-[#344579]/20 focus:border-[#344579]">
-                    </div>
-                    <button @click="cariPenjualan()"
-                        class="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-white bg-[#344579] hover:bg-[#2e3e6a] shadow">
-                        <i class="fa-solid fa-magnifying-glass"></i> Cari Faktur
-                    </button>
-                </div>
 
+            {{-- LEFT: Input Kode Faktur --}}
+            <div class="flex items-center gap-2 order-first">
+                <div class="relative">
+                    <input type="text" x-model="kodeNota" @keydown.enter.prevent="cariPenjualan()"
+                        placeholder="Masukkan Kode Faktur"
+                        class="w-56 pl-3 pr-10 py-2 rounded-lg border border-slate-200 text-slate-600 placeholder-slate-400
+               focus:outline-none focus:ring-2 focus:ring-[#344579]/20 focus:border-[#344579]">
+                    <i
+                        class="fa-solid fa-barcode absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"></i>
+                </div>
             </div>
 
+            {{-- RIGHT: Search & Filter --}}
             <div class="flex items-center gap-3">
                 <div class="relative">
-                    <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
                     <input type="text" placeholder="Cari No Transaksi, Penjualan, Kasir..." x-model="q"
-                        class="w-64 pl-10 pr-3 py-2 rounded-lg border border-slate-200 text-slate-600 placeholder-slate-400
-                    focus:outline-none focus:ring-2 focus:ring-[#344579]/20 focus:border-[#344579]">
+                        class="w-72 pl-3 pr-10 py-2 rounded-lg border border-slate-200 text-slate-600 placeholder-slate-400
+                focus:outline-none focus:ring-2 focus:ring-[#344579]/20 focus:border-[#344579]">
+                    <i
+                        class="fa-solid fa-magnifying-glass absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"></i>
                 </div>
+
                 <button type="button" @click="showFilter=!showFilter"
-                    class="px-4 py-2 rounded-lg border border-slate-200 text-slate-700 hover:bg-[#344579] hover:text-white"
+                    class="px-4 py-2 rounded-lg border border-slate-200 text-slate-700 hover:bg-[#2e3e6a] hover:text-white"
                     :class="{ 'bg-[#344579] text-white': hasActiveFilters() }">
-                    <i class="fa-solid fa-filter mr-2"></i> Filter
+                    <i class="fa-solid fa-sliders"></i>
                     <span x-show="hasActiveFilters()" class="ml-1 bg-white text-[#344579] px-1.5 py-0.5 rounded text-xs">
                         <span x-text="activeFiltersCount()"></span>
                     </span>
@@ -67,37 +66,39 @@
             </div>
         </div>
 
-
-
         {{-- FILTER PANEL --}}
-        <div x-show="showFilter" x-collapse x-transition class="bg-white border border-slate-200 rounded-xl px-6 py-4">
+        <div x-show="showFilter" x-collapse x-transition class="bg-white border border-slate-200 rounded-xl px-6 py-4 mt-2">
             <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                {{-- Filter No Transaksi --}}
                 <div>
                     <label class="block text-sm font-medium text-slate-700 mb-2">No Transaksi</label>
-                    <input type="text" x-model="filters.no_transaksi"
-                        class="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm text-slate-700
-                    focus:outline-none focus:ring-2 focus:ring-[#344579]/20 focus:border-[#344579]">
+                    <input type="text" placeholder="Cari No Transaksi" x-model="filters.no_transaksi"
+                        class="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm text-slate-700 
+                focus:outline-none focus:ring-2 focus:ring-[#344579]/20 focus:border-[#344579]">
                 </div>
 
+                {{-- Filter Penjualan --}}
                 <div>
                     <label class="block text-sm font-medium text-slate-700 mb-2">Penjualan</label>
-                    <input type="text" x-model="filters.penjualan"
-                        class="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm text-slate-700
-                    focus:outline-none focus:ring-2 focus:ring-[#344579]/20 focus:border-[#344579]">
+                    <input type="text" placeholder="Cari Penjualan" x-model="filters.penjualan"
+                        class="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm text-slate-700 
+                focus:outline-none focus:ring-2 focus:ring-[#344579]/20 focus:border-[#344579]">
                 </div>
 
+                {{-- Filter Tanggal --}}
                 <div>
                     <label class="block text-sm font-medium text-slate-700 mb-2">Tanggal</label>
                     <input type="date" x-model="filters.tanggal"
-                        class="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm text-slate-700
-                    focus:outline-none focus:ring-2 focus:ring-[#344579]/20 focus:border-[#344579]">
+                        class="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm text-slate-700 
+                focus:outline-none focus:ring-2 focus:ring-[#344579]/20 focus:border-[#344579]">
                 </div>
 
+                {{-- Filter Status --}}
                 <div>
-                    <label class="block text-sm font-medium text-slate-700 mb-2">Status</label>
+                    <label class="block text-sm font-medium text-slate-700 mb-2">Status Pembayaran</label>
                     <select x-model="filters.status"
-                        class="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm text-slate-700
-                    focus:outline-none focus:ring-2 focus:ring-[#344579]/20 focus:border-[#344579]">
+                        class="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm text-slate-700 
+                focus:outline-none focus:ring-2 focus:ring-[#344579]/20 focus:border-[#344579]">
                         <option value="">Semua</option>
                         <option value="lunas">Lunas</option>
                         <option value="belum_lunas">Belum Lunas</option>
@@ -106,23 +107,21 @@
                 </div>
             </div>
 
+            {{-- Filter Actions --}}
             <div class="flex items-center justify-between mt-4 pt-4 border-t border-slate-200">
                 <div class="text-sm text-slate-600">
                     <span x-text="filteredTotal()"></span> dari <span x-text="data.length"></span> pembayaran
                 </div>
                 <div class="flex items-center gap-2">
                     <button type="button" @click="resetFilters()"
-                        class="px-4 py-2 rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50">
-                        <i class="fa-solid fa-arrow-rotate-left mr-2"></i>
-                        Reset Filter
-                    </button>
-                    <button type="button" @click="showFilter = false"
-                        class="px-4 py-2 rounded-lg bg-[#344579] text-white hover:bg-[#2e3e6a]">
-                        Terapkan Filter
+                        class="px-4 py-2 rounded-lg border border-slate-200 text-white hover:bg-red-600 bg-red-400">
+                        <i class="fa-solid fa-arrow-rotate-left mr-2"></i> Reset
                     </button>
                 </div>
             </div>
         </div>
+
+
 
         {{-- TABLE --}}
         <div class="bg-white border border-slate-200 rounded-xl overflow-hidden">
