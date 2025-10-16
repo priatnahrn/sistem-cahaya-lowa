@@ -14,7 +14,7 @@ use Illuminate\Support\Facades\Log;
 
 class ReturPenjualanController extends Controller
 {
-    // daftar retur penjualan
+    // 📌 Daftar retur penjualan
     public function index()
     {
         $returs = ReturPenjualan::with('penjualan.pelanggan', 'creator', 'updater')
@@ -24,10 +24,9 @@ class ReturPenjualanController extends Controller
         return view('auth.penjualan.retur-penjualan.index', compact('returs'));
     }
 
-    // form create
+    // 📌 Form create
     public function create()
     {
-        // ✅ Ambil penjualan yang statusnya 'paid' (lunas) dengan relasi pelanggan
         $penjualans = Penjualan::with('pelanggan')
             ->where('status_bayar', 'paid')
             ->where(function ($query) {
@@ -37,17 +36,15 @@ class ReturPenjualanController extends Controller
             ->latest()
             ->get();
 
-        // ✅ Debug: log jumlah penjualan
         Log::info('Jumlah penjualan untuk retur:', ['count' => $penjualans->count()]);
 
         return view('auth.penjualan.retur-penjualan.create', compact('penjualans'));
     }
 
-    // API: ambil items berdasarkan penjualan id
+    // 📌 API: ambil items berdasarkan penjualan id
     public function getItemsByPenjualan($id)
     {
         try {
-            // Ambil data penjualan beserta semua relasi penting
             $penjualan = Penjualan::with([
                 'pelanggan',
                 'itemPenjualans.item',
@@ -55,13 +52,12 @@ class ReturPenjualanController extends Controller
                 'itemPenjualans.satuan'
             ])->findOrFail($id);
 
-            // Mapping data item
             $items = $penjualan->itemPenjualans->map(function ($item) {
                 return [
                     'id' => $item->id,
                     'nama_item' => optional($item->item)->nama_item ?? 'Item tidak ditemukan',
                     'gudang' => optional($item->gudang)->nama_gudang ?? '-',
-                    'satuan' => optional($item->satuan)->nama_satuan ?? '-', // ✅ ambil nama satuan
+                    'satuan' => optional($item->satuan)->nama_satuan ?? '-',
                     'jumlah' => (float) $item->jumlah,
                     'harga_jual' => (float) ($item->harga ?? 0),
                     'total' => (float) ($item->total ?? ($item->jumlah * ($item->harga ?? 0))),
@@ -87,11 +83,9 @@ class ReturPenjualanController extends Controller
         }
     }
 
-
-    // store retur baru
+    // 📌 Store retur baru (status awal: pending, TIDAK menambah stok dulu)
     public function store(Request $request)
     {
-        // ✅ Log request data
         Log::info('Store retur penjualan request:', $request->all());
 
         $request->validate([
@@ -106,7 +100,7 @@ class ReturPenjualanController extends Controller
         try {
             DB::beginTransaction();
 
-            // generate nomor -> RJ + ddmmyy + 3digit
+            // Generate nomor: RJ + ddmmyy + 3digit
             $tanggal = now()->format('dmy');
             $last = ReturPenjualan::whereDate('tanggal', now())->orderBy('no_retur', 'desc')->first();
 
@@ -119,23 +113,25 @@ class ReturPenjualanController extends Controller
 
             $noRetur = 'RJ' . $tanggal . $nextNumber;
 
+            // Simpan header dengan status pending
             $retur = ReturPenjualan::create([
                 'penjualan_id' => $request->penjualan_id,
                 'no_retur' => $noRetur,
                 'tanggal' => now(),
                 'catatan' => $request->catatan,
                 'total' => $request->total,
-                'status' => 'pending',
+                'status' => 'pending', // ✅ Status awal: pending
                 'created_by' => Auth::id(),
             ]);
 
+            // Simpan detail items
             foreach ($request->items as $row) {
                 $itemPenjualan = ItemPenjualan::with('item')->findOrFail($row['item_penjualan_id']);
                 $jumlah = (float) $row['jumlah'];
                 $harga = (float) ($itemPenjualan->harga_jual ?? $itemPenjualan->harga ?? 0);
                 $subtotal = $jumlah * $harga;
 
-                // ✅ Validasi jumlah retur
+                // Validasi jumlah retur
                 if ($jumlah > $itemPenjualan->jumlah) {
                     DB::rollBack();
 
@@ -160,31 +156,18 @@ class ReturPenjualanController extends Controller
                     'sub_total' => $subtotal,
                 ]);
 
-                // ✅ Update stok di gudang — barang kembali ke gudang bila retur dari pelanggan
-                $itemGudang = ItemGudang::where('item_id', $itemPenjualan->item_id)
-                    ->where('gudang_id', $itemPenjualan->gudang_id)
-                    ->first();
-
-                if ($itemGudang) {
-                    $itemGudang->stok = $itemGudang->stok + $jumlah;
-                    $itemGudang->total_stok = $itemGudang->total_stok + $jumlah;
-                    $itemGudang->save();
-
-                    Log::info('Stok updated:', [
-                        'item' => $itemPenjualan->item->nama_item,
-                        'gudang_id' => $itemPenjualan->gudang_id,
-                        'jumlah_retur' => $jumlah,
-                        'stok_baru' => $itemGudang->stok
-                    ]);
-                }
+                // ⚠️ TIDAK menambah stok di sini!
+                // Stok baru ditambah ketika status berubah ke 'taken'
             }
 
-            DB::commit();
-
-            Log::info('Retur penjualan berhasil disimpan:', [
+            Log::info('✅ Retur penjualan berhasil dibuat (status: pending)', [
+                'retur_id' => $retur->id,
                 'no_retur' => $noRetur,
-                'total' => $request->total
+                'penjualan_id' => $request->penjualan_id,
+                'total_items' => count($request->items),
             ]);
+
+            DB::commit();
 
             return response()->json([
                 'success' => true,
@@ -207,14 +190,21 @@ class ReturPenjualanController extends Controller
         }
     }
 
-    // show detail
+    // 📌 Show detail
     public function show($id)
     {
         $retur = ReturPenjualan::with('penjualan.pelanggan', 'items.itemPenjualan.item')->findOrFail($id);
         return view('auth.penjualan.retur-penjualan.show', compact('retur'));
     }
 
-    // update
+    // 📌 Edit form
+    public function edit($id)
+    {
+        $retur = ReturPenjualan::with('penjualan.pelanggan', 'items.itemPenjualan')->findOrFail($id);
+        return view('auth.penjualan.retur-penjualan.show', compact('retur'));
+    }
+
+    // 📌 Update (dengan handling stok yang benar)
     public function update(Request $request, $id)
     {
         $retur = ReturPenjualan::with('items')->findOrFail($id);
@@ -232,83 +222,136 @@ class ReturPenjualanController extends Controller
         try {
             DB::beginTransaction();
 
-            // rollback stok lama (kembalikan dulu)
-            foreach ($retur->items as $oldItem) {
-                $ip = $oldItem->itemPenjualan;
-                $itemGudang = ItemGudang::where('item_id', $ip->item_id)
-                    ->where('gudang_id', $ip->gudang_id)
-                    ->first();
+            $statusLama = $retur->status;
+            $statusBaru = $request->status;
 
-                if ($itemGudang) {
-                    // sebelumnya kita menambahkan stok saat create, jadi rollback = kurangi stok
-                    $itemGudang->stok = max(0, $itemGudang->stok - $oldItem->jumlah);
-                    $itemGudang->total_stok = max(0, $itemGudang->total_stok - $oldItem->jumlah);
-                    $itemGudang->save();
+            Log::info('=== [UPDATE RETUR PENJUALAN] Mulai update ===', [
+                'retur_id' => $retur->id,
+                'status_lama' => $statusLama,
+                'status_baru' => $statusBaru,
+            ]);
+
+            // 🔹 ROLLBACK STOK jika status lama = 'taken'
+            // Ini handle case: taken → pending atau taken → refund
+            if ($statusLama === 'taken') {
+                foreach ($retur->items as $oldItem) {
+                    $itemGudang = ItemGudang::where('item_id', $oldItem->itemPenjualan->item_id)
+                        ->where('gudang_id', $oldItem->itemPenjualan->gudang_id)
+                        ->where('satuan_id', $oldItem->itemPenjualan->satuan_id)
+                        ->first();
+
+                    if ($itemGudang) {
+                        $stokLama = $itemGudang->stok;
+                        // Kurangi stok (karena sebelumnya kita tambah saat taken)
+                        $itemGudang->stok = max(0, $itemGudang->stok - $oldItem->jumlah);
+                        $itemGudang->total_stok = $itemGudang->stok * ($itemGudang->satuan->jumlah ?? 1);
+                        $itemGudang->save();
+
+                        Log::info('📦 Rollback stok (status lama: taken → ' . $statusBaru . ')', [
+                            'item_id' => $oldItem->itemPenjualan->item_id,
+                            'gudang_id' => $oldItem->itemPenjualan->gudang_id,
+                            'jumlah_dikurangi' => $oldItem->jumlah,
+                            'stok_lama' => $stokLama,
+                            'stok_baru' => $itemGudang->stok,
+                        ]);
+                    }
                 }
             }
 
-            // hapus detail lama
-            $retur->items()->delete();
-
-            // update header
+            // 🔹 Update header retur
             $retur->update([
-                'tanggal' => $request->tanggal,
-                'catatan' => $request->catatan,
-                'total'   => $request->total,
-                'status'  => $request->status,
+                'tanggal'    => $request->tanggal,
+                'catatan'    => $request->catatan,
+                'total'      => $request->total,
+                'status'     => $statusBaru,
                 'updated_by' => Auth::id(),
             ]);
 
-            // insert ulang dan update stok sesuai item baru
+            // 🔹 Hapus items lama dan insert ulang
+            $retur->items()->delete();
+
             foreach ($request->items as $row) {
                 $itemPenjualan = ItemPenjualan::findOrFail($row['item_penjualan_id']);
-                $jumlah = (float) $row['jumlah'];
-                $harga = (float) ($itemPenjualan->harga_jual ?? $itemPenjualan->harga ?? 0);
+                $jumlah   = (float) $row['jumlah'];
+                $harga    = (float) ($itemPenjualan->harga_jual ?? $itemPenjualan->harga ?? 0);
                 $subtotal = $jumlah * $harga;
+
+                if ($jumlah > $itemPenjualan->jumlah) {
+                    DB::rollBack();
+                    return response()->json([
+                        'message' => 'Validasi gagal',
+                        'errors'  => [
+                            'items' => ["Jumlah retur untuk item {$itemPenjualan->item->nama_item} melebihi jumlah penjualan"]
+                        ]
+                    ], 422);
+                }
 
                 ItemReturPenjualan::create([
                     'retur_penjualan_id' => $retur->id,
-                    'item_penjualan_id' => $itemPenjualan->id,
-                    'jumlah' => $jumlah,
-                    'harga' => $harga,
-                    'sub_total' => $subtotal,
+                    'item_penjualan_id'  => $itemPenjualan->id,
+                    'jumlah'             => $jumlah,
+                    'harga'              => $harga,
+                    'sub_total'          => $subtotal,
                 ]);
+            }
 
-                $itemGudang = ItemGudang::where('item_id', $itemPenjualan->item_id)
-                    ->where('gudang_id', $itemPenjualan->gudang_id)
-                    ->first();
+            // 🔹 TAMBAH STOK jika status baru = 'taken'
+            // Ini handle case: pending → taken atau refund → taken
+            if ($statusBaru === 'taken') {
+                foreach ($request->items as $row) {
+                    $itemPenjualan = ItemPenjualan::findOrFail($row['item_penjualan_id']);
+                    $jumlah = (float) $row['jumlah'];
 
-                if ($itemGudang) {
-                    $itemGudang->stok = $itemGudang->stok + $jumlah;
-                    $itemGudang->total_stok = $itemGudang->total_stok + $jumlah;
-                    $itemGudang->save();
+                    $itemGudang = ItemGudang::where('item_id', $itemPenjualan->item_id)
+                        ->where('gudang_id', $itemPenjualan->gudang_id)
+                        ->where('satuan_id', $itemPenjualan->satuan_id)
+                        ->first();
+
+                    if ($itemGudang) {
+                        $stokLama = $itemGudang->stok;
+                        $itemGudang->stok = $itemGudang->stok + $jumlah; // Tambah stok
+                        $itemGudang->total_stok = $itemGudang->stok * ($itemGudang->satuan->jumlah ?? 1);
+                        $itemGudang->save();
+
+                        Log::info('📈 Stok ditambah (status baru: taken)', [
+                            'item_id' => $itemPenjualan->item_id,
+                            'gudang_id' => $itemPenjualan->gudang_id,
+                            'jumlah_retur' => $jumlah,
+                            'stok_lama' => $stokLama,
+                            'stok_baru' => $itemGudang->stok,
+                        ]);
+                    }
                 }
             }
+
+            Log::info('=== [UPDATE RETUR PENJUALAN] Update selesai ===', [
+                'retur_id' => $retur->id,
+                'status_final' => $statusBaru,
+            ]);
 
             DB::commit();
 
             return response()->json([
-                'success' => true,
-                'message' => 'Retur berhasil diperbarui',
-                'data' => $retur->fresh('items')
+                'status'  => 'success',
+                'message' => 'Retur berhasil diperbarui.',
+                'data'    => $retur->fresh('items')
             ]);
         } catch (\Exception $e) {
             DB::rollBack();
-
-            Log::error('Error update retur:', [
+            Log::error('❌ Gagal update retur penjualan', [
                 'retur_id' => $id,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
             ]);
 
             return response()->json([
-                'success' => false,
                 'message' => 'Gagal update retur',
-                'error' => $e->getMessage()
+                'error'   => $e->getMessage()
             ], 500);
         }
     }
 
-    // delete
+    // 📌 Delete
     public function destroy($id)
     {
         try {
@@ -316,33 +359,26 @@ class ReturPenjualanController extends Controller
 
             $retur = ReturPenjualan::with('items.itemPenjualan.item')->findOrFail($id);
 
+            // Hanya bisa dihapus jika status = pending
             if ($retur->status !== 'pending') {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Retur sudah diproses, tidak bisa dihapus.'
+                    'message' => 'Retur sudah diproses, tidak bisa dihapus. Hanya retur dengan status "Pending" yang bisa dihapus.'
                 ], 400);
             }
 
-            // rollback stok: karena pada create kita menambahkan stok, dihapus => kurangi kembali
-            foreach ($retur->items as $ri) {
-                $ip = $ri->itemPenjualan;
-                $itemGudang = ItemGudang::where('item_id', $ip->item_id)
-                    ->where('gudang_id', $ip->gudang_id)
-                    ->first();
+            // Karena status pending, stok tidak pernah ditambah
+            // Jadi tidak perlu mengurangi stok
 
-                if ($itemGudang) {
-                    $itemGudang->stok = max(0, $itemGudang->stok - $ri->jumlah);
-                    $itemGudang->total_stok = max(0, $itemGudang->total_stok - $ri->jumlah);
-                    $itemGudang->save();
-                }
-            }
+            Log::info('✅ Menghapus retur penjualan (status: pending)', [
+                'retur_id' => $retur->id,
+                'no_retur' => $retur->no_retur,
+            ]);
 
             $retur->items()->delete();
             $retur->delete();
 
             DB::commit();
-
-            Log::info('Retur deleted:', ['retur_id' => $id]);
 
             return response()->json([
                 'success' => true,

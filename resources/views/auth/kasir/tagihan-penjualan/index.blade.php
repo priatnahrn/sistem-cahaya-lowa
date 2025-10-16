@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Tagihan Pembelian')
+@section('title', 'Tagihan Penjualan')
 
 @section('content')
     <style>
@@ -52,12 +52,12 @@
         {{-- ACTION BAR --}}
         <div
             class="bg-white border border-slate-200 rounded-xl px-6 py-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-            <h2 class="text-lg font-semibold text-slate-700">Daftar Tagihan Pembelian</h2>
+            <h2 class="text-lg font-semibold text-slate-700">Daftar Tagihan Penjualan</h2>
 
             <div class="flex items-center gap-3">
                 <div class="relative">
                     <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
-                    <input type="text" placeholder="Cari" x-model="q"
+                    <input type="text" placeholder="Cari tagihan..." x-model="q"
                         class="w-64 pl-10 pr-3 py-2 rounded-lg border border-slate-200 text-slate-600 placeholder-slate-400
                        focus:outline-none focus:ring-2 focus:ring-[#344579]/20 focus:border-[#344579]">
                 </div>
@@ -65,7 +65,7 @@
                     class="px-4 py-2 rounded-lg border border-slate-200 text-slate-700 hover:bg-[#344579] hover:text-white transition"
                     :class="{ 'bg-[#344579] text-white': showFilter || hasActiveFilters() }">
                     <i class="fa-solid fa-sliders"></i>
-                    <span x-show="hasActiveFilters()" class="ml-1 bg-white text-[#344579] px-1.5 py-1.5 rounded text-xs">
+                    <span x-show="hasActiveFilters()" class="ml-1 bg-white text-[#344579] px-1.5 py-0.5 rounded text-xs">
                         <span x-text="activeFiltersCount()"></span>
                     </span>
                 </button>
@@ -83,10 +83,10 @@
                        focus:outline-none focus:ring-2 focus:ring-[#344579]/20 focus:border-[#344579]">
                 </div>
 
-                {{-- Filter Supplier --}}
+                {{-- Filter Pelanggan --}}
                 <div>
-                    <label class="block text-sm font-medium text-slate-700 mb-2">Supplier</label>
-                    <input type="text" placeholder="Cari Supplier" x-model="filters.supplier"
+                    <label class="block text-sm font-medium text-slate-700 mb-2">Pelanggan</label>
+                    <input type="text" placeholder="Cari Pelanggan" x-model="filters.pelanggan"
                         class="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm text-slate-700
                        focus:outline-none focus:ring-2 focus:ring-[#344579]/20 focus:border-[#344579]">
                 </div>
@@ -145,9 +145,9 @@
                                 Tanggal
                                 <i class="fa-solid" :class="sortIcon('tanggal')"></i>
                             </th>
-                            <th class="px-4 py-3 cursor-pointer" @click="toggleSort('supplier')">
-                                Supplier
-                                <i class="fa-solid" :class="sortIcon('supplier')"></i>
+                            <th class="px-4 py-3 cursor-pointer" @click="toggleSort('pelanggan')">
+                                Pelanggan
+                                <i class="fa-solid" :class="sortIcon('pelanggan')"></i>
                             </th>
                             <th class="px-4 py-3 text-right cursor-pointer" @click="toggleSort('sisa')">
                                 Sisa Tagihan
@@ -166,9 +166,9 @@
                                 <td class="px-4 py-3 text-slate-600" x-text="r.no_faktur"></td>
                                 <td class="px-4 py-3 text-slate-600" x-text="fmtTanggal(r.tanggal)"></td>
                                 <td
-                                    class="px-4 py-3 text-green-600 font-medium whitespace-normal break-words leading-snug max-w-[220px]">
+                                    class="px-4 py-3 text-blue-600 font-medium whitespace-normal break-words leading-snug max-w-[220px]">
                                     <a :href="r.url" class="hover:underline hover:text-[#2e3e6a] transition block"
-                                        x-text="r.supplier"></a>
+                                        x-text="r.pelanggan"></a>
                                 </td>
                                 <td class="px-4 py-3 text-right">
                                     <div class="flex flex-col items-end gap-1">
@@ -199,7 +199,7 @@
                         <tr x-show="filteredTotal()===0" class="text-center text-slate-500">
                             <td colspan="8" class="px-4 py-8">
                                 <i class="fa-solid fa-inbox text-4xl text-slate-300 mb-2"></i>
-                                <p class="text-slate-400">Tidak ada data tagihan pembelian.</p>
+                                <p class="text-slate-400">Tidak ada data tagihan penjualan.</p>
                             </td>
                         </tr>
                     </tbody>
@@ -272,9 +272,9 @@
                         Apakah Anda yakin ingin menghapus tagihan
                         <span class="font-semibold text-slate-900 bg-slate-100 px-2 py-0.5 rounded"
                             x-text="deleteItem.no_tagihan"></span>
-                        untuk
-                        <span class="font-semibold text-green-600 bg-green-50 px-2 py-0.5 rounded"
-                            x-text="deleteItem.supplier"></span>?
+                        untuk pelanggan
+                        <span class="font-semibold text-blue-600 bg-blue-50 px-2 py-0.5 rounded"
+                            x-text="deleteItem.pelanggan"></span>?
                     </p>
 
                     <div class="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg flex items-start gap-2">
@@ -308,7 +308,7 @@
                 class="w-full text-left px-4 py-2 text-sm hover:bg-slate-50 flex items-center gap-2 text-slate-700">
                 <i class="fa-solid fa-eye text-blue-500"></i> Detail
             </button>
-            <button @click="window.location = dropdownData.url + '/bayar'" :disabled="dropdownData.status === 'lunas'"
+            <button @click="window.location = dropdownData.url + '/edit'" :disabled="dropdownData.status === 'lunas'"
                 :class="dropdownData.status === 'lunas' ? 'opacity-50 cursor-not-allowed' : 'hover:bg-green-50'"
                 class="w-full text-left px-4 py-2 text-sm flex items-center gap-2 text-green-600">
                 <i class="fa-solid fa-money-bill-wave"></i> Bayar
@@ -328,27 +328,27 @@
         $tagihansJson = $tagihans
             ->map(function ($t) {
                 $tanggal =
-                    $t->tanggal instanceof \Carbon\Carbon
-                        ? $t->tanggal->timezone('Asia/Makassar')->format('Y-m-d H:i:s')
-                        : $t->tanggal ?? null;
+                    $t->tanggal_tagihan instanceof \Carbon\Carbon
+                        ? $t->tanggal_tagihan->timezone('Asia/Makassar')->format('Y-m-d H:i:s')
+                        : $t->tanggal_tagihan ?? null;
 
                 $sisa = (float) ($t->sisa ?? 0);
                 $totalTagihan = (float) ($t->total ?? 0);
-                $jumlahBayar = (float) ($t->jumlah_bayar ?? 0);
+                $jumlahBayar = (float) ($t->jumlah_bayar ??0);
                 $status = $sisa <= 0 ? 'lunas' : 'belum';
 
                 return [
                     'id' => $t->id,
                     'no_tagihan' => $t->no_tagihan ?? '-',
-                    'no_faktur' => $t->pembelian->no_faktur ?? '-',
+                    'no_faktur' => $t->penjualan->no_faktur ?? '-',
                     'tanggal' => $tanggal,
-                    'supplier' => optional($t->pembelian->supplier)->nama_supplier ?? '-',
+                    'pelanggan' => optional($t->penjualan->pelanggan)->nama_pelanggan ?? '-',
                     'total_tagihan' => $totalTagihan,
                     'jumlah_bayar' => $jumlahBayar,
                     'sisa' => $sisa,
                     'status' => $status,
                     'has_payments' => $jumlahBayar > 0, // Sudah ada pembayaran atau belum
-                    'url' => route('tagihan-pembelian.show', $t->id),
+                    'url' => route('tagihan-penjualan.show', $t->id),
                 ];
             })
             ->values()
@@ -362,7 +362,7 @@
                 q: '',
                 filters: {
                     no_faktur: '',
-                    supplier: '',
+                    pelanggan: '',
                     tanggal: '',
                     status: ''
                 },
@@ -435,12 +435,12 @@
                 filteredList() {
                     const q = this.q.trim().toLowerCase();
                     let list = this.data.filter(r => {
-                        if (q && !(`${r.no_tagihan} ${r.no_faktur} ${r.supplier}`.toLowerCase().includes(q)))
+                        if (q && !(`${r.no_tagihan} ${r.no_faktur} ${r.pelanggan}`.toLowerCase().includes(q)))
                             return false;
                         if (this.filters.no_faktur && !r.no_faktur.toLowerCase().includes(this.filters.no_faktur
                                 .toLowerCase()))
                             return false;
-                        if (this.filters.supplier && !r.supplier.toLowerCase().includes(this.filters.supplier
+                        if (this.filters.pelanggan && !r.pelanggan.toLowerCase().includes(this.filters.pelanggan
                                 .toLowerCase()))
                             return false;
                         if (this.filters.tanggal && r.tanggal && r.tanggal.split(' ')[0] !== this.filters.tanggal)
@@ -520,13 +520,13 @@
                 },
 
                 hasActiveFilters() {
-                    return (this.filters.no_faktur || this.filters.supplier || this.filters.tanggal || this.filters.status);
+                    return (this.filters.no_faktur || this.filters.pelanggan || this.filters.tanggal || this.filters.status);
                 },
 
                 activeFiltersCount() {
                     let count = 0;
                     if (this.filters.no_faktur) count++;
-                    if (this.filters.supplier) count++;
+                    if (this.filters.pelanggan) count++;
                     if (this.filters.tanggal) count++;
                     if (this.filters.status) count++;
                     return count;
@@ -535,7 +535,7 @@
                 resetFilters() {
                     this.filters = {
                         no_faktur: '',
-                        supplier: '',
+                        pelanggan: '',
                         tanggal: '',
                         status: ''
                     };
@@ -643,7 +643,7 @@
 
                 async doDelete() {
                     const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
-                    const url = `/tagihan-pembelian/${this.deleteItem.id}`;
+                    const url = `/tagihan-penjualan/${this.deleteItem.id}`;
 
                     try {
                         const res = await fetch(url, {

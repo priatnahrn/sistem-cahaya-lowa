@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Detail Tagihan Pembelian')
+@section('title', 'Detail Tagihan Penjualan')
 
 @section('content')
     <style>
@@ -80,7 +80,7 @@
 
         {{-- Breadcrumb --}}
         <div>
-            <a href="{{ route('tagihan-pembelian.index') }}"
+            <a href="{{ route('tagihan-penjualan.index') }}"
                 class="inline-flex items-center gap-2 text-sm text-slate-600 hover:text-[#334976] font-medium transition-colors">
                 <i class="fa-solid fa-arrow-left text-gray-600 hover:text-[#334976]"></i>
                 <span>Kembali</span>
@@ -99,16 +99,15 @@
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-slate-700 mb-2">No Faktur</label>
-                    <input type="text" value="{{ $tagihan->pembelian->no_faktur }}" readonly
+                    <input type="text" value="{{ $tagihan->penjualan->no_faktur }}" readonly
                         class="w-full px-3 py-2 rounded-lg border border-slate-200 bg-slate-50 text-slate-700">
                 </div>
                 <div>
-                    <label class="block text-sm font-medium text-slate-700 mb-2">Supplier</label>
-                    <input type="text" value="{{ $tagihan->pembelian->supplier->nama_supplier ?? '-' }}" readonly
+                    <label class="block text-sm font-medium text-slate-700 mb-2">Pelanggan</label>
+                    <input type="text" value="{{ $tagihan->penjualan->pelanggan->nama_pelanggan ?? '-' }}" readonly
                         class="w-full px-3 py-2 rounded-lg border border-slate-200 bg-slate-50 text-slate-700">
                 </div>
             </div>
-            
 
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
@@ -128,35 +127,35 @@
                 </div>
             </div>
 
-            {{-- INFO REKENING SUPPLIER (BARU) --}}
+            {{-- INFO REKENING PELANGGAN (jika ada) --}}
             @if (
-                $tagihan->pembelian->supplier &&
-                    ($tagihan->pembelian->supplier->nama_bank || $tagihan->pembelian->supplier->nomor_rekening))
+                $tagihan->penjualan->pelanggan &&
+                    ($tagihan->penjualan->pelanggan->nama_bank || $tagihan->penjualan->pelanggan->nomor_rekening))
                 <div class="mt-4 pt-4 border-t border-slate-200">
-                    <div class="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-4 border border-blue-200">
+                    <div class="bg-gradient-to-r from-indigo-50 to-blue-50 rounded-lg p-4 border border-indigo-200">
                         <div class="flex items-center gap-3 mb-3">
-                            <div class="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center">
+                            <div class="w-10 h-10 rounded-full bg-indigo-500 flex items-center justify-center">
                                 <i class="fa-solid fa-building-columns text-white"></i>
                             </div>
-                            <h4 class="font-semibold text-slate-800">Informasi Rekening Supplier</h4>
+                            <h4 class="font-semibold text-slate-800">Informasi Rekening Pelanggan</h4>
                         </div>
                         <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
-                            @if ($tagihan->pembelian->supplier->nama_bank)
+                            @if ($tagihan->penjualan->pelanggan->nama_bank)
                                 <div>
                                     <label class="block text-xs font-medium text-slate-600 mb-1">Bank</label>
                                     <p class="text-sm font-semibold text-slate-800">
-                                        {{ $tagihan->pembelian->supplier->nama_bank }}</p>
+                                        {{ $tagihan->penjualan->pelanggan->nama_bank }}</p>
                                 </div>
                             @endif
-                            @if ($tagihan->pembelian->supplier->nomor_rekening)
+                            @if ($tagihan->penjualan->pelanggan->nomor_rekening)
                                 <div>
                                     <label class="block text-xs font-medium text-slate-600 mb-1">Nomor Rekening</label>
                                     <div class="flex items-center gap-2">
                                         <p class="text-sm font-semibold text-slate-800 font-mono">
-                                            {{ $tagihan->pembelian->supplier->nomor_rekening }}</p>
+                                            {{ $tagihan->penjualan->pelanggan->nomor_rekening }}</p>
                                         <button type="button"
-                                            onclick="navigator.clipboard.writeText('{{ $tagihan->pembelian->supplier->nomor_rekening }}'); alert('Nomor rekening disalin!')"
-                                            class="text-blue-600 hover:text-blue-800 transition text-xs">
+                                            onclick="navigator.clipboard.writeText('{{ $tagihan->penjualan->pelanggan->nomor_rekening }}'); alert('Nomor rekening disalin!')"
+                                            class="text-indigo-600 hover:text-indigo-800 transition text-xs">
                                             <i class="fa-solid fa-copy"></i>
                                         </button>
                                     </div>
@@ -170,7 +169,7 @@
                             <div>
                                 <label class="block text-xs font-medium text-slate-600 mb-1">Atas Nama</label>
                                 <p class="text-sm font-semibold text-slate-800">
-                                    {{ $tagihan->pembelian->supplier->nama_supplier }}</p>
+                                    {{ $tagihan->penjualan->pelanggan->nama_pelanggan }}</p>
                             </div>
                         </div>
                     </div>
@@ -178,10 +177,10 @@
             @endif
         </div>
 
-        {{-- Daftar Item Pembelian --}}
+        {{-- Daftar Item Penjualan --}}
         <div class="bg-white border border-slate-200 rounded-xl overflow-hidden">
             <div class="px-6 py-4 border-b border-slate-200 bg-slate-50">
-                <h3 class="text-base font-semibold text-slate-700">Detail Item Pembelian</h3>
+                <h3 class="text-base font-semibold text-slate-700">Detail Item Penjualan</h3>
             </div>
             <div class="overflow-x-auto">
                 <table class="min-w-full text-sm">
@@ -197,7 +196,7 @@
                         </tr>
                     </thead>
                     <tbody>
-                        @foreach ($tagihan->pembelian->items as $index => $item)
+                        @foreach ($tagihan->penjualan->items as $index => $item)
                             <tr class="border-b border-slate-100 hover:bg-slate-50 transition-colors">
                                 <td class="px-4 py-3 text-slate-600">{{ $index + 1 }}</td>
                                 <td class="px-4 py-3 font-medium text-slate-700">{{ $item->item->nama_item ?? '-' }}</td>
@@ -206,7 +205,7 @@
                                 <td class="px-4 py-3 text-right text-slate-700">
                                     {{ number_format($item->jumlah, 0, ',', '.') }}</td>
                                 <td class="px-4 py-3 text-right text-slate-700">Rp
-                                    {{ number_format($item->harga_beli, 0, ',', '.') }}</td>
+                                    {{ number_format($item->harga_jual, 0, ',', '.') }}</td>
                                 <td class="px-4 py-3 text-right font-semibold text-slate-800">Rp
                                     {{ number_format($item->total, 0, ',', '.') }}</td>
                             </tr>
@@ -223,58 +222,64 @@
             </div>
         </div>
 
-
         {{-- Riwayat Pembayaran / Catatan --}}
         @if ($tagihan->catatan)
             <div class="bg-white border border-slate-200 rounded-xl overflow-hidden">
-                <div class="px-6 py-4 border-b border-slate-200 bg-slate-50">
+                <div class="px-6 py-4 border-b border-slate-200 bg-slate-50 flex items-center justify-between">
                     <h3 class="text-base font-semibold text-slate-700 flex items-center gap-2">
-                        <i class="fa-solid fa-file-lines text-[#344579]"></i>
+                        <i class="fa-solid fa-clock-rotate-left text-[#344579]"></i>
                         Riwayat Pembayaran
                     </h3>
+                    <span class="text-xs text-slate-500 bg-slate-200 px-2 py-1 rounded">
+                        {{ count(array_filter(explode("\n", $tagihan->catatan))) }} transaksi
+                    </span>
                 </div>
                 <div class="px-6 py-4">
-                    <div class="space-y-3">
-                        @foreach (explode("\n", $tagihan->catatan) as $index => $catatan)
-                            @if (trim($catatan))
-                                <div class="flex gap-3 pb-3 {{ !$loop->last ? 'border-b border-slate-100' : '' }}">
-                                    <div
-                                        class="flex-shrink-0 w-8 h-8 rounded-full bg-[#344579]/10 flex items-center justify-center">
-                                        <span class="text-xs font-semibold text-[#344579]">{{ $index + 1 }}</span>
-                                    </div>
-                                    <div class="flex-1">
-                                        <p class="text-sm text-slate-700">{{ trim($catatan) }}</p>
-                                        @if (preg_match('/\d{2}\/\d{2}\/\d{4}/', $catatan, $matches))
-                                            <p class="text-xs text-slate-500 mt-1">
-                                                <i class="fa-solid fa-calendar-days mr-1"></i>
-                                                {{ $matches[0] }}
-                                            </p>
-                                        @endif
-                                    </div>
+                    <div class="relative space-y-4">
+                        {{-- Timeline line --}}
+                        <div class="absolute left-4 top-0 bottom-0 w-0.5 bg-slate-200"></div>
+
+                        @foreach (array_filter(explode("\n", $tagihan->catatan)) as $index => $catatan)
+                            <div class="relative flex gap-4 items-start">
+                                {{-- Timeline dot --}}
+                                <div
+                                    class="relative z-10 flex-shrink-0 w-8 h-8 rounded-full bg-green-100 border-2 border-green-500 flex items-center justify-center">
+                                    <i class="fa-solid fa-check text-green-600 text-xs"></i>
                                 </div>
-                            @endif
+
+                                {{-- Content --}}
+                                <div class="flex-1 bg-slate-50 rounded-lg p-3 border border-slate-200">
+                                    <p class="text-sm text-slate-700 font-medium">{{ trim($catatan) }}</p>
+                                </div>
+                            </div>
                         @endforeach
                     </div>
                 </div>
             </div>
         @endif
 
-        {{-- Tombol Bayar --}}
+        {{-- Tombol Aksi --}}
         <div class="flex justify-end gap-3">
-            <a href="{{ route('tagihan-pembelian.show', $tagihan->id) }}"
+            <a href="{{ route('tagihan-penjualan.index') }}"
                 class="px-5 py-2.5 rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50 transition font-medium">
                 <i class="fa-solid fa-arrow-left mr-2"></i> Kembali
             </a>
-            <button @click="openBayarModal()"
-                class="px-5 py-2.5 rounded-lg bg-[#344579] text-white hover:bg-[#2e3e6a] transition shadow font-medium">
-                <i class="fa-solid fa-money-bill-wave mr-2"></i> Bayar Sekarang
-            </button>
+            @if ($tagihan->sisa > 0)
+                <button @click="openBayarModal()"
+                    class="px-5 py-2.5 rounded-lg bg-[#344579] text-white hover:bg-[#2e3e6a] transition shadow font-medium">
+                    <i class="fa-solid fa-money-bill-wave mr-2"></i> Bayar Sekarang
+                </button>
+            @else
+                <button disabled class="px-5 py-2.5 rounded-lg bg-green-100 text-green-700 cursor-not-allowed font-medium">
+                    <i class="fa-solid fa-check-circle mr-2"></i> Lunas
+                </button>
+            @endif
         </div>
 
         {{-- MODAL PEMBAYARAN --}}
         <div x-cloak x-show="showBayarModal" x-transition.opacity
             class="fixed inset-0 z-[9999] flex items-center justify-center p-4 min-h-screen">
-            <div class="absolute inset-0 bg-black/40 " @click="closeBayarModal()"></div>
+            <div class="absolute inset-0 bg-black/40" @click="closeBayarModal()"></div>
 
             <div
                 class="bg-white rounded-2xl shadow-xl w-11/12 md:w-[480px] max-h-[85vh] z-50 overflow-hidden animate-fadeIn flex flex-col">
@@ -298,55 +303,15 @@
                                 <span class="text-slate-800">{{ $tagihan->no_tagihan }}</span>
                             </p>
                             <p class="text-sm text-slate-600">
-                                <span class="font-medium">Supplier:</span>
+                                <span class="font-medium">Pelanggan:</span>
                                 <span
-                                    class="text-slate-800">{{ $tagihan->pembelian->supplier->nama_supplier ?? '-' }}</span>
+                                    class="text-slate-800">{{ $tagihan->penjualan->pelanggan->nama_pelanggan ?? '-' }}</span>
                             </p>
                             <p class="text-sm text-slate-600">
                                 <span class="font-medium">No Faktur:</span>
-                                <span class="text-slate-800">{{ $tagihan->pembelian->no_faktur }}</span>
+                                <span class="text-slate-800">{{ $tagihan->penjualan->no_faktur }}</span>
                             </p>
                         </div>
-
-                        {{-- INFO REKENING SUPPLIER (BARU) --}}
-                        @if (
-                            $tagihan->pembelian->supplier &&
-                                ($tagihan->pembelian->supplier->nama_bank || $tagihan->pembelian->supplier->nomor_rekening))
-                            <div class="bg-blue-50 rounded-xl p-4 border border-blue-200">
-                                <div class="flex items-start gap-3">
-                                    <div
-                                        class="flex-shrink-0 w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center">
-                                        <i class="fa-solid fa-building-columns text-white text-sm"></i>
-                                    </div>
-                                    <div class="flex-1">
-                                        <p class="text-sm font-semibold text-blue-900 mb-2">Rekening Tujuan Transfer</p>
-                                        @if ($tagihan->pembelian->supplier->nama_bank)
-                                            <p class="text-sm text-blue-800">
-                                                <span class="font-medium">Bank:</span>
-                                                <span
-                                                    class="font-semibold">{{ $tagihan->pembelian->supplier->nama_bank }}</span>
-                                            </p>
-                                        @endif
-                                        @if ($tagihan->pembelian->supplier->nomor_rekening)
-                                            <p class="text-sm text-blue-800 flex items-center gap-2">
-                                                <span class="font-medium">No. Rekening:</span>
-                                                <span
-                                                    class="font-semibold font-mono">{{ $tagihan->pembelian->supplier->nomor_rekening }}</span>
-                                                <button type="button"
-                                                    @click="navigator.clipboard.writeText('{{ $tagihan->pembelian->supplier->nomor_rekening }}'); showToast('Nomor rekening disalin!', 'success')"
-                                                    class="text-blue-600 hover:text-blue-800 transition">
-                                                    <i class="fa-solid fa-copy text-xs"></i>
-                                                </button>
-                                            </p>
-                                        @endif
-                                        <p class="text-sm text-blue-800">
-                                            <span class="font-medium">Atas Nama:</span>
-                                            <span>{{ $tagihan->pembelian->supplier->nama_supplier }}</span>
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
-                        @endif
 
                         {{-- DETAIL NOMINAL --}}
                         <div class="bg-white rounded-xl border border-slate-200 p-4 space-y-2">
@@ -395,60 +360,33 @@
                                 </button>
 
                                 {{-- TRANSFER --}}
-                                @if ($tagihan->pembelian->supplier && $tagihan->pembelian->supplier->nomor_rekening)
-                                    <button type="button" @click="metodeBayar = 'transfer'"
-                                        :class="metodeBayar === 'transfer' ? 'bg-[#344579] text-white border-[#344579]' :
-                                            'bg-white text-slate-700 border-slate-300 hover:bg-slate-50'"
-                                        class="flex-1 px-4 py-2.5 rounded-lg border font-medium transition">
-                                        <i class="fa-solid fa-building-columns mr-2"></i> Transfer
-                                    </button>
-                                @else
-                                    <button type="button" disabled
-                                        class="flex-1 px-4 py-2.5 rounded-lg border border-slate-200 bg-slate-100 text-slate-400 cursor-not-allowed font-medium">
-                                        <i class="fa-solid fa-building-columns mr-2"></i> Transfer
-                                        <span class="text-xs block mt-0.5">(Rekening belum terdaftar)</span>
-                                    </button>
-                                @endif
+                                <button type="button" @click="metodeBayar = 'transfer'"
+                                    :class="metodeBayar === 'transfer' ? 'bg-[#344579] text-white border-[#344579]' :
+                                        'bg-white text-slate-700 border-slate-300 hover:bg-slate-50'"
+                                    class="flex-1 px-4 py-2.5 rounded-lg border font-medium transition">
+                                    <i class="fa-solid fa-building-columns mr-2"></i> Transfer
+                                </button>
                             </div>
 
-                            {{-- PILIH BANK --}}
-                            @if ($tagihan->pembelian->supplier && $tagihan->pembelian->supplier->nomor_rekening)
-                                <div x-show="metodeBayar === 'transfer'" x-transition class="mt-3">
-                                    {{-- Info: Transfer ke rekening supplier --}}
-                                    <div class="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-3">
-                                        <div class="flex items-start gap-2">
-                                            <i class="fa-solid fa-info-circle text-amber-600 mt-0.5"></i>
-                                            <div class="text-xs text-amber-800">
-                                                <p class="font-medium mb-1">Transfer akan dilakukan ke:</p>
-                                                <p><strong>{{ $tagihan->pembelian->supplier->nama_bank ?? 'Bank Supplier' }}</strong>
-                                                </p>
-                                                <p class="font-mono">{{ $tagihan->pembelian->supplier->nomor_rekening }}
-                                                </p>
-                                                <p>a.n {{ $tagihan->pembelian->supplier->nama_supplier }}</p>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    {{-- Pilih bank pengirim (opsional untuk tracking) --}}
-                                    <label class="block text-sm font-medium text-slate-700 mb-2">Transfer dari
-                                        Bank:</label>
-                                    <div class="flex gap-3 justify-center">
-                                        <template x-for="bank in bankList" :key="bank.name">
-                                            <button type="button" @click="namaBank = bank.name"
-                                                :class="namaBank === bank.name ? 'ring-2 ring-[#344579] border-[#344579]' :
-                                                    'hover:ring-1 hover:ring-slate-300'"
-                                                class="h-14 bg-white border border-slate-300 w-full rounded-md flex items-center justify-center transition relative overflow-hidden">
-                                                <img :src="bank.logo" :alt="bank.name"
-                                                    class="w-1/2 object-contain">
-                                                <div x-show="namaBank === bank.name" x-transition
-                                                    class="absolute inset-0 bg-[#344579]/10 rounded-xl"></div>
-                                            </button>
-                                        </template>
-                                    </div>
-                                    <p class="text-xs text-slate-500 mt-2 text-center">Pilih bank yang Anda gunakan untuk
-                                        transfer</p>
+                            {{-- PILIH BANK (untuk transfer) --}}
+                            <div x-show="metodeBayar === 'transfer'" x-transition class="mt-3">
+                                <label class="block text-sm font-medium text-slate-700 mb-2">Pilih Bank:</label>
+                                <div class="flex gap-3 justify-center">
+                                    <template x-for="bank in bankList" :key="bank.name">
+                                        <button type="button" @click="namaBank = bank.name"
+                                            :class="namaBank === bank.name ? 'ring-2 ring-[#344579] border-[#344579]' :
+                                                'hover:ring-1 hover:ring-slate-300'"
+                                            class="h-14 bg-white border border-slate-300 w-full rounded-md flex items-center justify-center transition relative overflow-hidden">
+                                            <img :src="bank.logo" :alt="bank.name"
+                                                class="w-1/2 object-contain">
+                                            <div x-show="namaBank === bank.name" x-transition
+                                                class="absolute inset-0 bg-[#344579]/10 rounded-xl"></div>
+                                        </button>
+                                    </template>
                                 </div>
-                            @endif
+                                <p class="text-xs text-slate-500 mt-2 text-center">Pilih bank yang digunakan untuk
+                                    transfer</p>
+                            </div>
                         </div>
 
                         {{-- CATATAN --}}
@@ -500,11 +438,11 @@
                 <p class="text-slate-600 text-sm mb-4" x-text="successMessage"></p>
 
                 <div class="mt-6 flex flex-col gap-3">
-                    <a :href="'{{ route('tagihan-pembelian.show', $tagihan->id) }}'"
+                    <button @click="window.location.reload()"
                         class="px-4 py-2 rounded-lg bg-[#344579] text-white hover:bg-[#2e3e6a] transition font-medium flex items-center justify-center gap-2">
                         <i class="fa-solid fa-eye"></i> Lihat Detail
-                    </a>
-                    <a href="{{ route('tagihan-pembelian.index') }}"
+                    </button>
+                    <a href="{{ route('tagihan-penjualan.index') }}"
                         class="px-4 py-2 rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-100 transition font-medium flex items-center justify-center gap-2">
                         <i class="fa-solid fa-list"></i> Daftar Tagihan
                     </a>
@@ -542,7 +480,7 @@
                 ],
 
                 init() {
-                    console.log('✅ Bayar Tagihan Page Ready');
+                    console.log('✅ Bayar Tagihan Penjualan Page Ready');
                 },
 
                 openBayarModal() {
@@ -560,7 +498,7 @@
 
                 closeSuccessModal() {
                     this.showSuccessModal = false;
-                    window.location.href = '{{ route('tagihan-pembelian.show', $tagihan->id) }}';
+                    window.location.reload();
                 },
 
                 handleNominalInput(e) {
@@ -595,17 +533,8 @@
                         return;
                     }
 
-                    // Validasi transfer: cek apakah supplier punya rekening
-                    @if (!$tagihan->pembelian->supplier || !$tagihan->pembelian->supplier->nomor_rekening)
-                        if (this.metodeBayar === 'transfer') {
-                            this.showToast('Metode transfer tidak tersedia karena rekening supplier belum terdaftar!',
-                                'error');
-                            return;
-                        }
-                    @endif
-
                     if (this.metodeBayar === 'transfer' && !this.namaBank) {
-                        this.showToast('Pilih bank pengirim untuk transfer!', 'error');
+                        this.showToast('Pilih bank untuk transfer!', 'error');
                         return;
                     }
 
@@ -614,11 +543,7 @@
                     if (!catatanFinal) {
                         catatanFinal = `Pembayaran ${this.metodeBayar === 'cash' ? 'tunai' : 'transfer'}`;
                         if (this.metodeBayar === 'transfer' && this.namaBank) {
-                            catatanFinal += ` dari ${this.namaBank}`;
-                            @if ($tagihan->pembelian->supplier && $tagihan->pembelian->supplier->nomor_rekening)
-                                catatanFinal +=
-                                    ` ke {{ $tagihan->pembelian->supplier->nama_bank }} {{ $tagihan->pembelian->supplier->nomor_rekening }}`;
-                            @endif
+                            catatanFinal += ` via ${this.namaBank}`;
                         }
                         catatanFinal += ` sebesar ${this.formatRupiah(this.nominalBayar)}`;
                     }
@@ -631,7 +556,7 @@
                     };
 
                     try {
-                        const res = await fetch('{{ route('tagihan-pembelian.update', $tagihan->id) }}', {
+                        const res = await fetch('{{ route('tagihan-penjualan.update', $tagihan->id) }}', {
                             method: 'PUT',
                             headers: {
                                 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,

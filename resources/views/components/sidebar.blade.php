@@ -103,7 +103,7 @@
                 {{-- ======================= --}}
                 {{-- 🔹 KASIR (menu baru) --}}
                 {{-- ======================= --}}
-                @php $openKasir = $open(['kasir.*']); @endphp
+                @php $openKasir = $open(['kasir.*', 'tagihan-penjualan.*']); @endphp
                 <div x-data="{ open: {{ $openKasir ? 'true' : 'false' }} }" class="mt-2">
                     <button @click="open=!open"
                         class="w-full flex items-center gap-3 px-3 py-[10px] rounded-md transition text-white/85 hover:bg-white/5"
@@ -137,6 +137,17 @@
                                 <span>Pembayaran</span>
                             </span>
                         </a>
+
+                        {{-- TAGIHAN PENJUALAN (BARU) --}}
+                        @php $onTagihan = $is('tagihan-penjualan.*'); @endphp
+                        <a href="{{ route('tagihan-penjualan.index') }}"
+                            class="block px-3 py-2 rounded-md text-[13px] transition {{ $onTagihan ? 'bg-white text-[#344579] font-semibold' : 'text-white/80 hover:bg-white/5' }}">
+                            <span class="flex items-center gap-3">
+                                <span
+                                    class="inline-block w-[3px] h-5 rounded {{ $onTagihan ? 'bg-white' : 'bg-transparent' }}"></span>
+                                <span>Tagihan Penjualan</span>
+                            </span>
+                        </a>
                     </div>
                 </div>
 
@@ -148,7 +159,7 @@
                     'pembelian.*',
                     'pemesanan.*',
                     'pembelian.retur-pembelian.*',
-                    'pembelian.tagihan.*',
+                    'tagihan-pembelian.*',
                 ]);
             @endphp
 
@@ -200,7 +211,7 @@
                     </a>
 
                     {{-- Tagihan Pembelian --}}
-                    <a href="{{ route('tagihan.pembelian.index') }}"
+                    <a href="{{ route('tagihan-pembelian.index') }}"
                         class="block px-3 py-2 rounded-md text-[13px] transition {{ $is('pembelian.tagihan.*') ? 'bg-white text-[#344579] font-semibold' : 'text-white/80 hover:bg-white/5' }}">
                         <span class="flex items-center gap-3">
                             <span

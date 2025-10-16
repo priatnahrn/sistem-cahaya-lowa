@@ -20,6 +20,7 @@ use App\Http\Controllers\GudangController;
 use App\Http\Controllers\ProduksiController;
 use App\Http\Controllers\MutasiStokController;
 use App\Http\Controllers\ReturPenjualanController;
+use App\Http\Controllers\TagihanPenjualanController;
 
 // ========================
 // 🔹 Root Route
@@ -107,6 +108,15 @@ Route::middleware('auth')->group(function () {
             ->name('retur-penjualan.get-items');
     });
 
+    Route::prefix('kasir/tagihan-penjualan')->name('tagihan-penjualan.')->group(function () {
+        Route::get('/', [TagihanPenjualanController::class, 'index'])->name('index');
+        Route::get('/{id}/edit', [TagihanPenjualanController::class, 'edit'])->whereNumber('id')->name('edit');
+        Route::put('/{id}', [TagihanPenjualanController::class, 'update'])->whereNumber('id')->name('update');
+        Route::delete('/{id}', [TagihanPenjualanController::class, 'destroy'])->whereNumber('id')->name('destroy');
+        Route::get('/{id}', [TagihanPenjualanController::class, 'show'])->whereNumber('id')->name('show');
+        
+    });
+
 
     // ------------------------
     // 🚚 Pengiriman
@@ -146,7 +156,7 @@ Route::middleware('auth')->group(function () {
 
     });
 
-    Route::prefix('pembelian/tagihan')->name('tagihan.pembelian.')->group(function () {
+    Route::prefix('pembelian/tagihan-pembelian')->name('tagihan-pembelian.')->group(function () {
         Route::get('/', [TagihanPembelianController::class, 'index'])->name('index');
         Route::get('/{id}/edit', [TagihanPembelianController::class, 'edit'])->whereNumber('id')->name('edit');
         Route::put('/{id}', [TagihanPembelianController::class, 'update'])->whereNumber('id')->name('update');
