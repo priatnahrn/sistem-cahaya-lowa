@@ -16,6 +16,8 @@ return new class extends Migration
             $table->string('kode_gudang', 100);
             $table->string('nama_gudang', 100);
             $table->text('lokasi')->nullable();
+            $table->foreignId('created_by')->constrained('users')->onDelete('cascade');
+            $table->foreignId('updated_by')->constrained('users')->onDelete('cascade');
             $table->timestamps();
         });
     }

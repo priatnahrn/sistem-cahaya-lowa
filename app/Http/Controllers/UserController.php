@@ -26,27 +26,30 @@ class UserController extends Controller
             ])->onlyInput('username');
         }
 
-        $credentials = // Contoh di LoginController
-            $request->validate([
-                'username' => ['required', 'string', 'min:6'],
-                'password' => ['required', 'string', 'min:8'],
-            ], [
-                'username.required' => 'Username wajib diisi.',
-                'username.min'      => 'Username minimal 6 karakter.',
-                'password.required' => 'Password wajib diisi.',
-                'password.min'      => 'Password minimal 8 karakter.',
-            ]);
-
+        $credentials = $request->validate([
+            'username' => ['required', 'string', 'min:6'],
+            'password' => ['required', 'string', 'min:8'],
+        ], [
+            'username.required' => 'Username wajib diisi.',
+            'username.min'      => 'Username minimal 6 karakter.',
+            'password.required' => 'Password wajib diisi.',
+            'password.min'      => 'Password minimal 8 karakter.',
+        ]);
 
         if (Auth::attempt($credentials, $request->boolean('remember'))) {
             RateLimiter::clear($throttleKey);
             $request->session()->regenerate();
 
+            // Update last_login
+            Auth::user()->update([
+                'last_login' => now()
+            ]);
+
             return redirect()->intended('/dashboard')
                 ->with('success', 'Berhasil masuk. Selamat datang!');
         }
 
-        RateLimiter::hit($throttleKey, 60); // reset hit setelah 60 detik
+        RateLimiter::hit($throttleKey, 60);
         return back()
             ->with('error', 'Username atau password salah.')
             ->onlyInput('username');
@@ -59,5 +62,10 @@ class UserController extends Controller
         $request->session()->regenerateToken();
 
         return redirect()->route('login')->with('success', 'Anda telah keluar.');
+    }
+
+    public function profile()
+    {
+        return view('auth.profil.index');
     }
 }

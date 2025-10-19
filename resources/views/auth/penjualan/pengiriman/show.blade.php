@@ -84,7 +84,7 @@
                 <label class="block text-sm font-medium text-slate-700 mb-2">Status Pengiriman</label>
                 <div class="relative">
                     <select x-model="form.status_pengiriman" @change="checkChanged()"
-                        :disabled="form.status_pengiriman === 'diterima'"
+                        @cannot('pengiriman.update') disabled @endcannot disabled
                         class="appearance-none w-full px-3 pr-10 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-200 focus:border-blue-500 text-slate-700 bg-white dropdown-fixed disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed">
                         <option value="perlu_dikirim">Perlu Dikirim</option>
                         <option value="dalam_pengiriman">Dalam Pengiriman</option>
@@ -174,35 +174,50 @@
                 <div class="border-t border-slate-200 pt-4 mt-4"></div>
 
                 {{-- Total --}}
-                <div class="flex justify-between items-center mb-6">
+                <div class="flex justify-between items-center ">
                     <div class="text-slate-700 font-bold text-lg">TOTAL</div>
-                    <div class="text-blue-700 text-2xl font-extrabold tracking-wide">
+                    <div class="text-[#334976] text-2xl font-extrabold tracking-wide">
                         Rp {{ number_format($subtotal + ($pengiriman->penjualan->biaya_transport ?? 0), 0, ',', '.') }}
                     </div>
                 </div>
 
                 {{-- Tombol Aksi --}}
-                <div class="flex justify-end gap-3 mt-6 w-full">
+                {{-- <div class="flex justify-end gap-3 mt-6 w-full">
                     <a href="{{ route('pengiriman.index') }}"
                         class="px-5 py-2.5 rounded-lg border border-gray-400 text-gray-600 hover:bg-gray-100 transition">
                         Kembali
                     </a>
+                    @can('pengiriman.update')
+                        <button @click="updateStatus" type="button"
+                            :disabled="!changed || form.status_pengiriman === 'diterima'"
+                            :class="[
+                                'px-5 py-2.5 rounded-lg text-white font-medium w-full transition',
+                                (form.status_pengiriman === 'diterima') ?
+                                'bg-gray-300 cursor-not-allowed' :
+                                (!changed ? 'bg-gray-300 cursor-not-allowed' : 'bg-[#334976] hover:bg-[#2d3f6d]')
+                            ]">
+                            Simpan Perubahan
+                        </button>
+                    @else
+                        <span class="px-5 py-2.5 rounded-lg bg-slate-100 text-slate-500 text-sm text-center w-full">
+                            <i class="fa-solid fa-eye mr-2"></i> Mode Lihat Saja
+                        </span>
+                    @endcan --}}
 
-                    <button @click="updateStatus" type="button"
-                        :disabled="!changed || form.status_pengiriman === 'diterima'"
-                        :class="[
-                            'px-5 py-2.5 rounded-lg text-white font-medium w-full transition',
-                            (form.status_pengiriman === 'diterima') ?
-                            'bg-gray-300 cursor-not-allowed' :
-                            (!changed ? 'bg-gray-300 cursor-not-allowed' : 'bg-[#334976] hover:bg-[#2d3f6d]')
-                        ]">
-                        Simpan Perubahan
-                    </button>
 
                 </div>
             </div>
         </div>
 
+        @cannot('pengiriman.update')
+            <style>
+                select:disabled {
+                    background-color: #f8fafc !important;
+                    cursor: not-allowed !important;
+                    opacity: 0.7;
+                }
+            </style>
+        @endcannot
     </div>
 
     <script>

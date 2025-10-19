@@ -7,12 +7,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>@yield('title') | CV Cahaya Lowa</title>
- 
 
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
-
-    
 
     @stack('styles')
 
@@ -21,20 +18,30 @@
         [x-cloak] {
             display: none !important;
         }
+
+        /* Prevent body scroll when sidebar is present */
+        html, body {
+            height: 100%;
+            overflow: hidden;
+        }
     </style>
 </head>
 
 <body class="bg-[#F9FAFB]">
 
     <!-- Shell -->
-    <div class="flex min-h-screen">
+    <div class="flex h-screen overflow-hidden" x-data="{ sidebarCollapsed: false }" 
+         @sidebar-toggled.window="sidebarCollapsed = $event.detail.collapsed">
+        
         {{-- Sidebar --}}
         @include('components.sidebar')
 
         {{-- Main --}}
-        <main class="flex-1 min-w-0 flex flex-col">
+        <main class="flex-1 min-w-0 flex flex-col transition-all duration-300" 
+              :class="sidebarCollapsed ? 'ml-[64px]' : 'ml-[250px]'">
+            
             {{-- Top header --}}
-            <header class="h-[56px] flex items-center justify-between bg-white border-b border-slate-200 px-6">
+            <header class="h-[56px] flex items-center justify-between bg-white border-b border-slate-200 px-6 flex-shrink-0">
                 {{-- Left: Title --}}
                 <h1 class="text-lg font-semibold text-slate-800">@yield('title')</h1>
 
@@ -51,7 +58,7 @@
                             <i class="fa-solid fa-chevron-down text-slate-500 text-xs"></i>
                         </button>
                         <div x-show="open" @click.outside="open=false" x-transition
-                            class="absolute right-0 mt-2 w-48 bg-white border border-slate-200 rounded-lg shadow-lg overflow-hidden">
+                            class="absolute right-0 mt-2 w-48 bg-white border border-slate-200 rounded-lg shadow-lg overflow-hidden z-50">
                             <a href="{{ route('profil.index') }}"
                                 class="block px-4 py-2 text-sm hover:bg-slate-50">Profil</a>
                             <form method="POST" action="{{ route('logout') }}">
@@ -65,7 +72,7 @@
             </header>
 
             {{-- Content area (scroll) --}}
-            <section class="flex-1 overflow-auto p-6">
+            <section class="flex-1 overflow-y-auto p-6">
                 @yield('content')
             </section>
         </main>

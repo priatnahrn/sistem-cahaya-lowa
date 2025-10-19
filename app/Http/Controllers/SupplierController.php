@@ -2,34 +2,38 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\LogActivity;
 use App\Models\Supplier;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 
 class SupplierController extends Controller
 {
+    use AuthorizesRequests;
+
     public function index()
     {
-        $auth = Auth::user();
-        if (!$auth) {
-            return response()->json(['message' => 'Unauthorized'], 401);
-        }
+        // ✅ Check permission view
+        $this->authorize('supplier.view');
+
         $suppliers = Supplier::all();
         return view('auth.supplier.index', compact('suppliers'));
     }
 
     public function create()
     {
+        // ✅ Check permission create
+        $this->authorize('supplier.create');
+
         return view('auth.supplier.create');
     }
 
     public function store(Request $request)
     {
+        // ✅ Check permission create
+        $this->authorize('supplier.create');
 
-        $auth = Auth::user();
-        if (!$auth) {
-            return response()->json(['message' => 'Unauthorized'], 401);
-        }
         $validated = $request->validate([
             'nama_supplier' => 'required|string|max:255',
             'kontak' => 'nullable|string|max:100',
@@ -40,18 +44,24 @@ class SupplierController extends Controller
 
         try {
             Supplier::create($validated);
+
+            LogActivity::create([
+                'user_id'       => Auth::id(),
+                'activity_type' => 'create_supplier',
+                'description'   => 'Created supplier: ' . $validated['nama_supplier'],
+                'ip_address'    => $request->ip(),
+                'user_agent'    => $request->userAgent(),
+            ]);
             return redirect()->route('supplier.index')->with('success', 'Supplier berhasil dibuat.');
         } catch (\Exception $e) {
             return back()->withErrors(['error' => 'Terjadi kesalahan saat menyimpan data.'])->withInput();
         }
     }
 
-
     public function search(Request $request)
     {
-        // sementara supaya tidak gagal waktu debugging local
-        // $auth = Auth::user();
-        // if (!$auth) return response()->json(['message' => 'Unauthorized'], 401);
+        // ✅ Check permission view
+        $this->authorize('supplier.view');
 
         $q = $request->query('q', '');
 
@@ -75,11 +85,9 @@ class SupplierController extends Controller
 
     public function show($id)
     {
-        // Tampilkan detail supplier berdasarkan $id
-        $auth = Auth::user();
-        if (!$auth) {
-            return response()->json(['message' => 'Unauthorized'], 401);
-        }
+        // ✅ Check permission view
+        $this->authorize('supplier.view');
+
         $supplier = Supplier::find($id);
         if (!$supplier) {
             return redirect()->route('supplier.index')->withErrors(['error' => 'Supplier tidak ditemukan.']);
@@ -89,11 +97,9 @@ class SupplierController extends Controller
 
     public function update(Request $request, $id)
     {
-        // Update supplier berdasarkan $id
-        $auth = Auth::user();
-        if (!$auth) {
-            return response()->json(['message' => 'Unauthorized'], 401);
-        }
+        // ✅ Check permission update
+        $this->authorize('supplier.update');
+
         $validated = $request->validate([
             'nama_supplier' => 'required|string|max:255',
             'kontak' => 'nullable|string|max:100',
@@ -108,6 +114,13 @@ class SupplierController extends Controller
                 return redirect()->route('supplier.index')->withErrors(['error' => 'Supplier tidak ditemukan.']);
             }
             $supplier->update($validated);
+            LogActivity::create([
+                'user_id'       => Auth::id(),
+                'activity_type' => 'update_supplier',
+                'description'   => 'Updated supplier: ' . $validated['nama_supplier'],
+                'ip_address'    => $request->ip(),
+                'user_agent'    => $request->userAgent(),
+            ]);
             return redirect()->route('supplier.index')->with('success', 'Supplier berhasil diperbarui.');
         } catch (\Exception $e) {
             return back()->withErrors(['error' => 'Terjadi kesalahan saat memperbarui data.'])->withInput();
@@ -116,17 +129,22 @@ class SupplierController extends Controller
 
     public function destroy($id)
     {
-        // Hapus supplier berdasarkan $id
-        $auth = Auth::user();
-        if (!$auth) {
-            return response()->json(['message' => 'Unauthorized'], 401);
-        }
+        // ✅ Check permission delete
+        $this->authorize('supplier.delete');
+
         try {
             $supplier = Supplier::find($id);
             if (!$supplier) {
                 return redirect()->route('supplier.index')->withErrors(['error' => 'Supplier tidak ditemukan.']);
             }
             $supplier->delete();
+            LogActivity::create([
+                'user_id'       => Auth::id(),
+                'activity_type' => 'delete_supplier',
+                'description'   => 'Deleted supplier: ' . $supplier->nama_supplier,
+                'ip_address'    => request()->ip(),
+                'user_agent'    => request()->userAgent(),
+            ]);
             return redirect()->route('supplier.index')->with('success', 'Supplier berhasil dihapus.');
         } catch (\Exception $e) {
             return back()->withErrors(['error' => 'Terjadi kesalahan saat menghapus data.']);

@@ -14,16 +14,13 @@
     }">
 
         {{-- BREADCRUMB --}}
-        <div class="flex items-center gap-3">
-            <a href="{{ route('supplier.index') }}" class="text-slate-500 hover:underline text-sm">Supplier</a>
-            <div class="text-sm text-slate-400">/</div>
-            <div class="inline-flex items-center text-sm">
-                <span class="px-3 py-1 rounded-md bg-[#E9F3FF] text-[#1D4ED8] border border-[#BFDBFE] font-medium">
-                    Tambah Supplier Baru
-                </span>
-            </div>
+        <div>
+            <a href="{{ route('supplier.index') }}"
+                class="inline-flex items-center gap-2 text-sm text-slate-600 hover:text-[#334976] font-medium transition-colors">
+                <i class="fa-solid fa-arrow-left text-gray-600 hover:text-[#334976]"></i>
+                <span>Kembali</span>
+            </a>
         </div>
-
         {{-- FORM CARD --}}
         <div class="bg-white border border-slate-200 rounded-xl p-6 w-full">
             <form action="{{ route('supplier.store') }}" method="POST" class="space-y-4 w-full">

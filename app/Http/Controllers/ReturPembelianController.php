@@ -7,16 +7,23 @@ use App\Models\ReturPembelian;
 use App\Models\ItemReturPembelian;
 use App\Models\Pembelian;
 use App\Models\ItemPembelian;
+use App\Models\LogActivity;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 
 class ReturPembelianController extends Controller
 {
+    use AuthorizesRequests;
+
     // 📌 list retur pembelian
     public function index()
     {
+        // ✅ Check permission view
+        $this->authorize('retur_pembelian.view');
+
         $returs = ReturPembelian::with('pembelian.supplier', 'creator', 'updater')
             ->latest()
             ->paginate(20);
@@ -27,6 +34,9 @@ class ReturPembelianController extends Controller
     // 📌 form tambah retur
     public function create()
     {
+        // ✅ Check permission create
+        $this->authorize('retur_pembelian.create');
+
         // load pembelian yang sudah paid
         $pembelians = Pembelian::with('supplier')
             ->where('status', 'paid')
@@ -39,6 +49,9 @@ class ReturPembelianController extends Controller
     // 📌 API untuk load items berdasarkan pembelian_id (dipanggil dari Alpine.js)
     public function getItemsByPembelian($id)
     {
+        // ✅ Check permission view
+        $this->authorize('retur_pembelian.view');
+
         try {
             $pembelian = Pembelian::with(['supplier', 'items.item'])
                 ->findOrFail($id);
@@ -67,6 +80,9 @@ class ReturPembelianController extends Controller
     // 📌 simpan retur baru (TIDAK mengurangi stok, hanya catat)
     public function store(Request $request)
     {
+        // ✅ Check permission create
+        $this->authorize('retur_pembelian.create');
+
         $request->validate([
             'pembelian_id' => 'required|exists:pembelians,id',
             'catatan'      => 'nullable|string|max:500',
@@ -144,6 +160,14 @@ class ReturPembelianController extends Controller
                 'total_items' => count($request->items),
             ]);
 
+            LogActivity::create([
+                'user_id'       => Auth::id(),
+                'activity_type' => 'create_retur_pembelian',
+                'description'   => 'Created retur pembelian ID: ' . $retur->id . ' (No Retur: ' . $nomor . ')',
+                'ip_address'    => $request->ip(),
+                'user_agent'    => $request->userAgent(),
+            ]);
+
             DB::commit();
 
             return response()->json([
@@ -167,6 +191,9 @@ class ReturPembelianController extends Controller
     // 📌 detail retur
     public function show($id)
     {
+        // ✅ Check permission view
+        $this->authorize('retur_pembelian.view');
+
         $retur = ReturPembelian::with('pembelian.supplier', 'items.itemPembelian.item')->findOrFail($id);
         return view('auth.pembelian.retur-pembelian.show', compact('retur'));
     }
@@ -174,6 +201,9 @@ class ReturPembelianController extends Controller
     // 📌 update retur (dengan handling stok yang benar)
     public function update(Request $request, $id)
     {
+        // ✅ Check permission update
+        $this->authorize('retur_pembelian.update');
+
         $retur = ReturPembelian::with('items')->findOrFail($id);
 
         $request->validate([
@@ -290,14 +320,17 @@ class ReturPembelianController extends Controller
                 }
             }
 
-            // ❌ TIDAK update status pembelian secara otomatis
-            // Status pembelian tetap 'paid' atau apa pun yang sudah ada
-            // Karena retur itu transaksi terpisah dan statusnya bisa berubah-ubah
-
             Log::info('=== [UPDATE RETUR PEMBELIAN] Update selesai ===', [
                 'retur_id' => $retur->id,
                 'status_final' => $statusBaru,
-                'catatan' => 'Status pembelian TIDAK diubah (tetap independent)',
+            ]);
+
+            LogActivity::create([
+                'user_id'       => Auth::id(),
+                'activity_type' => 'update_retur_pembelian',
+                'description'   => 'Updated retur pembelian ID: ' . $id . ' to status: ' . $statusBaru,
+                'ip_address'    => $request->ip(),
+                'user_agent'    => $request->userAgent(),
             ]);
 
             DB::commit();
@@ -325,6 +358,9 @@ class ReturPembelianController extends Controller
     // 📌 hapus retur
     public function destroy($id)
     {
+        // ✅ Check permission delete
+        $this->authorize('retur_pembelian.delete');
+
         try {
             DB::beginTransaction();
 
@@ -347,6 +383,14 @@ class ReturPembelianController extends Controller
             // Hapus items dan retur
             $retur->items()->delete();
             $retur->delete();
+
+            LogActivity::create([
+                'user_id'       => Auth::id(),
+                'activity_type' => 'delete_retur_pembelian',
+                'description'   => 'Deleted retur pembelian ID: ' . $id . ' (No Retur: ' . $retur->no_retur . ')',
+                'ip_address'    => request()->ip(),
+                'user_agent'    => request()->userAgent(),
+            ]);
 
             DB::commit();
 

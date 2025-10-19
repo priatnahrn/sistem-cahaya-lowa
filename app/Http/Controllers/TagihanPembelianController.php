@@ -2,19 +2,26 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\LogActivity;
 use App\Models\TagihanPembelian;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 
 class TagihanPembelianController extends Controller
 {
+    use AuthorizesRequests;
+
     /**
      * Display a listing of the resource.
      */
     public function index()
     {
+        // ✅ Check permission view
+        $this->authorize('tagihan_pembelian.view');
+
         $tagihans = TagihanPembelian::with('pembelian.supplier')
             ->latest()
             ->get();
@@ -27,6 +34,9 @@ class TagihanPembelianController extends Controller
      */
     public function show(string $id)
     {
+        // ✅ Check permission view
+        $this->authorize('tagihan_pembelian.view');
+
         $tagihan = TagihanPembelian::with([
             'pembelian.supplier',
             'pembelian.items.item',
@@ -42,6 +52,9 @@ class TagihanPembelianController extends Controller
      */
     public function edit(string $id)
     {
+        // ✅ Check permission update
+        $this->authorize('tagihan_pembelian.update');
+
         $tagihan = TagihanPembelian::with([
             'pembelian.supplier',
             'pembelian.items.item',
@@ -64,6 +77,9 @@ class TagihanPembelianController extends Controller
      */
     public function update(Request $request, string $id)
     {
+        // ✅ Check permission update
+        $this->authorize('tagihan_pembelian.update');
+
         $request->validate([
             'jumlah_bayar_tambahan' => 'required|numeric|min:1',
             'metode' => 'nullable|in:cash,transfer',
@@ -146,6 +162,14 @@ class TagihanPembelianController extends Controller
                 ]);
             }
 
+            LogActivity::create([
+                'user_id'       => Auth::id(),
+                'activity_type' => 'update_tagihan_pembelian',
+                'description'   => "Updated pembayaran tagihan ID: {$id}, tambahan bayar: Rp " . number_format($jumlahBayarTambahan, 0, ',', '.'),
+                'ip_address'    => $request->ip(),
+                'user_agent'    => $request->userAgent(),
+            ]);
+
             return redirect()
                 ->route('tagihan-pembelian.show', $id)
                 ->with('success', $message);
@@ -172,6 +196,9 @@ class TagihanPembelianController extends Controller
      */
     public function destroy(string $id)
     {
+        // ✅ Check permission delete
+        $this->authorize('tagihan_pembelian.delete');
+
         try {
             DB::beginTransaction();
 
@@ -198,6 +225,14 @@ class TagihanPembelianController extends Controller
                     'message' => "Tagihan {$noTagihan} berhasil dihapus."
                 ]);
             }
+
+            LogActivity::create([
+                'user_id'       => Auth::id(),
+                'activity_type' => 'delete_tagihan_pembelian',
+                'description'   => "Deleted tagihan pembelian: {$noTagihan}",
+                'ip_address'    => request()->ip(),
+                'user_agent'    => request()->userAgent(),
+            ]);
 
             return redirect()
                 ->route('tagihan-pembelian.index')

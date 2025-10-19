@@ -135,6 +135,7 @@
                                                 <!-- Input cari item -->
                                                 <div class="relative flex-1">
                                                     <input type="text" x-model="item.query"
+                                                        @cannot('penjualan_cepat.update') disabled readonly @endcannot
                                                         @input.debounce.300ms="searchItem(idx)"
                                                         @focus="item.query.length >= 2 && searchItem(idx); item._dropdownOpen = true"
                                                         @click="item.query.length >= 2 ? item._dropdownOpen = true : null"
@@ -250,6 +251,7 @@
                                                         <!-- Select transparan -->
                                                         <select x-model="item.gudang_id"
                                                             @change="updateSatuanOptions(idx)"
+                                                            @cannot('penjualan_cepat.update') disabled @endcannot
                                                             class="absolute inset-0 opacity-0 cursor-pointer">
                                                             <template x-for="g in getDistinctGudangs(item)"
                                                                 :key="g.gudang_id">
@@ -279,6 +281,7 @@
                                     <!-- Jumlah -->
                                     <td class="px-5 py-4 text-center align-middle">
                                         <input type="text" :value="item.qty ? formatJumlah(item.qty) : ''"
+                                            @cannot('penjualan_cepat.update') disabled readonly @endcannot
                                             @input="updateQtyFormatted(idx, $event.target.value)"
                                             class="no-spinner w-24 text-center border border-slate-300 rounded-lg px-2 py-2.5 
                                         focus:border-blue-500 focus:ring-1 focus:ring-blue-200"
@@ -289,6 +292,7 @@
                                     <td class="px-5 py-4 align-middle">
                                         <div class="relative">
                                             <select x-model="item.satuan_id" @change="updateHarga(idx)"
+                                                @cannot('penjualan_cepat.update') disabled  @endcannot
                                                 class="w-full border border-gray-300 rounded-lg pl-3 pr-8 py-2.5 text-sm text-slate-700 
                                             appearance-none focus:outline-none focus:ring-2 focus:ring-[#344579]/20 
                                             focus:border-[#344579] transition">
@@ -307,6 +311,7 @@
                                             <span
                                                 class="absolute left-2 top-1/2 -translate-y-1/2 text-slate-500 text-sm">Rp</span>
                                             <input type="text" :value="formatRupiah(item.harga)"
+                                                @cannot('penjualan_cepat.update') disabled readonly @endcannot
                                                 @input="
                                             const clean = $event.target.value.replace(/\D/g, '');
                                             item.harga = parseInt(clean || 0);
@@ -325,24 +330,28 @@
                                     </td>
 
                                     <!-- Hapus -->
-                                    <td class="px-3 py-4 text-center align-middle">
-                                        <button type="button" @click="removeItem(idx)"
-                                            class="text-rose-600 hover:text-rose-800 transition">
-                                            <i class="fa-solid fa-trash"></i>
-                                        </button>
-                                    </td>
+                                    @can('penjualan_cepat.update')
+                                        <td class="px-3 py-4 text-center align-middle">
+                                            <button type="button" @click="removeItem(idx)"
+                                                class="text-rose-600 hover:text-rose-800 transition">
+                                                <i class="fa-solid fa-trash"></i>
+                                            </button>
+                                        </td>
+                                    @endcan
                                 </tr>
                             </template>
                         </tbody>
                     </table>
 
                     <!-- Button Tambah Item Manual -->
-                    <div class="m-4">
-                        <button type="button" @click="addItem"
-                            class="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded border-2 border-dashed border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100 transition">
-                            <i class="fa-solid fa-plus"></i> Tambah Item Baru
-                        </button>
-                    </div>
+                    @can('penjualan_cepat.update')
+                        <div class="m-4">
+                            <button type="button" @click="addItem"
+                                class="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded border-2 border-dashed border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100 transition">
+                                <i class="fa-solid fa-plus"></i> Tambah Item Baru
+                            </button>
+                        </div>
+                    @endcan
                 </div>
             </div>
 
@@ -371,20 +380,22 @@
                     <!-- Mode Draft (Pending) -->
                     <template x-if="form.is_draft == 1">
                         <div class="flex flex-col gap-3">
-                            <button @click="update" :disabled="!isDirty || isSaving"
-                                :class="[
-                                    'w-full py-2.5 rounded-lg text-white font-medium shadow-sm transition',
-                                    (!isDirty || isSaving) ?
-                                    'bg-gray-200 cursor-not-allowed' :
-                                    'bg-[#344579] hover:bg-[#2d3f6d] hover:shadow-md'
-                                ]">
-                                <i class="fa-solid fa-save mr-2"></i> Simpan Perubahan
-                            </button>
+                            @can('penjualan_cepat.update')
+                                <button @click="update" :disabled="!isDirty || isSaving"
+                                    :class="[
+                                        'w-full py-2.5 rounded-lg text-white font-medium shadow-sm transition',
+                                        (!isDirty || isSaving) ?
+                                        'bg-gray-200 cursor-not-allowed' :
+                                        'bg-[#344579] hover:bg-[#2d3f6d] hover:shadow-md'
+                                    ]">
+                                    <i class="fa-solid fa-save mr-2"></i> Simpan Perubahan
+                                </button>
 
-                            <button @click="cancelDraft"
-                                class="w-full py-2.5 rounded-lg border border-red-500 text-red-500 hover:bg-red-500 hover:text-white transition font-medium">
-                                Batal
-                            </button>
+                                <button @click="cancelDraft"
+                                    class="w-full py-2.5 rounded-lg border border-red-500 text-red-500 hover:bg-red-500 hover:text-white transition font-medium">
+                                    Batal
+                                </button>
+                            @endcan
                         </div>
                     </template>
 
@@ -396,15 +407,17 @@
                                 Kembali
                             </button>
 
-                            <button @click="update" :disabled="!isDirty || isSaving"
-                                :class="[
-                                    'w-[70%] py-2.5 rounded-lg text-white font-medium transition ',
-                                    (!isDirty || isSaving) ?
-                                    'bg-gray-200 cursor-not-allowed' :
-                                    'bg-[#344579] hover:bg-[#2d3f6d] hover:shadow-md'
-                                ]">
-                                Simpan Perubahan
-                            </button>
+                            @can('penjualan_cepat.update')
+                                <button @click="update" :disabled="!isDirty || isSaving"
+                                    :class="[
+                                        'w-[70%] py-2.5 rounded-lg text-white font-medium transition ',
+                                        (!isDirty || isSaving) ?
+                                        'bg-gray-200 cursor-not-allowed' :
+                                        'bg-[#344579] hover:bg-[#2d3f6d] hover:shadow-md'
+                                    ]">
+                                    Simpan Perubahan
+                                </button>
+                            @endcan
                         </div>
                     </template>
                 </div>
@@ -691,8 +704,7 @@
                 <!-- Info Kembalian/Pengembalian -->
                 <template x-if="adjustmentKembalian > 0">
                     <div class="bg-green-50 border border-green-200 rounded-lg p-3 mt-3 text-green-700">
-                        <p class="text-sm font-medium"
-                            x-text="adjustmentAmount > 0 ? 'Kembalian:' : 'Jumlah Pengembalian:'"></p>
+                        <p class="text-sm font-medium">Kembalian:</p>
                         <p class="text-xl font-bold transition-all duration-300"
                             x-text="'Rp ' + formatRupiah(adjustmentKembalian)"></p>
                     </div>
@@ -821,7 +833,7 @@
                             qty: {{ $it->jumlah }},
                             harga: {{ $it->harga }},
                             stok: 0,
-                            manual: false,
+                            manual: true,
                             _dropdownOpen: false,
                             gudangs: {!! json_encode(
                                 $it->item->gudangItems->map(
@@ -1245,14 +1257,10 @@
                         total: this.total,
                         items: this.form.items.map(it => {
                             let keteranganFinal = it.keterangan || '';
-
                             if (it.is_spandek && it.catatan_produksi) {
-                                if (keteranganFinal) {
-                                    keteranganFinal += ' - ';
-                                }
+                                if (keteranganFinal) keteranganFinal += ' - ';
                                 keteranganFinal += it.catatan_produksi;
                             }
-
                             return {
                                 item_id: it.item_id,
                                 gudang_id: it.gudang_id,
@@ -1288,27 +1296,49 @@
                                 this.showPrintModal = true;
                             }, 100);
                             this.notify('Transaksi berhasil disimpan dan status diubah menjadi final.');
-
                             this.form.is_draft = 0;
                             this.initialForm = JSON.parse(JSON.stringify(this.form));
                             this.isDirty = false;
                         }
                         // ✅ CEK: Apakah ada perubahan total untuk transaksi final?
                         else if (this.form.is_draft == 0 && this.total !== this.oldTotal) {
-                            this.adjustmentAmount = this.total - this.oldTotal;
+
+                            // ✅ AMBIL dari response backend
+                            const paymentInfo = result.payment_info || {
+                                total_dibayar: 0,
+                                total_penjualan_lama: this.oldTotal,
+                                total_penjualan_baru: this.total
+                            };
+
+                            console.log('💰 Payment Info dari Backend:', paymentInfo);
+
+                            // ✅ HITUNG: Sisa lama + Tambahan baru
+                            const sisaLama = paymentInfo.total_penjualan_lama - paymentInfo.total_dibayar;
+                            const tambahanBaru = paymentInfo.total_penjualan_baru - paymentInfo.total_penjualan_lama;
+                            const nominalYangHarusDibayar = Math.max(0, sisaLama + tambahanBaru);
+
+                            console.log('📊 Calculation:', {
+                                total_lama: paymentInfo.total_penjualan_lama,
+                                total_baru: paymentInfo.total_penjualan_baru,
+                                sudah_dibayar: paymentInfo.total_dibayar,
+                                sisa_lama: sisaLama,
+                                tambahan_baru: tambahanBaru,
+                                harus_bayar: nominalYangHarusDibayar
+                            });
+
+                            this.adjustmentAmount = nominalYangHarusDibayar;
 
                             // Reset form adjustment
                             this.nominalAdjustment = this.adjustmentAmount > 0 ? this.adjustmentAmount : 0;
                             this.nominalAdjustmentDisplay = this.adjustmentAmount > 0 ?
                                 new Intl.NumberFormat('id-ID').format(this.adjustmentAmount) : '';
                             this.adjustmentMethod = 'cash';
+                            this.adjustmentBankName = '';
 
                             setTimeout(() => {
                                 this.showAdjustmentModal = true;
                             }, 100);
-                        }
-                        // ✅ Tidak ada perubahan total
-                        else {
+                        } else {
                             this.initialForm = JSON.parse(JSON.stringify(this.form));
                             this.isDirty = false;
                             this.notify('Perubahan berhasil disimpan (tidak ada perubahan total).');
@@ -1324,8 +1354,8 @@
 
                 // ✅ UPDATE method saveAdjustment():
                 async saveAdjustment() {
-                    if (this.adjustmentAmount > 0 && this.nominalAdjustment < this.adjustmentAmount) {
-                        this.notify('Nominal pembayaran kurang dari kekurangan!', 'error');
+                    if (this.nominalAdjustment <= 0) {
+                        this.notify('Nominal pembayaran harus lebih dari 0', 'error');
                         return;
                     }
 

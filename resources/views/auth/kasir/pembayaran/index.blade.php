@@ -164,7 +164,13 @@
                                 <td class="px-4 py-3" x-text="(currentPage-1)*pageSize + idx + 1"></td>
                                 <td class="px-4 py-3" x-text="r.no_transaksi"></td>
                                 <td class="px-4 py-3" x-text="fmtTanggal(r.tanggal)"></td>
-                                <td class="px-4 py-3" x-text="r.penjualan"></td>
+                                <td
+                                    class="px-4 py-3 text-green-600 font-medium whitespace-normal break-words leading-snug max-w-[220px]">
+                                    <a :href="r.url" class="hover:underline hover:text-[#2e3e6a] transition block"
+                                        x-text="r.penjualan"></a>
+                                </td>
+                                
+                    
 
                                 <td class="px-4 py-3 text-right font-medium" x-text="formatRupiah(r.total_penjualan)">
                                 </td>
@@ -230,28 +236,32 @@
         </div>
 
 
-        <!-- ✅ Floating dropdown -->
+        {{-- ✅ Floating dropdown - PERBAIKI INI --}}
         <div x-cloak x-show="dropdownVisible" x-transition.origin.top.right id="floating-dropdown"
             class="fixed w-44 bg-white border border-slate-200 rounded-lg shadow-lg z-[9999]"
             :style="`top:${dropdownPos.top}; left:${dropdownPos.left}`">
 
+            {{-- ✅ Detail selalu tampil (tidak perlu @can) --}}
             <button @click="window.location = dropdownData.url"
-                class="w-full text-left px-4 py-2 text-sm hover:bg-slate-50 flex items-center gap-2 text-slate-700">
+                class="w-full text-left px-4 py-2 text-sm hover:bg-slate-50 flex items-center gap-2 text-slate-700 rounded-t-lg transition">
                 <i class="fa-solid fa-eye text-blue-500"></i> Detail
             </button>
 
-            <button @click="confirmDelete(dropdownData)"
-                class="w-full text-left px-4 py-2 text-sm hover:bg-red-50 flex items-center gap-2 text-red-600 border-t border-slate-100">
-                <i class="fa-solid fa-trash"></i> Hapus
-            </button>
+            {{-- ✅ Hapus hanya muncul jika punya permission --}}
+            @can('pembayaran.delete')
+                <button @click="confirmDelete(dropdownData)"
+                    class="w-full text-left px-4 py-2 text-sm hover:bg-red-50 flex items-center gap-2 text-red-600 rounded-b-lg transition border-t border-slate-100">
+                    <i class="fa-solid fa-trash"></i> Hapus
+                </button>
+            @endcan
         </div>
 
         {{-- ========================= --}}
         {{-- MODAL TAMBAH PEMBAYARAN --}}
         {{-- ========================= --}}
         <div x-cloak x-show="showTambahModal" x-transition.opacity
-            class="fixed inset-0 z-[9999] flex items-center justify-center">
-            <div class="absolute inset-0 bg-black/40 backdrop-blur-sm" @click="closeTambahModal()"></div>
+            class="fixed inset-0 z-[9999] flex items-center justify-center min-h-screen">
+            <div class="absolute inset-0 bg-black/40 " @click="closeTambahModal()"></div>
 
             <div class="bg-white rounded-2xl shadow-xl w-11/12 md:w-[420px] z-50 overflow-hidden animate-fadeIn">
                 {{-- HEADER --}}
@@ -274,7 +284,7 @@
                             <span class="text-slate-800" x-text="penjualanData?.pelanggan || '-'"></span>
                         </p>
                         <p class="text-sm text-slate-600"><span class="font-medium">Tanggal:</span>
-                            <span class="text-slate-800" x-text="penjualanData?.tanggal || '-'"></span>
+                            <span class="text-slate-800" x-text="fmtTanggal(penjualanData?.tanggal) || '-'"></span>
                         </p>
                     </div>
 
@@ -376,8 +386,8 @@
         {{-- MODAL BERHASIL PEMBAYARAN --}}
         {{-- ========================= --}}
         <div x-cloak x-show="showSuccessModal" x-transition.opacity
-            class="fixed inset-0 z-[99999] flex items-center justify-center">
-            <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" @click="closeSuccessModal()"></div>
+            class="fixed inset-0 z-[99999] flex items-center justify-center min-h-screen">
+            <div class="absolute inset-0 bg-black/50 " @click="closeSuccessModal()"></div>
 
             <div
                 class="bg-white rounded-2xl shadow-xl w-11/12 md:w-[420px] z-50 overflow-hidden animate-fadeIn text-center p-6">
@@ -502,7 +512,7 @@
                     'penjualan' => optional($p->penjualan->pelanggan)->nama_pelanggan ?? 'Customer',
                     'total_penjualan' => (float) optional($p->penjualan)->total ?? 0, // ✅ tambahkan ini
                     'total_bayar' => (float) $p->jumlah_bayar ?? 0,
-                    'status' => $p->sisa == 0 ? 'lunas' : 'belum_lunas',
+                    'status' => $p->penjualan->status_bayar,
                     'url' => route('pembayaran.show', $p->id),
                 ];
             })
@@ -862,20 +872,20 @@
 
                 // ========== STATUS BADGES ==========
                 badgeClass(st) {
-                    if (st === 'lunas') return 'bg-green-50 text-green-700 border border-green-200';
-                    if (st === 'belum_lunas') return 'bg-amber-50 text-amber-700 border border-amber-200';
+                    if (st === 'paid') return 'bg-green-50 text-green-700 border border-green-200';
+                    if (st === 'unpaid') return 'bg-amber-50 text-amber-700 border border-amber-200';
                     if (st === 'batal') return 'bg-rose-50 text-rose-700 border border-rose-200';
                     return 'bg-slate-50 text-slate-700 border border-slate-200';
                 },
                 dotClass(st) {
-                    if (st === 'lunas') return 'bg-green-500';
-                    if (st === 'belum_lunas') return 'bg-amber-500';
+                    if (st === 'paid') return 'bg-green-500';
+                    if (st === 'unpaid') return 'bg-amber-500';
                     if (st === 'batal') return 'bg-rose-500';
                     return 'bg-slate-500';
                 },
                 statusLabel(st) {
-                    if (st === 'lunas') return 'Lunas';
-                    if (st === 'belum_lunas') return 'Belum Lunas';
+                    if (st === 'paid') return 'Lunas';
+                    if (st === 'unpaid') return 'Belum Lunas';
                     return '-';
                 },
 

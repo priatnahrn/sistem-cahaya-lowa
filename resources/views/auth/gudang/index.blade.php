@@ -7,11 +7,27 @@
         [x-cloak] {
             display: none !important;
         }
+
+        .filter-panel {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            max-height: 0;
+            overflow: hidden;
+            opacity: 0;
+        }
+
+        .filter-panel.show {
+            max-height: 500px;
+            opacity: 1;
+        }
+
+        table, tr, td {
+            overflow: visible !important;
+        }
     </style>
 
+    <meta name="csrf-token" content="{{ csrf_token() }}">
 
-
-    {{-- Toasts --}}
+    {{-- TOAST --}}
     <div x-data class="fixed top-6 right-6 space-y-3 z-50 w-80">
         @if (session('success'))
             <div x-data="{ show: true }" x-show="show" x-transition x-init="setTimeout(() => show = false, 4000)"
@@ -42,13 +58,15 @@
     <div x-data="gudangPage()" x-init="init()" class="space-y-6">
 
         {{-- ACTION BAR --}}
-        <div
-            class="bg-white border border-slate-200 rounded-xl px-6 py-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+        <div class="bg-white border border-slate-200 rounded-xl px-6 py-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
             <div class="flex items-center gap-3">
-                <a href="{{ route('gudang.create') }}"
-                    class="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-white bg-[#344579] hover:bg-[#2e3e6a] shadow">
-                    <i class="fa-solid fa-plus"></i> Tambah Gudang Baru
-                </a>
+                {{-- ✅ Tombol Tambah - Hanya muncul jika punya permission create --}}
+                @can('gudang.create')
+                    <a href="{{ route('gudang.create') }}"
+                        class="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-white bg-[#344579] hover:bg-[#2e3e6a] shadow transition">
+                        <i class="fa-solid fa-plus"></i> Tambah Gudang Baru
+                    </a>
+                @endcan
             </div>
 
             <div class="flex items-center gap-3">
@@ -60,9 +78,9 @@
                 </div>
 
                 <button type="button" @click="showFilter=!showFilter"
-                    class="px-4 py-2 rounded-lg border border-slate-200 text-slate-700 hover:bg-[#2e3e6a] hover:text-white"
-                    :class="{ 'bg-[#344579] text-white': hasActiveFilters() }">
-                    <i class="fa-solid fa-filter mr-2"></i> Filter
+                    class="px-4 py-2 rounded-lg border border-slate-200 text-slate-700 hover:bg-[#344579] hover:text-white transition"
+                    :class="{ 'bg-[#344579] text-white': showFilter || hasActiveFilters() }">
+                    <i class="fa-solid fa-sliders mr-2"></i>
                     <span x-show="hasActiveFilters()" class="ml-1 bg-white text-[#344579] px-1.5 py-0.5 rounded text-xs">
                         <span x-text="activeFiltersCount()"></span>
                     </span>
@@ -70,11 +88,9 @@
             </div>
         </div>
 
-        {{-- ENHANCED FILTER --}}
+        {{-- FILTER PANEL --}}
         <div x-show="showFilter" x-collapse x-transition class="bg-white border border-slate-200 rounded-xl px-6 py-4">
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-
-                {{-- Filter Kode --}}
                 <div>
                     <label class="block text-sm font-medium text-slate-700 mb-2">Kode Gudang</label>
                     <input type="text" placeholder="Cari kode gudang..." x-model="filters.kode"
@@ -82,7 +98,6 @@
                        focus:outline-none focus:ring-2 focus:ring-[#344579]/20 focus:border-[#344579]">
                 </div>
 
-                {{-- Filter Nama --}}
                 <div>
                     <label class="block text-sm font-medium text-slate-700 mb-2">Nama Gudang</label>
                     <input type="text" placeholder="Cari nama gudang..." x-model="filters.nama"
@@ -90,7 +105,6 @@
                        focus:outline-none focus:ring-2 focus:ring-[#344579]/20 focus:border-[#344579]">
                 </div>
 
-                {{-- Filter Lokasi --}}
                 <div>
                     <label class="block text-sm font-medium text-slate-700 mb-2">Lokasi</label>
                     <input type="text" placeholder="Cari lokasi..." x-model="filters.lokasi"
@@ -99,91 +113,74 @@
                 </div>
             </div>
 
-            {{-- Filter Actions --}}
             <div class="flex items-center justify-between mt-4 pt-4 border-t border-slate-200">
                 <div class="text-sm text-slate-600">
                     <span x-text="filteredTotal()"></span> dari <span x-text="data.length"></span> gudang
                 </div>
                 <div class="flex items-center gap-2">
                     <button type="button" @click="resetFilters()"
-                        class="px-4 py-2 rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50">
-                        <i class="fa-solid fa-arrow-rotate-left mr-2"></i> Reset Filter
-                    </button>
-                    <button type="button" @click="showFilter=false"
-                        class="px-4 py-2 rounded-lg bg-[#344579] text-white hover:bg-[#2e3e6a]">
-                        Terapkan Filter
+                        class="px-4 py-2 rounded-lg border border-slate-200 text-white hover:bg-red-600 bg-red-400 transition">
+                        <i class="fa-solid fa-arrow-rotate-left mr-2"></i> Reset
                     </button>
                 </div>
             </div>
         </div>
-
 
         {{-- TABLE --}}
         <div class="bg-white border border-slate-200 rounded-xl overflow-hidden">
             <div class="overflow-x-auto">
                 <table class="min-w-full text-sm">
                     <thead class="bg-slate-50 border-b border-slate-200">
-                        <tr class="text-left text-slate-600">
+                        <tr class="text-center text-slate-600">
                             <th class="px-4 py-3 w-[60px]">No.</th>
                             <th class="px-4 py-3 cursor-pointer" @click="toggleSort('kode')">
                                 Kode Gudang
-                                <i class="fa-solid"
-                                    :class="sortBy === 'kode' ? (sortDir==='asc' ? 'fa-arrow-up ml-2' :
-                                        'fa-arrow-down ml-2'): 'fa-sort ml-2'"></i>
+                                <i class="fa-solid" :class="sortIcon('kode')"></i>
                             </th>
                             <th class="px-4 py-3 cursor-pointer" @click="toggleSort('nama')">
                                 Nama Gudang
-                                <i class="fa-solid"
-                                    :class="sortBy === 'nama' ? (sortDir==='asc' ? 'fa-arrow-up ml-2' :
-                                        'fa-arrow-down ml-2'): 'fa-sort ml-2'"></i>
+                                <i class="fa-solid" :class="sortIcon('nama')"></i>
                             </th>
                             <th class="px-4 py-3 cursor-pointer" @click="toggleSort('lokasi')">
                                 Lokasi
-                                <i class="fa-solid"
-                                    :class="sortBy === 'lokasi' ? (sortDir==='asc' ? 'fa-arrow-up ml-2' :
-                                        'fa-arrow-down ml-2'): 'fa-sort ml-2'"></i>
+                                <i class="fa-solid" :class="sortIcon('lokasi')"></i>
                             </th>
-                            <th class="px-2 py-3"></th>
+                            {{-- ✅ Kolom aksi hanya muncul jika ada permission update atau delete --}}
+                            @if(auth()->user()->can('gudang.update') || auth()->user()->can('gudang.delete'))
+                                <th class="px-2 py-3"></th>
+                            @endif
                         </tr>
                     </thead>
                     <tbody>
                         <template x-for="(r, idx) in pagedData()" :key="r.id">
-                            <tr class="hover:bg-slate-50 text-slate-700 border-b border-slate-200">
+                            <tr class="hover:bg-slate-50 text-slate-700 border-b border-slate-200 text-center">
                                 <td class="px-4 py-3" x-text="(currentPage-1)*pageSize + idx + 1"></td>
-                                <td class="px-4 py-3" x-text="r.kode"></td>
-                                <td class="px-4 py-3">
-                                    <a :href="r.url" class="text-green-600 font-normal hover:underline"
-                                        x-text="r.nama" @click="openActionId=null"></a>
+                                <td class="px-4 py-3 font-medium" x-text="r.kode"></td>
+                                <td class="px-4 py-3 text-green-600 font-medium">
+                                    <a :href="r.url" class="hover:underline hover:text-[#2e3e6a] transition"
+                                        x-text="r.nama">
+                                    </a>
                                 </td>
-                                <td class="px-4 py-3" x-text="r.lokasi"></td>
-                                <td class="px-2 py-3 text-right relative">
-                                    <button type="button" @click="toggleActions(r.id)"
-                                        class="px-2 py-1 rounded hover:bg-slate-100">
-                                        <i class="fa-solid fa-ellipsis-vertical"></i>
-                                    </button>
-                                    <div x-cloak x-show="openActionId===r.id" @click.away="openActionId=null" x-transition
-                                        class="absolute right-2 mt-2 w-40 bg-white shadow rounded-md border border-slate-200 z-20">
-                                        <ul class="py-1">
-                                            <li>
-                                                <a :href="r.url"
-                                                    class="block px-4 py-2 hover:bg-slate-50 text-left"
-                                                    @click="openActionId=null">
-                                                    <i class="fa-solid fa-eye mr-2"></i> Detail
-                                                </a>
-                                            </li>
-                                            <li>
-                                                <button type="button" @click="confirmDelete(r)"
-                                                    class="w-full text-left px-4 py-2 text-red-500 hover:bg-slate-50">
-                                                    <i class="fa-solid fa-trash mr-2"></i> Hapus
-                                                </button>
-                                            </li>
-                                        </ul>
-                                    </div>
-                                </td>
+                                <td class="px-4 py-3 text-slate-600" x-text="r.lokasi"></td>
+                                
+                                {{-- ✅ Action Dropdown - Hanya muncul jika ada permission --}}
+                                @if(auth()->user()->can('gudang.update') || auth()->user()->can('gudang.delete'))
+                                    <td class="px-2 py-3 text-right relative">
+                                        <button type="button" data-dropdown-open-button @click="openDropdown(r, $event)"
+                                            class="px-2 py-1 rounded hover:bg-slate-100 focus:outline-none transition">
+                                            <i class="fa-solid fa-ellipsis-vertical"></i>
+                                        </button>
+                                    </td>
+                                @endif
                             </tr>
                         </template>
+                        
                         <tr x-show="filteredTotal()===0" class="text-center text-slate-500">
-                            <td colspan="5" class="px-4 py-6">Tidak ada data gudang.</td>
+                            <td colspan="{{ auth()->user()->can('gudang.update') || auth()->user()->can('gudang.delete') ? '5' : '4' }}" 
+                                class="px-4 py-8">
+                                <i class="fa-solid fa-inbox text-4xl text-slate-300 mb-2"></i>
+                                <p class="text-slate-400">Tidak ada data gudang.</p>
+                            </td>
                         </tr>
                     </tbody>
                 </table>
@@ -192,69 +189,140 @@
             {{-- PAGINATION --}}
             <div class="px-6 py-4">
                 <nav class="flex items-center justify-center gap-2" aria-label="Pagination">
-                    <button @click="goToPage(1)" :disabled="currentPage === 1"
-                        class="px-3 py-1 rounded border border-slate-200 hover:bg-slate-50 disabled:opacity-50">
+                    <button type="button" @click="goToPage(1)" :disabled="currentPage === 1"
+                        class="px-3 py-1 rounded border border-slate-200 hover:bg-slate-50 disabled:opacity-50 transition">
                         <i class="fa-solid fa-angles-left"></i>
                     </button>
-                    <button @click="prev()" :disabled="currentPage === 1"
-                        class="px-3 py-1 rounded border border-slate-200 hover:bg-slate-50 disabled:opacity-50">
+                    <button type="button" @click="prev()" :disabled="currentPage === 1"
+                        class="px-3 py-1 rounded border border-slate-200 hover:bg-slate-50 disabled:opacity-50 transition">
                         <i class="fa-solid fa-chevron-left"></i>
                     </button>
+                    
                     <template x-for="p in pagesToShow()" :key="p">
                         <span>
-                            <button x-show="p!=='...'" @click="goToPage(p)" x-text="p"
+                            <button type="button" x-show="p!=='...'" @click="goToPage(p)" x-text="p"
                                 :class="{ 'bg-[#344579] text-white': currentPage === p }"
-                                class="mx-0.5 px-3 py-1 rounded border border-slate-200 hover:bg-[#2c3e6b] cursor-pointer"></button>
+                                class="mx-0.5 px-3 py-1 rounded border border-slate-200 hover:bg-[#2c3e6b] hover:text-white cursor-pointer transition"></button>
                             <span x-show="p==='...'" class="mx-1 px-3 py-1 text-slate-500">...</span>
                         </span>
                     </template>
-                    <button @click="next()" :disabled="currentPage === totalPages()"
-                        class="px-3 py-1 rounded border border-slate-200 hover:bg-slate-50 disabled:opacity-50">
+                    
+                    <button type="button" @click="next()" :disabled="currentPage === totalPages()"
+                        class="px-3 py-1 rounded border border-slate-200 hover:bg-slate-50 disabled:opacity-50 transition">
                         <i class="fa-solid fa-chevron-right"></i>
                     </button>
-                    <button @click="goToPage(totalPages())" :disabled="currentPage === totalPages()"
-                        class="px-3 py-1 rounded border border-slate-200 hover:bg-slate-50 disabled:opacity-50">
+                    <button type="button" @click="goToPage(totalPages())" :disabled="currentPage === totalPages()"
+                        class="px-3 py-1 rounded border border-slate-200 hover:bg-slate-50 disabled:opacity-50 transition">
                         <i class="fa-solid fa-angles-right"></i>
                     </button>
                 </nav>
             </div>
         </div>
 
-        {{-- DELETE CONFIRM MODAL --}}
-        <div x-cloak x-show="showDeleteModal" class="fixed inset-0 z-50 flex items-center justify-center">
-            <div class="absolute inset-0 bg-black/40" @click="closeDelete()"></div>
-            <div x-transition class="bg-white rounded-xl shadow-lg w-11/12 md:w-1/3 z-10 overflow-hidden">
-                <div class="px-6 py-4 border-b border-slate-200">
-                    <h3 class="text-lg font-semibold text-red-600">Konfirmasi Hapus</h3>
+        {{-- DELETE MODAL --}}
+        <div x-cloak x-show="showDeleteModal" aria-modal="true" role="dialog"
+            class="fixed inset-0 z-50 flex items-center justify-center min-h-screen">
+
+            <div x-show="showDeleteModal" x-transition.opacity.duration.400ms
+                class="absolute inset-0 bg-black/40 backdrop-blur-[2px] transition-all" @click="closeDelete()"></div>
+
+            <div x-show="showDeleteModal" x-transition:enter="transition ease-out duration-300"
+                x-transition:enter-start="opacity-0 scale-95 translate-y-3"
+                x-transition:enter-end="opacity-100 scale-100 translate-y-0"
+                x-transition:leave="transition ease-in duration-200" x-transition:leave-start="opacity-100 scale-100"
+                x-transition:leave-end="opacity-0 scale-95 translate-y-3"
+                class="relative bg-white/95 backdrop-blur-sm w-[480px]
+               rounded-2xl shadow-[0_10px_35px_-5px_rgba(239,68,68,0.3)]
+               border border-red-100 transform transition-all overflow-hidden"
+                @click.away="closeDelete()">
+
+                <div class="bg-gradient-to-r from-red-50 to-rose-50 border-b border-red-100 px-5 py-4 flex items-center justify-between rounded-t-2xl">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center">
+                            <i class="fa-solid fa-triangle-exclamation text-red-600 text-lg"></i>
+                        </div>
+                        <h3 class="text-base font-semibold text-red-700">Konfirmasi Hapus</h3>
+                    </div>
+                    <button @click="closeDelete()" class="text-red-400 hover:text-red-600 transition">
+                        <i class="fa-solid fa-xmark text-lg"></i>
+                    </button>
                 </div>
-                <div class="px-6 py-4">
-                    <p class="text-slate-600">
+
+                <div class="p-6 bg-white">
+                    <p class="text-slate-700 leading-relaxed">
                         Apakah Anda yakin ingin menghapus gudang
-                        <span class="font-semibold" x-text="deleteItem.nama"></span>
-                        (kode: <span x-text="deleteItem.kode"></span>)?
+                        <span class="font-semibold text-slate-900 bg-slate-100 px-2 py-0.5 rounded"
+                            x-text="deleteItem.nama"></span>
+                        dengan kode
+                        <span class="font-semibold text-green-600 bg-green-50 px-2 py-0.5 rounded"
+                            x-text="deleteItem.kode"></span>?
                     </p>
+
+                    <div class="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg flex items-start gap-2">
+                        <i class="fa-solid fa-info-circle text-amber-600 mt-0.5"></i>
+                        <div class="text-sm text-amber-700">
+                            <p class="font-medium">Perhatian:</p>
+                            <p class="mt-1">Tindakan ini akan menghapus data gudang secara permanen. Proses ini <strong>tidak dapat dibatalkan</strong>.</p>
+                        </div>
+                    </div>
                 </div>
-                <div class="px-6 py-4 border-t border-slate-200 flex justify-end gap-2">
-                    <button @click="closeDelete()"
-                        class="px-4 py-2 rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50">Batal</button>
-                    <button @click="doDelete()"
-                        class="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700">Hapus</button>
+
+                <div class="px-6 py-4 bg-slate-50 border-t border-slate-200 flex justify-end gap-3 rounded-b-2xl">
+                    <button type="button" @click="closeDelete()"
+                        class="px-5 py-2.5 rounded-lg border border-slate-300 text-slate-600 
+                hover:bg-white hover:border-slate-400 transition-all font-medium">
+                        <i class="fa-solid fa-xmark mr-1.5"></i> Batal
+                    </button>
+                    <button type="button" @click="doDelete()"
+                        class="px-5 py-2.5 rounded-lg bg-red-600 text-white hover:bg-red-700 
+                transition-all shadow-sm hover:shadow-md font-medium group">
+                        <i class="fa-solid fa-trash mr-1.5 group-hover:scale-110 transition-transform"></i>
+                        Hapus
+                    </button>
                 </div>
             </div>
         </div>
+
+        {{-- ✅ Floating Dropdown - Dengan Permission Check --}}
+        <div x-cloak x-show="dropdownVisible" x-transition.origin.top.right id="floating-dropdown" data-dropdown
+            class="absolute w-44 bg-white border border-slate-200 rounded-lg shadow-lg z-[9999]"
+            :style="`top:${dropdownPos.top}; left:${dropdownPos.left}`">
+            
+            {{-- Tombol Detail (View) --}}
+            <button @click="window.location = dropdownData.url"
+                class="w-full text-left px-4 py-2 text-sm hover:bg-slate-50 flex items-center gap-2 text-slate-700 rounded-t-lg transition">
+                <i class="fa-solid fa-eye text-blue-500"></i> Detail
+            </button>
+            
+            {{-- Tombol Edit (Update) - Hanya muncul jika punya permission --}}
+            @can('gudang.update')
+                <button @click="window.location = dropdownData.edit_url"
+                    class="w-full text-left px-4 py-2 text-sm hover:bg-slate-50 flex items-center gap-2 text-slate-700 transition">
+                    <i class="fa-solid fa-pen-to-square text-green-500"></i> Edit
+                </button>
+            @endcan
+            
+            {{-- Tombol Hapus (Delete) - Hanya muncul jika punya permission --}}
+            @can('gudang.delete')
+                <button @click="confirmDelete(dropdownData)"
+                    class="w-full text-left px-4 py-2 text-sm hover:bg-red-50 flex items-center gap-2 text-red-600 rounded-b-lg transition">
+                    <i class="fa-solid fa-trash"></i> Hapus
+                </button>
+            @endcan
+        </div>
+
     </div>
 
     @php
         $gudangsJson = $gudangs
-            ->map(
-                fn($g) => [
-                    'id' => $g->id,
-                    'kode' => $g->kode_gudang,
-                    'nama' => $g->nama_gudang,
-                    'lokasi' => $g->lokasi,
-                    'url' => route('gudang.show', $g->id),
-                ],
-            )
+            ->map(fn($g) => [
+                'id' => $g->id,
+                'kode' => $g->kode_gudang,
+                'nama' => $g->nama_gudang,
+                'lokasi' => $g->lokasi,
+                'url' => route('gudang.show', $g->id),
+                'edit_url' => route('gudang.show', $g->id), // Nanti ganti ke edit route
+            ])
             ->toArray();
     @endphp
 
@@ -263,34 +331,42 @@
             return {
                 data: @json($gudangsJson),
                 q: '',
-                filters: {
-                    kode: '',
-                    nama: '',
-                    lokasi: ''
-                },
+                filters: { kode: '', nama: '', lokasi: '' },
                 pageSize: 10,
                 currentPage: 1,
                 maxPageButtons: 7,
                 showFilter: false,
                 openActionId: null,
+                dropdownVisible: false,
+                dropdownData: {},
+                dropdownPos: { top: 0, left: 0 },
+                _outsideClickHandler: null,
+                _resizeHandler: null,
                 showDeleteModal: false,
                 deleteItem: {},
-
-                // sorting
                 sortBy: 'nama',
                 sortDir: 'asc',
 
-                init() {},
+                init() {
+                    window.addEventListener('beforeunload', () => this.closeDropdown());
+                },
 
                 hasActiveFilters() {
                     return this.filters.kode || this.filters.nama || this.filters.lokasi;
                 },
+                
                 activeFiltersCount() {
                     let c = 0;
                     if (this.filters.kode) c++;
                     if (this.filters.nama) c++;
                     if (this.filters.lokasi) c++;
                     return c;
+                },
+
+                resetFilters() {
+                    this.filters = { kode: '', nama: '', lokasi: '' };
+                    this.q = '';
+                    this.currentPage = 1;
                 },
 
                 filteredList() {
@@ -301,8 +377,8 @@
                             return false;
                         if (this.filters.nama && !r.nama.toLowerCase().includes(this.filters.nama.toLowerCase()))
                             return false;
-                        if (this.filters.lokasi && !r.lokasi.toLowerCase().includes(this.filters.lokasi
-                                .toLowerCase())) return false;
+                        if (this.filters.lokasi && !r.lokasi.toLowerCase().includes(this.filters.lokasi.toLowerCase())) 
+                            return false;
                         return true;
                     });
 
@@ -310,50 +386,47 @@
                     list.sort((a, b) => {
                         const va = (a[this.sortBy] ?? '').toString().toLowerCase();
                         const vb = (b[this.sortBy] ?? '').toString().toLowerCase();
-                        const an = parseFloat(va),
-                            bn = parseFloat(vb);
-                        if (!isNaN(an) && !isNaN(bn)) return (an - bn) * dir;
                         return va.localeCompare(vb) * dir;
                     });
 
                     return list;
                 },
-                filteredTotal() {
-                    return this.filteredList().length;
-                },
-                totalPages() {
-                    return Math.max(1, Math.ceil(this.filteredTotal() / this.pageSize));
-                },
+                
+                filteredTotal() { return this.filteredList().length; },
+                totalPages() { return Math.max(1, Math.ceil(this.filteredTotal() / this.pageSize)); },
                 pagedData() {
                     const start = (this.currentPage - 1) * this.pageSize;
                     return this.filteredList().slice(start, start + this.pageSize);
                 },
 
                 goToPage(n) {
-                    this.currentPage = Math.min(Math.max(1, n), this.totalPages());
-                    this.openActionId = null;
+                    const t = this.totalPages();
+                    if (n < 1) n = 1;
+                    if (n > t) n = t;
+                    this.currentPage = n;
+                    this.closeDropdown();
                 },
-                prev() {
-                    if (this.currentPage > 1) this.currentPage--;
-                },
-                next() {
-                    if (this.currentPage < this.totalPages()) this.currentPage++;
-                },
+                
+                prev() { if (this.currentPage > 1) this.currentPage--; this.closeDropdown(); },
+                next() { if (this.currentPage < this.totalPages()) this.currentPage++; this.closeDropdown(); },
+                
                 pagesToShow() {
-                    const total = this.totalPages(),
-                        max = this.maxPageButtons,
-                        cur = this.currentPage;
-                    if (total <= max) return Array.from({
-                        length: total
-                    }, (_, i) => i + 1);
+                    const total = this.totalPages();
+                    const max = this.maxPageButtons;
+                    const cur = this.currentPage;
+                    
+                    if (total <= max) return Array.from({ length: total }, (_, i) => i + 1);
+                    
                     const side = Math.floor((max - 3) / 2);
-                    const left = Math.max(2, cur - side),
-                        right = Math.min(total - 1, cur + side);
+                    const left = Math.max(2, cur - side);
+                    const right = Math.min(total - 1, cur + side);
+                    
                     const pages = [1];
                     if (left > 2) pages.push('...');
                     for (let i = left; i <= right; i++) pages.push(i);
                     if (right < total - 1) pages.push('...');
                     pages.push(total);
+                    
                     return pages;
                 },
 
@@ -366,34 +439,124 @@
                     }
                     this.currentPage = 1;
                 },
-                toggleActions(id) {
-                    this.openActionId = this.openActionId === id ? null : id;
+                
+                sortIcon(field) {
+                    if (this.sortBy !== field) return 'fa-sort ml-2 text-slate-400';
+                    return this.sortDir === 'asc' ? 'fa-arrow-up ml-2 text-[#344579]' : 'fa-arrow-down ml-2 text-[#344579]';
                 },
+
+                openDropdown(row, event) {
+                    if (this.openActionId === row.id) {
+                        this.closeDropdown();
+                        return;
+                    }
+
+                    this.openActionId = row.id;
+                    this.dropdownData = row;
+
+                    const rect = event.currentTarget.getBoundingClientRect();
+                    const dropdownHeight = 120;
+                    const spaceBelow = window.innerHeight - rect.bottom;
+                    const spaceAbove = rect.top;
+
+                    const docTopBelow = rect.bottom + window.scrollY + 6;
+                    const docTopAbove = rect.top + window.scrollY - dropdownHeight - 6;
+                    const docLeft = rect.right + window.scrollX - 176;
+
+                    if (spaceBelow < dropdownHeight && spaceAbove > dropdownHeight) {
+                        this.dropdownPos = { top: docTopAbove + 'px', left: docLeft + 'px' };
+                    } else {
+                        this.dropdownPos = { top: docTopBelow + 'px', left: docLeft + 'px' };
+                    }
+
+                    this.dropdownVisible = true;
+
+                    this._outsideClickHandler = this.handleOutsideClick.bind(this);
+                    setTimeout(() => document.addEventListener('click', this._outsideClickHandler), 0);
+
+                    this._resizeHandler = this.closeDropdown.bind(this);
+                    window.addEventListener('resize', this._resizeHandler);
+                },
+
+                handleOutsideClick(e) {
+                    const dropdownEl = document.querySelector('[data-dropdown]');
+                    const isInsideDropdown = dropdownEl && dropdownEl.contains(e.target);
+                    const isTriggerButton = !!e.target.closest('[data-dropdown-open-button]');
+
+                    if (!isInsideDropdown && !isTriggerButton) this.closeDropdown();
+                },
+
+                closeDropdown() {
+                    this.dropdownVisible = false;
+                    this.openActionId = null;
+                    this.dropdownData = {};
+
+                    if (this._outsideClickHandler) {
+                        document.removeEventListener('click', this._outsideClickHandler);
+                        this._outsideClickHandler = null;
+                    }
+
+                    if (this._resizeHandler) {
+                        window.removeEventListener('resize', this._resizeHandler);
+                        this._resizeHandler = null;
+                    }
+                },
+
                 confirmDelete(item) {
-                    this.deleteItem = {
-                        ...item
-                    };
+                    if (!item) return;
+                    this.closeDropdown();
+                    this.deleteItem = { ...item };
                     this.showDeleteModal = true;
                 },
+                
                 closeDelete() {
                     this.showDeleteModal = false;
                     this.deleteItem = {};
                 },
-                doDelete() {
-                    const idx = this.data.findIndex(d => d.id === this.deleteItem.id);
-                    if (idx !== -1) this.data.splice(idx, 1);
-                    if (this.currentPage > this.totalPages()) this.currentPage = this.totalPages();
-                    this.closeDelete();
+                
+                async doDelete() {
+                    const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+                    const url = `/gudang/${this.deleteItem.id}/delete`;
+
+                    try {
+                        const res = await fetch(url, {
+                            method: 'DELETE',
+                            headers: { 'X-CSRF-TOKEN': token, 'Accept': 'application/json' }
+                        });
+
+                        const result = await res.json();
+
+                        if (res.ok && result.success) {
+                            const idx = this.data.findIndex(d => d.id === this.deleteItem.id);
+                            if (idx !== -1) this.data.splice(idx, 1);
+
+                            this.showNotification('success', result.message || 'Data berhasil dihapus');
+
+                            if (this.currentPage > this.totalPages()) {
+                                this.currentPage = this.totalPages();
+                            }
+                        } else {
+                            this.showNotification('error', result.message || 'Gagal menghapus data');
+                        }
+
+                    } catch (e) {
+                        console.error('Delete error:', e);
+                        this.showNotification('error', 'Terjadi kesalahan koneksi');
+                    } finally {
+                        this.closeDelete();
+                    }
                 },
 
-                resetFilters() {
-                    this.filters = {
-                        kode: '',
-                        nama: '',
-                        lokasi: ''
-                    };
-                    this.q = '';
-                    this.currentPage = 1;
+                showNotification(type, message) {
+                    const bg = type === 'error' ? 'bg-rose-50 text-rose-700 border border-rose-200' : 'bg-emerald-50 text-emerald-700 border border-emerald-200';
+                    const icon = type === 'error' ? 'fa-circle-xmark' : 'fa-circle-check';
+
+                    const el = document.createElement('div');
+                    el.className = `fixed top-6 right-6 z-50 flex items-center gap-2 px-4 py-3 rounded-md border shadow ${bg}`;
+                    el.innerHTML = `<i class="fa-solid ${icon}"></i><span>${message}</span>`;
+
+                    document.body.appendChild(el);
+                    setTimeout(() => el.remove(), 3500);
                 }
             }
         }

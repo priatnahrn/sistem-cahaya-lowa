@@ -7,16 +7,23 @@ use App\Models\ItemReturPenjualan;
 use App\Models\Penjualan;
 use App\Models\ItemPenjualan;
 use App\Models\ItemGudang;
+use App\Models\LogActivity;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 
 class ReturPenjualanController extends Controller
 {
+    use AuthorizesRequests;
+
     // 📌 Daftar retur penjualan
     public function index()
     {
+        // ✅ Check permission view
+        $this->authorize('retur_penjualan.view');
+
         $returs = ReturPenjualan::with('penjualan.pelanggan', 'creator', 'updater')
             ->latest()
             ->paginate(20);
@@ -27,6 +34,9 @@ class ReturPenjualanController extends Controller
     // 📌 Form create
     public function create()
     {
+        // ✅ Check permission create
+        $this->authorize('retur_penjualan.create');
+
         $penjualans = Penjualan::with('pelanggan')
             ->where('status_bayar', 'paid')
             ->where(function ($query) {
@@ -44,6 +54,9 @@ class ReturPenjualanController extends Controller
     // 📌 API: ambil items berdasarkan penjualan id
     public function getItemsByPenjualan($id)
     {
+        // ✅ Check permission view
+        $this->authorize('retur_penjualan.view');
+
         try {
             $penjualan = Penjualan::with([
                 'pelanggan',
@@ -86,6 +99,9 @@ class ReturPenjualanController extends Controller
     // 📌 Store retur baru (status awal: pending, TIDAK menambah stok dulu)
     public function store(Request $request)
     {
+        // ✅ Check permission create
+        $this->authorize('retur_penjualan.create');
+
         Log::info('Store retur penjualan request:', $request->all());
 
         $request->validate([
@@ -117,7 +133,7 @@ class ReturPenjualanController extends Controller
             $retur = ReturPenjualan::create([
                 'penjualan_id' => $request->penjualan_id,
                 'no_retur' => $noRetur,
-                'tanggal' => now(),
+                'tanggal' => $request->tanggal ?? now()->format('Y-m-d H:i:s'),
                 'catatan' => $request->catatan,
                 'total' => $request->total,
                 'status' => 'pending', // ✅ Status awal: pending
@@ -167,6 +183,14 @@ class ReturPenjualanController extends Controller
                 'total_items' => count($request->items),
             ]);
 
+            LogActivity::create([
+                'user_id'       => Auth::id(),
+                'activity_type' => 'create_retur_penjualan',
+                'description'   => 'Created retur penjualan ID: ' . $retur->id . ' (No Retur: ' . $noRetur . ')',
+                'ip_address'    => $request->ip(),
+                'user_agent'    => $request->userAgent(),
+            ]);
+
             DB::commit();
 
             return response()->json([
@@ -193,6 +217,9 @@ class ReturPenjualanController extends Controller
     // 📌 Show detail
     public function show($id)
     {
+        // ✅ Check permission view
+        $this->authorize('retur_penjualan.view');
+
         $retur = ReturPenjualan::with('penjualan.pelanggan', 'items.itemPenjualan.item')->findOrFail($id);
         return view('auth.penjualan.retur-penjualan.show', compact('retur'));
     }
@@ -200,6 +227,9 @@ class ReturPenjualanController extends Controller
     // 📌 Edit form
     public function edit($id)
     {
+        // ✅ Check permission update
+        $this->authorize('retur_penjualan.update');
+
         $retur = ReturPenjualan::with('penjualan.pelanggan', 'items.itemPenjualan')->findOrFail($id);
         return view('auth.penjualan.retur-penjualan.show', compact('retur'));
     }
@@ -207,6 +237,9 @@ class ReturPenjualanController extends Controller
     // 📌 Update (dengan handling stok yang benar)
     public function update(Request $request, $id)
     {
+        // ✅ Check permission update
+        $this->authorize('retur_penjualan.update');
+
         $retur = ReturPenjualan::with('items')->findOrFail($id);
 
         $request->validate([
@@ -329,6 +362,14 @@ class ReturPenjualanController extends Controller
                 'status_final' => $statusBaru,
             ]);
 
+            LogActivity::create([
+                'user_id'       => Auth::id(),
+                'activity_type' => 'update_retur_penjualan',
+                'description'   => 'Updated retur penjualan ID: ' . $id . ' to status: ' . $statusBaru,
+                'ip_address'    => $request->ip(),
+                'user_agent'    => $request->userAgent(),
+            ]);
+
             DB::commit();
 
             return response()->json([
@@ -338,7 +379,7 @@ class ReturPenjualanController extends Controller
             ]);
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('❌ Gagal update retur penjualan', [
+            Log::error('Gagal update retur penjualan', [
                 'retur_id' => $id,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
@@ -354,6 +395,9 @@ class ReturPenjualanController extends Controller
     // 📌 Delete
     public function destroy($id)
     {
+        // ✅ Check permission delete
+        $this->authorize('retur_penjualan.delete');
+
         try {
             DB::beginTransaction();
 
@@ -377,6 +421,14 @@ class ReturPenjualanController extends Controller
 
             $retur->items()->delete();
             $retur->delete();
+
+            LogActivity::create([
+                'user_id'       => Auth::id(),
+                'activity_type' => 'delete_retur_penjualan',
+                'description'   => 'Deleted retur penjualan ID: ' . $id . ' (No Retur: ' . $retur->no_retur . ')',
+                'ip_address'    => request()->ip(),
+                'user_agent'    => request()->userAgent(),
+            ]);
 
             DB::commit();
 

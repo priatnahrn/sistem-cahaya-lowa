@@ -7,11 +7,32 @@
         [x-cloak] {
             display: none !important;
         }
+
+        /* Smooth transitions */
+        .filter-panel {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            max-height: 0;
+            overflow: hidden;
+            opacity: 0;
+        }
+
+        .filter-panel.show {
+            max-height: 500px;
+            opacity: 1;
+        }
+
+        table,
+        tr,
+        td {
+            overflow: visible !important;
+        }
     </style>
 
-    {{-- Toasts --}}
+    {{-- CSRF meta --}}
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+
+    {{-- TOAST --}}
     <div x-data class="fixed top-6 right-6 space-y-3 z-50 w-80">
-        {{-- Success Toast --}}
         @if (session('success'))
             <div x-data="{ show: true }" x-show="show" x-transition x-init="setTimeout(() => show = false, 4000)"
                 class="flex items-start gap-3 rounded-md border px-4 py-3 shadow text-sm"
@@ -26,8 +47,6 @@
                 </button>
             </div>
         @endif
-
-        {{-- Error Toast --}}
         @if (session('error'))
             <div x-data="{ show: true }" x-show="show" x-transition x-init="setTimeout(() => show = false, 4000)"
                 class="flex items-start gap-3 rounded-md border px-4 py-3 shadow text-sm"
@@ -45,14 +64,17 @@
     </div>
 
     <div x-data="pelangganPage()" x-init="init()" class="space-y-6">
+
         {{-- ACTION BAR --}}
         <div
             class="bg-white border border-slate-200 rounded-xl px-6 py-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
             <div class="flex items-center gap-3">
-                <a href="{{ route('pelanggan.create') }}"
-                    class="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-white bg-[#344579] hover:bg-[#2e3e6a] shadow">
-                    <i class="fa-solid fa-plus"></i> Tambah Pelanggan Baru
-                </a>
+                @can('pelanggan.create')
+                    <a href="{{ route('pelanggan.create') }}"
+                        class="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-white bg-[#344579] hover:bg-[#2e3e6a] shadow transition">
+                        <i class="fa-solid fa-plus"></i> Tambah Pelanggan Baru
+                    </a>
+                @endcan
             </div>
 
             <div class="flex items-center gap-3">
@@ -64,9 +86,9 @@
                 </div>
 
                 <button type="button" @click="showFilter=!showFilter"
-                    class="px-4 py-2 rounded-lg border border-slate-200 text-slate-700 hover:bg-[#2e3e6a] hover:text-white"
-                    :class="{ 'bg-[#344579] text-white': hasActiveFilters() }">
-                    <i class="fa-solid fa-filter mr-2"></i> Filter
+                    class="px-4 py-2 rounded-lg border border-slate-200 text-slate-700 hover:bg-[#344579] hover:text-white transition"
+                    :class="{ 'bg-[#344579] text-white': showFilter || hasActiveFilters() }">
+                    <i class="fa-solid fa-sliders"></i>
                     <span x-show="hasActiveFilters()" class="ml-1 bg-white text-[#344579] px-1.5 py-0.5 rounded text-xs">
                         <span x-text="activeFiltersCount()"></span>
                     </span>
@@ -74,9 +96,10 @@
             </div>
         </div>
 
-        {{-- FILTER --}}
+        {{-- FILTER PANEL --}}
         <div x-show="showFilter" x-collapse x-transition class="bg-white border border-slate-200 rounded-xl px-6 py-4">
             <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+
                 {{-- Filter Nama --}}
                 <div>
                     <label class="block text-sm font-medium text-slate-700 mb-2">Nama Pelanggan</label>
@@ -102,30 +125,20 @@
                 </div>
 
                 {{-- Filter Level --}}
-                <div>
+                <div class="relative">
                     <label class="block text-sm font-medium text-slate-700 mb-2">Level</label>
-                    <div class="relative">
-                        <select x-model="filters.level"
-                            class="w-full px-3 py-2 rounded-lg border border-slate-200 
-                   appearance-none pr-8 bg-white text-sm text-slate-700
-                   focus:outline-none focus:ring-2 focus:ring-[#344579]/20 focus:border-[#344579]">
-                            <option value="">-- Semua Level --</option>
-                            <option value="retail">Retail</option>
-                            <option value="partai_kecil">Partai Kecil</option>
-                            <option value="grosir">Grosir</option>
-                        </select>
-
-                        {{-- Custom Arrow --}}
-                        <div class="absolute inset-y-0 right-3 flex items-center pointer-events-none">
-                            <svg class="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"
-                                xmlns="http://www.w3.org/2000/svg">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                            </svg>
-                        </div>
-                    </div>
+                    <select x-model="filters.level"
+                        class="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm text-slate-700
+                               focus:outline-none focus:ring-2 focus:ring-[#344579]/20 focus:border-[#344579]
+                               appearance-none pr-10">
+                        <option value="">Semua Level</option>
+                        <option value="retail">Retail</option>
+                        <option value="partai_kecil">Partai Kecil</option>
+                        <option value="grosir">Grosir</option>
+                    </select>
+                    <i class="fa-solid fa-chevron-down absolute right-3 bottom-3 text-slate-400 pointer-events-none"></i>
                 </div>
             </div>
-
 
             {{-- Filter Actions --}}
             <div class="flex items-center justify-between mt-4 pt-4 border-t border-slate-200">
@@ -134,13 +147,8 @@
                 </div>
                 <div class="flex items-center gap-2">
                     <button type="button" @click="resetFilters()"
-                        class="px-4 py-2 rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50">
-                        <i class="fa-solid fa-arrow-rotate-left mr-2"></i>
-                        Reset
-                    </button>
-                    <button type="button" @click="showFilter=false"
-                        class="px-4 py-2 rounded-lg bg-[#344579] text-white hover:bg-[#2e3e6a]">
-                        Terapkan Filter
+                        class="px-4 py-2 rounded-lg border border-slate-200 text-white hover:bg-red-600 bg-red-400 transition">
+                        <i class="fa-solid fa-arrow-rotate-left mr-2"></i> Reset
                     </button>
                 </div>
             </div>
@@ -151,92 +159,88 @@
             <div class="overflow-x-auto">
                 <table class="min-w-full text-sm">
                     <thead class="bg-slate-50 border-b border-slate-200">
-                        <tr class="text-left text-slate-600">
+                        <tr class="text-center text-slate-600">
                             <th class="px-4 py-3 w-[60px]">No.</th>
                             <th class="px-4 py-3 cursor-pointer" @click="toggleSort('nama_pelanggan')">
                                 Nama Pelanggan
-                                <i class="fa-solid"
-                                    :class="sortBy === 'nama_pelanggan' ? (sortDir==='asc' ? 'fa-arrow-up ml-2' :
-                                        'fa-arrow-down ml-2'): 'fa-sort ml-2'"></i>
+                                <i class="fa-solid" :class="sortIcon('nama_pelanggan')"></i>
                             </th>
                             <th class="px-4 py-3 cursor-pointer" @click="toggleSort('kontak')">
                                 Kontak
-                                <i class="fa-solid"
-                                    :class="sortBy === 'kontak' ? (sortDir==='asc' ? 'fa-arrow-up ml-2' :
-                                        'fa-arrow-down ml-2'): 'fa-sort ml-2'"></i>
+                                <i class="fa-solid" :class="sortIcon('kontak')"></i>
                             </th>
                             <th class="px-4 py-3 cursor-pointer" @click="toggleSort('alamat')">
                                 Alamat
-                                <i class="fa-solid"
-                                    :class="sortBy === 'alamat' ? (sortDir==='asc' ? 'fa-arrow-up ml-2' :
-                                        'fa-arrow-down ml-2'): 'fa-sort ml-2'"></i>
+                                <i class="fa-solid" :class="sortIcon('alamat')"></i>
                             </th>
-                            {{-- Tambah kolom Level --}}
                             <th class="px-4 py-3 cursor-pointer" @click="toggleSort('level')">
                                 Level
-                                <i class="fa-solid"
-                                    :class="sortBy === 'level' ? (sortDir==='asc' ? 'fa-arrow-up ml-2' :
-                                        'fa-arrow-down ml-2'): 'fa-sort ml-2'"></i>
+                                <i class="fa-solid" :class="sortIcon('level')"></i>
                             </th>
-
-                            <th class="px-2 py-3"></th>
+                            @can('pelanggan.delete')
+                                <th class="px-2 py-3"></th>
+                            @endcan
                         </tr>
                     </thead>
                     <tbody>
                         <template x-for="(r, idx) in pagedData()" :key="r.id">
-                            <tr class="hover:bg-slate-50 text-slate-700 border-b border-slate-200">
+                            <tr class="hover:bg-slate-50 text-slate-700 border-b border-slate-200 text-center">
                                 <td class="px-4 py-3" x-text="(currentPage-1)*pageSize + idx + 1"></td>
-                                <td class="px-4 py-3">
-                                    <a :href="r.url" class="text-green-600 font-normal hover:underline"
-                                        x-text="r.nama_pelanggan" @click="openActionId = null"></a>
+
+                                {{-- NAMA --}}
+                                <td class="px-4 py-3 text-green-600 font-medium">
+                                    <a :href="r.url" class="hover:underline hover:text-[#2e3e6a] transition"
+                                        x-text="r.nama_pelanggan">
+                                    </a>
                                 </td>
-                                <td class="px-4 py-3" x-text="r.kontak"></td>
-                                <td class="px-4 py-3" x-text="r.alamat"></td>
-                                {{-- Kolom Level --}}
+
+                                {{-- KONTAK --}}
+                                <td class="px-4 py-3 text-slate-600" x-text="r.kontak"></td>
+
+                                {{-- ALAMAT --}}
+                                <td class="px-4 py-3 text-slate-600" x-text="r.alamat"></td>
+
+                                {{-- LEVEL --}}
                                 <td class="px-4 py-3">
                                     <template x-if="r.level">
                                         <span
+                                            class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium border"
                                             :class="{
-                                                'px-2 py-1 rounded text-xs font-medium': true,
-                                                'bg-blue-100 text-blue-700': r.level === 'retail',
-                                                'bg-yellow-100 text-yellow-700': r.level === 'partai_kecil',
-                                                'bg-green-100 text-green-700': r.level === 'grosir'
-                                            }"
-                                            x-text="r.level_label"></span>
+                                                'bg-blue-50 text-blue-700 border-blue-200': r.level === 'retail',
+                                                'bg-amber-50 text-amber-700 border-amber-200': r
+                                                    .level === 'partai_kecil',
+                                                'bg-green-50 text-green-700 border-green-200': r.level === 'grosir'
+                                            }">
+                                            <span class="w-1.5 h-1.5 rounded-full"
+                                                :class="{
+                                                    'bg-blue-500': r.level === 'retail',
+                                                    'bg-amber-500': r.level === 'partai_kecil',
+                                                    'bg-green-500': r.level === 'grosir'
+                                                }"></span>
+                                            <span x-text="r.level_label"></span>
+                                        </span>
                                     </template>
                                     <template x-if="!r.level">
                                         <span class="text-slate-400">-</span>
                                     </template>
                                 </td>
-                                <td class="px-2 py-3 text-right relative">
-                                    <button type="button" @click="toggleActions(r.id)"
-                                        class="px-2 py-1 rounded hover:bg-slate-100">
-                                        <i class="fa-solid fa-ellipsis-vertical"></i>
-                                    </button>
-                                    <div x-cloak x-show="openActionId === r.id" @click.away="openActionId = null"
-                                        x-transition
-                                        class="absolute right-2 mt-2 w-44 bg-white shadow rounded-md border border-slate-200 z-20">
-                                        <ul class="py-1">
-                                            <li>
-                                                <a :href="r.url"
-                                                    class="block px-4 py-2 hover:bg-slate-50 text-left"
-                                                    @click="openActionId = null">
-                                                    <i class="fa-solid fa-eye mr-2"></i> Detail
-                                                </a>
-                                            </li>
-                                            <li>
-                                                <button type="button" @click="confirmDelete(r)"
-                                                    class="w-full text-left px-4 py-2 text-red-500 hover:bg-slate-50">
-                                                    <i class="fa-solid fa-trash mr-2"></i> Hapus
-                                                </button>
-                                            </li>
-                                        </ul>
-                                    </div>
-                                </td>
+
+                                {{-- Action Dropdown --}}
+                                @can('pelanggan.delete')
+                                    <td class="px-2 py-3 text-right relative">
+                                        <button type="button" data-dropdown-open-button @click="openDropdown(r, $event)">
+                                            <i class="fa-solid fa-ellipsis-vertical"></i>
+                                        </button>
+                                    </td>
+                                @endcan
                             </tr>
                         </template>
-                        <tr x-show="filteredTotal() === 0" class="text-center text-slate-500">
-                            <td colspan="5" class="px-4 py-6">Tidak ada data pelanggan.</td>
+
+                        <tr x-show="filteredTotal()===0" class="text-center text-slate-500">
+                            <td colspan="{{ auth()->user()->can('pelanggan.delete') ? '6' : '5' }}" class="px-4 py-8">
+                                <i class="fa-solid fa-inbox text-4xl text-slate-300 mb-2"></i>
+                                <p class="text-slate-400">Tidak ada data pelanggan.</p>
+                            </td>
                         </tr>
                     </tbody>
                 </table>
@@ -246,58 +250,120 @@
             <div class="px-6 py-4">
                 <nav class="flex items-center justify-center gap-2" aria-label="Pagination">
                     <button type="button" @click="goToPage(1)" :disabled="currentPage === 1"
-                        class="px-3 py-1 rounded border border-slate-200 hover:bg-slate-50 disabled:opacity-50">
+                        class="px-3 py-1 rounded border border-slate-200 hover:bg-slate-50 disabled:opacity-50 transition">
                         <i class="fa-solid fa-angles-left"></i>
                     </button>
                     <button type="button" @click="prev()" :disabled="currentPage === 1"
-                        class="px-3 py-1 rounded border border-slate-200 hover:bg-slate-50 disabled:opacity-50">
+                        class="px-3 py-1 rounded border border-slate-200 hover:bg-slate-50 disabled:opacity-50 transition">
                         <i class="fa-solid fa-chevron-left"></i>
                     </button>
+
                     <template x-for="p in pagesToShow()" :key="p">
                         <span>
                             <button type="button" x-show="p!=='...'" @click="goToPage(p)" x-text="p"
                                 :class="{ 'bg-[#344579] text-white': currentPage === p }"
-                                class="mx-0.5 px-3 py-1 rounded border border-slate-200 hover:bg-[#2c3e6b] hover:text-white cursor-pointer"></button>
+                                class="mx-0.5 px-3 py-1 rounded border border-slate-200 hover:bg-[#2c3e6b] hover:text-white cursor-pointer transition"></button>
                             <span x-show="p==='...'" class="mx-1 px-3 py-1 text-slate-500">...</span>
                         </span>
                     </template>
+
                     <button type="button" @click="next()" :disabled="currentPage === totalPages()"
-                        class="px-3 py-1 rounded border border-slate-200 hover:bg-slate-50 disabled:opacity-50">
+                        class="px-3 py-1 rounded border border-slate-200 hover:bg-slate-50 disabled:opacity-50 transition">
                         <i class="fa-solid fa-chevron-right"></i>
                     </button>
                     <button type="button" @click="goToPage(totalPages())" :disabled="currentPage === totalPages()"
-                        class="px-3 py-1 rounded border border-slate-200 hover:bg-slate-50 disabled:opacity-50">
+                        class="px-3 py-1 rounded border border-slate-200 hover:bg-slate-50 disabled:opacity-50 transition">
                         <i class="fa-solid fa-angles-right"></i>
                     </button>
                 </nav>
             </div>
         </div>
 
-        {{-- DELETE CONFIRM MODAL --}}
-        <div x-cloak x-show="showDeleteModal" class="fixed inset-0 z-50 flex items-center justify-center">
-            <div class="absolute inset-0 bg-black/40" @click="closeDelete()"></div>
-            <div x-transition class="bg-white rounded-xl shadow-lg w-11/12 md:w-1/3 z-10 overflow-hidden">
-                <div class="px-6 py-4 border-b border-slate-200">
-                    <h3 class="text-lg font-semibold text-red-600">Konfirmasi Hapus</h3>
+        {{-- 🗑️ DELETE MODAL (Modern Design) --}}
+        <div x-cloak x-show="showDeleteModal" aria-modal="true" role="dialog"
+            class="fixed inset-0 z-50 flex items-center justify-center min-h-screen">
+
+            <!-- Overlay -->
+            <div x-show="showDeleteModal" x-transition.opacity.duration.400ms
+                class="absolute inset-0 bg-black/40 backdrop-blur-[2px] transition-all" @click="closeDelete()"></div>
+
+            <!-- Modal Card -->
+            <div x-show="showDeleteModal" x-transition:enter="transition ease-out duration-300"
+                x-transition:enter-start="opacity-0 scale-95 translate-y-3"
+                x-transition:enter-end="opacity-100 scale-100 translate-y-0"
+                x-transition:leave="transition ease-in duration-200" x-transition:leave-start="opacity-100 scale-100"
+                x-transition:leave-end="opacity-0 scale-95 translate-y-3"
+                class="relative bg-white/95 backdrop-blur-sm w-[480px]
+               rounded-2xl shadow-[0_10px_35px_-5px_rgba(239,68,68,0.3)]
+               border border-red-100 transform transition-all overflow-hidden"
+                @click.away="closeDelete()">
+
+                <!-- Header -->
+                <div
+                    class="bg-gradient-to-r from-red-50 to-rose-50 border-b border-red-100 px-5 py-4 flex items-center justify-between rounded-t-2xl">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center">
+                            <i class="fa-solid fa-triangle-exclamation text-red-600 text-lg"></i>
+                        </div>
+                        <h3 class="text-base font-semibold text-red-700">Konfirmasi Hapus</h3>
+                    </div>
+                    <button @click="closeDelete()" class="text-red-400 hover:text-red-600 transition">
+                        <i class="fa-solid fa-xmark text-lg"></i>
+                    </button>
                 </div>
-                <div class="px-6 py-4">
-                    <p class="text-slate-600">
+
+                <!-- Body -->
+                <div class="p-6 bg-white">
+                    <p class="text-slate-700 leading-relaxed">
                         Apakah Anda yakin ingin menghapus pelanggan
-                        <span class="font-semibold" x-text="deleteItem.nama_pelanggan"></span>?
+                        <span class="font-semibold text-slate-900 bg-slate-100 px-2 py-0.5 rounded"
+                            x-text="deleteItem.nama_pelanggan"></span>?
                     </p>
+
+                    <!-- Warning Box -->
+                    <div class="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg flex items-start gap-2">
+                        <i class="fa-solid fa-info-circle text-amber-600 mt-0.5"></i>
+                        <div class="text-sm text-amber-700">
+                            <p class="font-medium">Perhatian:</p>
+                            <p class="mt-1">Tindakan ini akan menghapus data pelanggan secara permanen. Proses ini
+                                <strong>tidak dapat dibatalkan</strong>.</p>
+                        </div>
+                    </div>
                 </div>
-                <div class="px-6 py-4 border-t border-slate-200 flex justify-end gap-2">
+
+                <!-- Footer -->
+                <div class="px-6 py-4 bg-slate-50 border-t border-slate-200 flex justify-end gap-3 rounded-b-2xl">
                     <button type="button" @click="closeDelete()"
-                        class="px-4 py-2 rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50">
-                        Batal
+                        class="px-5 py-2.5 rounded-lg border border-slate-300 text-slate-600 
+                hover:bg-white hover:border-slate-400 transition-all font-medium">
+                        <i class="fa-solid fa-xmark mr-1.5"></i> Batal
                     </button>
                     <button type="button" @click="doDelete()"
-                        class="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700">
+                        class="px-5 py-2.5 rounded-lg bg-red-600 text-white hover:bg-red-700 
+                transition-all shadow-sm hover:shadow-md font-medium group">
+                        <i class="fa-solid fa-trash mr-1.5 group-hover:scale-110 transition-transform"></i>
                         Hapus
                     </button>
                 </div>
             </div>
         </div>
+
+        {{-- Floating dropdown portal --}}
+        <div x-cloak x-show="dropdownVisible" x-transition.origin.top.right id="floating-dropdown" data-dropdown
+            class="absolute w-44 bg-white border border-slate-200 rounded-lg shadow-lg z-[9999]"
+            :style="`top:${dropdownPos.top}; left:${dropdownPos.left}`">
+            <button @click="window.location = dropdownData.url"
+                class="w-full text-left px-4 py-2 text-sm hover:bg-slate-50 flex items-center gap-2 text-slate-700 rounded-t-lg transition">
+                <i class="fa-solid fa-eye text-blue-500"></i> Detail
+            </button>
+            @can('pelanggan.delete')
+                <button @click="confirmDelete(dropdownData)"
+                    class="w-full text-left px-4 py-2 text-sm hover:bg-red-50 flex items-center gap-2 text-red-600 rounded-b-lg transition">
+                    <i class="fa-solid fa-trash"></i> Hapus
+                </button>
+            @endcan
+        </div>
+
     </div>
 
     @php
@@ -308,7 +374,7 @@
                     'nama_pelanggan' => $p->nama_pelanggan,
                     'kontak' => $p->kontak,
                     'alamat' => $p->alamat,
-                    'level' => $p->level, // simpan kode level (retail, partai_kecil, grosir)
+                    'level' => $p->level,
                     'level_label' => match ($p->level) {
                         'retail' => 'Retail',
                         'partai_kecil' => 'Partai Kecil',
@@ -321,11 +387,10 @@
             ->toArray();
     @endphp
 
-
     <script>
         function pelangganPage() {
             return {
-                showFilter: false,
+                data: @json($pelanggansJson),
                 q: '',
                 filters: {
                     nama: '',
@@ -336,18 +401,32 @@
                 pageSize: 10,
                 currentPage: 1,
                 maxPageButtons: 7,
+                showFilter: false,
                 openActionId: null,
+                dropdownVisible: false,
+                dropdownData: {},
+                dropdownPos: {
+                    top: 0,
+                    left: 0
+                },
+                _outsideClickHandler: null,
+                _resizeHandler: null,
                 showDeleteModal: false,
                 deleteItem: {},
-                data: @json($pelanggansJson),
+
+                // sorting
                 sortBy: 'nama_pelanggan',
                 sortDir: 'asc',
 
-                init() {},
+                init() {
+                    window.addEventListener('beforeunload', () => this.closeDropdown());
+                },
 
+                // --- FILTER HELPERS ---
                 hasActiveFilters() {
                     return this.filters.nama || this.filters.kontak || this.filters.alamat || this.filters.level;
                 },
+
                 activeFiltersCount() {
                     let c = 0;
                     if (this.filters.nama) c++;
@@ -357,6 +436,18 @@
                     return c;
                 },
 
+                resetFilters() {
+                    this.filters = {
+                        nama: '',
+                        kontak: '',
+                        alamat: '',
+                        level: ''
+                    };
+                    this.q = '';
+                    this.currentPage = 1;
+                },
+
+                // --- FILTER + SORT ---
                 filteredList() {
                     const q = this.q.trim().toLowerCase();
                     let list = this.data.filter(r => {
@@ -366,10 +457,10 @@
                                 .toLowerCase()))
                             return false;
                         if (this.filters.kontak && !r.kontak.toLowerCase().includes(this.filters.kontak
-                                .toLowerCase()))
+                            .toLowerCase()))
                             return false;
                         if (this.filters.alamat && !r.alamat.toLowerCase().includes(this.filters.alamat
-                                .toLowerCase()))
+                            .toLowerCase()))
                             return false;
                         if (this.filters.level && r.level !== this.filters.level)
                             return false;
@@ -385,95 +476,216 @@
                         if (!isNaN(an) && !isNaN(bn)) return (an - bn) * dir;
                         return va.localeCompare(vb) * dir;
                     });
-                    return list;
-                },
 
-                resetFilters() {
-                    this.filters = {
-                        nama: '',
-                        kontak: '',
-                        alamat: '',
-                        level: ''
-                    };
-                    this.q = '';
-                    this.currentPage = 1;
+                    return list;
                 },
 
                 filteredTotal() {
                     return this.filteredList().length;
                 },
+
                 totalPages() {
                     return Math.max(1, Math.ceil(this.filteredTotal() / this.pageSize));
                 },
+
                 pagedData() {
                     const start = (this.currentPage - 1) * this.pageSize;
                     return this.filteredList().slice(start, start + this.pageSize);
                 },
 
+                // --- PAGINATION ---
                 goToPage(n) {
                     const t = this.totalPages();
                     if (n < 1) n = 1;
                     if (n > t) n = t;
                     this.currentPage = n;
-                    this.openActionId = null;
+                    this.closeDropdown();
                 },
+
                 prev() {
                     if (this.currentPage > 1) this.currentPage--;
-                    this.openActionId = null;
+                    this.closeDropdown();
                 },
+
                 next() {
                     if (this.currentPage < this.totalPages()) this.currentPage++;
-                    this.openActionId = null;
+                    this.closeDropdown();
                 },
+
                 pagesToShow() {
-                    const total = this.totalPages(),
-                        max = this.maxPageButtons,
-                        cur = this.currentPage;
+                    const total = this.totalPages();
+                    const max = this.maxPageButtons;
+                    const cur = this.currentPage;
+
                     if (total <= max) return Array.from({
                         length: total
                     }, (_, i) => i + 1);
+
                     const side = Math.floor((max - 3) / 2);
-                    const left = Math.max(2, cur - side),
-                        right = Math.min(total - 1, cur + side);
+                    const left = Math.max(2, cur - side);
+                    const right = Math.min(total - 1, cur + side);
+
                     const pages = [1];
                     if (left > 2) pages.push('...');
                     for (let i = left; i <= right; i++) pages.push(i);
                     if (right < total - 1) pages.push('...');
                     pages.push(total);
+
                     return pages;
                 },
 
-                toggleActions(id) {
-                    this.openActionId = (this.openActionId === id) ? null : id;
-                },
+                // --- SORT ---
                 toggleSort(field) {
-                    if (this.sortBy === field) this.sortDir = (this.sortDir === 'asc') ? 'desc' : 'asc';
-                    else {
+                    if (this.sortBy === field) {
+                        this.sortDir = this.sortDir === 'asc' ? 'desc' : 'asc';
+                    } else {
                         this.sortBy = field;
                         this.sortDir = 'asc';
                     }
                     this.currentPage = 1;
                 },
 
-                confirmDelete(item) {
+                sortIcon(field) {
+                    if (this.sortBy !== field) return 'fa-sort ml-2 text-slate-400';
+                    return this.sortDir === 'asc' ?
+                        'fa-arrow-up ml-2 text-[#344579]' :
+                        'fa-arrow-down ml-2 text-[#344579]';
+                },
+
+                // --- DROPDOWN FLOATING ---
+                openDropdown(row, event) {
+                    if (this.openActionId === row.id) {
+                        this.closeDropdown();
+                        return;
+                    }
+
+                    this.openActionId = row.id;
+                    this.dropdownData = row;
+
+                    const rect = event.currentTarget.getBoundingClientRect();
+                    const dropdownHeight = 90;
+
+                    const spaceBelow = window.innerHeight - rect.bottom;
+                    const spaceAbove = rect.top;
+
+                    const docTopBelow = rect.bottom + window.scrollY + 6;
+                    const docTopAbove = rect.top + window.scrollY - dropdownHeight - 6;
+                    const docLeft = rect.right + window.scrollX - 176;
+
+                    if (spaceBelow < dropdownHeight && spaceAbove > dropdownHeight) {
+                        this.dropdownPos = {
+                            top: docTopAbove + 'px',
+                            left: docLeft + 'px'
+                        };
+                    } else {
+                        this.dropdownPos = {
+                            top: docTopBelow + 'px',
+                            left: docLeft + 'px'
+                        };
+                    }
+
+                    this.dropdownVisible = true;
+
+                    this._outsideClickHandler = this.handleOutsideClick.bind(this);
+                    setTimeout(() => {
+                        document.addEventListener('click', this._outsideClickHandler);
+                    }, 0);
+
+                    this._resizeHandler = this.closeDropdown.bind(this);
+                    window.addEventListener('resize', this._resizeHandler);
+                },
+
+                handleOutsideClick(e) {
+                    const dropdownEl = document.querySelector('[data-dropdown]');
+                    const isInsideDropdown = dropdownEl && dropdownEl.contains(e.target);
+                    const isTriggerButton = !!e.target.closest('[data-dropdown-open-button]');
+
+                    if (!isInsideDropdown && !isTriggerButton) {
+                        this.closeDropdown();
+                    }
+                },
+
+                closeDropdown() {
+                    this.dropdownVisible = false;
                     this.openActionId = null;
+                    this.dropdownData = {};
+
+                    if (this._outsideClickHandler) {
+                        document.removeEventListener('click', this._outsideClickHandler);
+                        this._outsideClickHandler = null;
+                    }
+
+                    if (this._resizeHandler) {
+                        window.removeEventListener('resize', this._resizeHandler);
+                        this._resizeHandler = null;
+                    }
+                },
+
+                // --- DELETE ---
+                confirmDelete(item) {
+                    if (!item) return;
+                    this.closeDropdown();
                     this.deleteItem = {
                         ...item
                     };
                     this.showDeleteModal = true;
                 },
+
                 closeDelete() {
                     this.showDeleteModal = false;
                     this.deleteItem = {};
                 },
-                doDelete() {
-                    const idx = this.data.findIndex(d => d.id === this.deleteItem.id);
-                    if (idx !== -1) this.data.splice(idx, 1);
-                    if (this.currentPage > this.totalPages()) this.currentPage = this.totalPages();
-                    this.closeDelete();
+
+                async doDelete() {
+                    const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+                    const url = `/pelanggan/${this.deleteItem.id}`;
+
+                    try {
+                        const res = await fetch(url, {
+                            method: 'DELETE',
+                            headers: {
+                                'X-CSRF-TOKEN': token,
+                                'Accept': 'application/json',
+                            }
+                        });
+
+                        const result = await res.json();
+
+                        if (res.ok && result.success) {
+                            const idx = this.data.findIndex(d => d.id === this.deleteItem.id);
+                            if (idx !== -1) this.data.splice(idx, 1);
+
+                            this.showNotification('success', result.message || 'Data berhasil dihapus');
+
+                            if (this.currentPage > this.totalPages()) {
+                                this.currentPage = this.totalPages();
+                            }
+                        } else {
+                            this.showNotification('error', result.message || 'Gagal menghapus data');
+                        }
+
+                    } catch (e) {
+                        console.error('Delete error:', e);
+                        this.showNotification('error', 'Terjadi kesalahan koneksi');
+                    } finally {
+                        this.closeDelete();
+                    }
                 },
 
+                showNotification(type, message) {
+                    const bg = type === 'error' ?
+                        'bg-rose-50 text-rose-700 border border-rose-200' :
+                        'bg-emerald-50 text-emerald-700 border border-emerald-200';
+                    const icon = type === 'error' ? 'fa-circle-xmark' : 'fa-circle-check';
 
+                    const el = document.createElement('div');
+                    el.className =
+                        `fixed top-6 right-6 z-50 flex items-center gap-2 px-4 py-3 rounded-md border shadow ${bg}`;
+                    el.innerHTML = `<i class="fa-solid ${icon}"></i><span>${message}</span>`;
+
+                    document.body.appendChild(el);
+                    setTimeout(() => el.remove(), 3500);
+                }
             }
         }
     </script>

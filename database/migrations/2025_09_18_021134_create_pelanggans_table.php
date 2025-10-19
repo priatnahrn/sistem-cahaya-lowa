@@ -17,6 +17,8 @@ return new class extends Migration
             $table->string('kontak')->nullable();
             $table->text('alamat')->nullable(); 
             $table->enum('level', ['retail', 'partai_kecil', 'grosir'])->default('retail');
+            $table->foreignId('created_by')->constrained('users')->onDelete('cascade');
+            $table->foreignId('updated_by')->constrained('users')->onDelete('cascade');
             $table->timestamps();
         });
     }

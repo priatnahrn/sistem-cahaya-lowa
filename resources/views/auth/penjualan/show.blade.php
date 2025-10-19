@@ -33,6 +33,9 @@
 
                             {{-- Input pelanggan --}}
                             <input type="text" x-model="pelangganQuery"
+                                @cannot('penjualan.update')
+                                    disabled
+                                @endcannot
                                 @input.debounce.300ms="
                             if (pelangganQuery.length >= 2) {
                                 searchPelanggan();
@@ -109,10 +112,12 @@
                                             <i class="fa-solid fa-user-slash mr-1"></i>
                                             Pelanggan "<span x-text="pelangganQuery"></span>" tidak ditemukan
                                         </div>
-                                        <button type="button" @click="openTambahPelanggan(); openResults = false"
-                                            class="w-full px-4 py-2 bg-[#334976] hover:bg-[#2d3d6d] text-white rounded-lg transition font-medium">
-                                            <i class="fa-solid fa-user-plus mr-2"></i> Tambah Pelanggan Baru
-                                        </button>
+                                        @can('penjualan.update')
+                                            <button type="button" @click="openTambahPelanggan(); openResults = false"
+                                                class="w-full px-4 py-2 bg-[#334976] hover:bg-[#2d3d6d] text-white rounded-lg transition font-medium">
+                                                <i class="fa-solid fa-user-plus mr-2"></i> Tambah Pelanggan Baru
+                                            </button>
+                                        @endcan
                                     </div>
                                 </template>
                             </div>
@@ -131,6 +136,9 @@
                     <div>
                         <label class="block text-sm font-medium text-slate-700 mb-2">Tanggal</label>
                         <input type="date" x-model="form.tanggal"
+                            @cannot('penjualan.update')
+                                disabled
+                            @endcannot
                             class="w-full px-3 py-2.5 border border-slate-300 rounded-lg
                         focus:border-blue-500 focus:ring-2 focus:ring-blue-200">
                     </div>
@@ -139,6 +147,9 @@
                         <label class="block text-sm font-medium text-slate-700 mb-2">Pengiriman</label>
                         <div class="relative">
                             <select name="mode" x-model="form.mode"
+                                @cannot('penjualan.update')
+                                    disabled
+                                @endcannot
                                 class="w-full px-3 py-2.5 rounded-lg border border-slate-200
                             appearance-none pr-8 bg-white">
                                 <option value="ambil">Ambil Sendiri</option>
@@ -155,7 +166,7 @@
                     </div>
                 </div>
 
-                
+
 
             </div>
         </div>
@@ -181,7 +192,9 @@
                             <th class="px-4 py-3 w-32 text-center">Satuan</th>
                             <th class="px-4 py-3 w-40 text-center">Harga</th>
                             <th class="px-4 py-3 w-40 text-center">Total</th>
-                            <th class="px-2 py-3 w-12"></th>
+                            @can('penjualan.update')
+                                <th class="px-2 py-3 w-12"></th>
+                            @endcan
                         </tr>
                     </thead>
 
@@ -192,25 +205,30 @@
                                 <td class="px-5 py-4 text-center font-medium align-middle" x-text="idx + 1"></td>
 
                                 <!-- ===========================
-                                                                                                                                                                                         Nama Item + Tombol Keterangan
-                                                                                                                                                                                         ============================ -->
+                                                                                                                                                                                                                     Nama Item + Tombol Keterangan
+                                                                                                                                                                                                                     ============================ -->
                                 <td class="px-5 py-4 align-middle">
                                     <div class="relative">
                                         <div class="flex items-center gap-2">
-                                            <!-- ⭐ TOMBOL KETERANGAN -->
-                                            <button type="button" @click="toggleItemNote(idx)"
-                                                :title="item.showNote ? 'Sembunyikan keterangan' : 'Tambah keterangan'"
-                                                :class="{
-                                                    'text-blue-600': item.showNote,
-                                                    'text-slate-500 hover:text-blue-600': !item.showNote
-                                                }"
-                                                class="transition focus:outline-none">
-                                                <i class="fa-solid fa-note-sticky text-[15px]"></i>
-                                            </button>
+                                            {{-- ✅ Tombol keterangan hanya muncul jika punya permission update --}}
+                                            @can('penjualan.update')
+                                                <button type="button" @click="toggleItemNote(idx)"
+                                                    :title="item.showNote ? 'Sembunyikan keterangan' : 'Tambah keterangan'"
+                                                    :class="{
+                                                        'text-blue-600': item.showNote,
+                                                        'text-slate-500 hover:text-blue-600': !item.showNote
+                                                    }"
+                                                    class="transition focus:outline-none">
+                                                    <i class="fa-solid fa-note-sticky text-[15px]"></i>
+                                                </button>
+                                            @endcan
 
                                             <!-- Input cari item -->
                                             <div class="relative flex-1">
                                                 <input type="text" x-model="item.query"
+                                                    @cannot('penjualan.update')
+                                                        disabled
+                                                    @endcannot
                                                     @input.debounce.300ms="
                         if (item.query.length >= 2) {
                             searchItem(idx);
@@ -229,7 +247,10 @@
                                                     @focus="item._dropdownOpen = (item.query && item.query.length >= 2)"
                                                     @click="item._dropdownOpen = (item.query && item.query.length >= 2)"
                                                     @keydown.escape="item._dropdownOpen = false" placeholder="Cari item"
-                                                    class="w-full pl-4 pr-10 py-2.5 rounded-lg border border-slate-300 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition" />
+                                                    class="w-full pl-4 pr-10 py-2.5 rounded-lg border border-slate-300 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition
+                                                    @cannot('penjualan.update')
+bg-slate-50 cursor-not-allowed
+@endcannot" />
 
                                                 <!-- Icon pencarian -->
                                                 <span x-show="!item.item_id" x-cloak x-transition.opacity.duration.150ms
@@ -271,6 +292,10 @@
                                                             Keterangan <span class="text-red-500">*</span>
                                                         </label>
                                                         <input type="text" x-model="item.keterangan"
+                                                            {{-- ✅ Disable jika tidak punya permission update --}}
+                                                            @cannot('penjualan.update')
+                                                                disabled
+                                                            @endcannot
                                                             placeholder="Contoh: Panjang 6m, Lebar 1m"
                                                             class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm text-slate-700 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition" />
                                                     </div>
@@ -279,7 +304,10 @@
                                                         <label class="block text-xs font-medium text-slate-700 mb-1.5">
                                                             Jenis Spandek <span class="text-red-500">*</span>
                                                         </label>
-                                                        <select x-model="item.catatan_produksi"
+                                                        <select x-model="item.catatan_produksi" {{-- ✅ Disable jika tidak punya permission update --}}
+                                                            @cannot('penjualan.update')
+                                                                disabled
+                                                            @endcannot
                                                             class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm text-slate-700 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition bg-white">
                                                             <option value="">-- Pilih jenis spandek --</option>
                                                             <option value="Spandek Biasa">Spandek Biasa</option>
@@ -297,7 +325,10 @@
                                                     <label class="block text-xs font-medium text-slate-700 mb-1.5">
                                                         Keterangan
                                                     </label>
-                                                    <input type="text" x-model="item.keterangan"
+                                                    <input type="text" x-model="item.keterangan" {{-- ✅ Disable jika tidak punya permission update --}}
+                                                        @cannot('penjualan.update')
+                                                                disabled
+                                                            @endcannot
                                                         placeholder="Catatan tambahan (opsional)"
                                                         class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm text-slate-700 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition" />
                                                 </div>
@@ -328,6 +359,10 @@
                                                         x-text="(getDistinctGudangs(item).find(g => g.gudang_id == item.gudang_id) || getDistinctGudangs(item)[0] || {}).nama_gudang || '-'">
                                                     </span>
                                                     <select x-model="item.gudang_id" @change="updateSatuanOptions(idx)"
+                                                        {{-- ✅ Disable jika tidak punya permission update --}}
+                                                        @cannot('penjualan.update')
+                                                                disabled
+                                                            @endcannot
                                                         class="absolute inset-0 opacity-0 cursor-pointer">
                                                         <template x-for="g in getDistinctGudangs(item)"
                                                             :key="g.gudang_id">
@@ -352,6 +387,10 @@
                                 <!-- Jumlah -->
                                 <td class="px-5 py-4 text-center align-middle">
                                     <input type="text" :value="item.jumlah ? formatJumlah(item.jumlah) : ''"
+                                        {{-- ✅ Disable jika tidak punya permission update --}}
+                                        @cannot('penjualan.update')
+                                                                disabled
+                                                            @endcannot
                                         @input="updateJumlahFormatted(idx, $event.target.value)"
                                         class="no-spinner w-24 text-center border border-slate-300 rounded-lg px-2 py-2.5 
                                     focus:border-blue-500 focus:ring-1 focus:ring-blue-200"
@@ -362,9 +401,14 @@
                                 <td class="px-5 py-4 align-middle">
                                     <div class="relative">
                                         <select x-model="item.satuan_id" @change="updateStockAndPrice(idx)"
+                                            {{-- ✅ Disable jika tidak punya permission update --}}
+                                            @cannot('penjualan.update')
+                                                                disabled
+                                                            @endcannot
                                             class="w-full border border-gray-300 rounded-lg pl-3 pr-8 py-2.5 text-sm text-slate-700 
                                         appearance-none focus:outline-none focus:ring-2 focus:ring-[#344579]/20 
-                                        focus:border-[#344579] transition">
+                                        focus:border-[#344579] transition
+                                        @cannot('penjualan.update') bg-slate-50 cursor-not-allowed @endcannot">
                                             <template x-for="s in item.filteredSatuans" :key="s.satuan_id">
                                                 <option :value="s.satuan_id" x-text="s.nama_satuan"></option>
                                             </template>
@@ -380,9 +424,13 @@
                                         <span
                                             class="absolute left-2 top-1/2 -translate-y-1/2 text-slate-500 text-sm">Rp</span>
                                         <input type="text" :value="formatRupiah(item.harga)"
+                                            @cannot('penjualan.update')
+                                                disabled
+                                            @endcannot
                                             @input="updateManualPrice(idx, $event.target.value)"
                                             class="pl-7 pr-2 w-full text-right border border-slate-300 rounded-lg py-2.5 
-                                        focus:border-blue-500 focus:ring-1 focus:ring-blue-200" />
+                                        focus:border-blue-500 focus:ring-1 focus:ring-blue-200
+                                        @cannot('penjualan.update') bg-slate-50 cursor-not-allowed @endcannot" />
                                     </div>
                                 </td>
 
@@ -393,24 +441,28 @@
                                 </td>
 
                                 <!-- Hapus -->
-                                <td class="px-3 py-4 text-center align-middle">
-                                    <button type="button" @click="removeItem(idx)"
-                                        class="text-rose-600 hover:text-rose-800 transition">
-                                        <i class="fa-solid fa-trash"></i>
-                                    </button>
-                                </td>
+                                @can('penjualan.update')
+                                    <td class="px-3 py-4 text-center align-middle">
+                                        <button type="button" @click="removeItem(idx)"
+                                            class="text-rose-600 hover:text-rose-800 transition">
+                                            <i class="fa-solid fa-trash"></i>
+                                        </button>
+                                    </td>
+                                @endcan
                             </tr>
                         </template>
                     </tbody>
                 </table>
 
                 {{-- Button Tambah Item Manual --}}
-                <div class="m-4">
-                    <button type="button" @click="addItemManual"
-                        class="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded border-2 border-dashed border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100 transition">
-                        <i class="fa-solid fa-plus"></i> Tambah Item Baru
-                    </button>
-                </div>
+                @can('penjualan.update')
+                    <div class="m-4">
+                        <button type="button" @click="addItemManual"
+                            class="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded border-2 border-dashed border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100 transition">
+                            <i class="fa-solid fa-plus"></i> Tambah Item Baru
+                        </button>
+                    </div>
+                @endcan
             </div>
         </div>
 
@@ -430,9 +482,13 @@
                     <label class="text-slate-600 text-sm mb-1 block">Biaya Transportasi</label>
                     <div class="relative">
                         <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-sm">Rp</span>
-                        <input type="text" :value="formatRupiah(form.biaya_transport)"
+                        <input type="text" :value="formatRupiah(form.biaya_transport)" {{-- ✅ Disable jika tidak punya permission update --}}
+                            @cannot('penjualan.update')
+                                disabled
+                            @endcannot
                             @input="updateTransport($event.target.value)" placeholder="0"
-                            class="pl-10 pr-3 w-full border border-slate-300 rounded-lg px-3 py-2.5 text-right focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-500" />
+                            class="pl-10 pr-3 w-full border border-slate-300 rounded-lg px-3 py-2.5 text-right focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-500
+                            @cannot('penjualan.update') bg-slate-50 cursor-not-allowed @endcannot" />
                     </div>
                 </div>
 
@@ -449,20 +505,30 @@
                     <!-- Mode Draft (Pending) -->
                     <template x-if="form.is_draft == 1">
                         <div class="flex gap-3">
-                            <button @click="cancelDraft"
-                                class="px-5 py-2.5 rounded-lg border border-red-500 text-red-500 hover:bg-red-500 hover:text-white transition">
-                                Batal
-                            </button>
+                            @can('penjualan.delete')
+                                <button @click="cancelDraft"
+                                    class="px-5 py-2.5 rounded-lg border border-red-500 text-red-500 hover:bg-red-500 hover:text-white transition">
+                                    Batal
+                                </button>
+                            @endcan
 
-                            <button @click="update" :disabled="!isDirty || isSaving"
-                                :class="[
-                                    'px-5 py-2.5 rounded-lg text-white font-medium shadow-sm transition',
-                                    (!isDirty || isSaving) ?
-                                    'bg-gray-400 cursor-not-allowed' :
-                                    'bg-[#334976] hover:bg-[#2d3f6d] hover:shadow-md'
-                                ]">
-                                Simpan
-                            </button>
+                            @can('penjualan.update')
+                                <button @click="update" :disabled="!isDirty || isSaving"
+                                    :class="[
+                                        'px-5 py-2.5 rounded-lg text-white font-medium shadow-sm transition',
+                                        (!isDirty || isSaving) ?
+                                        'bg-gray-400 cursor-not-allowed' :
+                                        'bg-[#334976] hover:bg-[#2d3f6d] hover:shadow-md'
+                                    ]">
+                                    Simpan
+                                </button>
+                            @else
+                                {{-- ✅ User hanya view, tampilkan tombol kembali --}}
+                                <button @click="goBack"
+                                    class="px-5 py-2.5 rounded-lg border border-gray-400 text-gray-600 hover:bg-gray-100 transition">
+                                    Kembali
+                                </button>
+                            @endcan
                         </div>
                     </template>
 
@@ -474,15 +540,17 @@
                                 Kembali
                             </button>
 
-                            <button @click="saveOrUpdate" :disabled="!isDirty || isSaving"
-                                :class="[
-                                    'px-5 py-2.5 rounded-lg text-white font-medium w-full transition',
-                                    (!isDirty || isSaving) ?
-                                    'bg-gray-200 w-full cursor-not-allowed' :
-                                    'bg-[#334976] hover:bg-[#2d3f6d] hover:shadow-md'
-                                ]">
-                                Simpan Perubahan
-                            </button>
+                            @can('penjualan.update')
+                                <button @click="saveOrUpdate" :disabled="!isDirty || isSaving"
+                                    :class="[
+                                        'px-5 py-2.5 rounded-lg text-white font-medium w-full transition',
+                                        (!isDirty || isSaving) ?
+                                        'bg-gray-200 w-full cursor-not-allowed' :
+                                        'bg-[#334976] hover:bg-[#2d3f6d] hover:shadow-md'
+                                    ]">
+                                    Simpan Perubahan
+                                </button>
+                            @endcan
                         </div>
                     </template>
                 </div>
@@ -555,80 +623,82 @@
 
 
         {{-- Modal Tambah Pelanggan --}}
-        <div x-show="showModalTambahPelanggan" x-cloak
-            class="fixed inset-0 z-50 flex items-center justify-center min-h-screen" aria-modal="true" role="dialog">
-            {{-- 🩶 Overlay --}}
-            <div x-show="showModalTambahPelanggan" x-transition.opacity.duration.300ms
-                class="absolute inset-0 bg-black/40 backdrop-blur-sm"></div>
+        @can('penjualan.update')
+            <div x-show="showModalTambahPelanggan" x-cloak
+                class="fixed inset-0 z-50 flex items-center justify-center min-h-screen" aria-modal="true" role="dialog">
+                {{-- 🩶 Overlay --}}
+                <div x-show="showModalTambahPelanggan" x-transition.opacity.duration.300ms
+                    class="absolute inset-0 bg-black/40 backdrop-blur-sm"></div>
 
-            {{-- 💠 Modal Card --}}
-            <div x-show="showModalTambahPelanggan" x-transition.opacity.duration.200ms x-transition.scale.duration.250ms
-                class="relative bg-white w-[420px] rounded-2xl shadow-xl border border-slate-200 overflow-hidden transform transition-all">
-                {{-- Header --}}
-                <div class="bg-slate-50 border-b border-slate-200 px-5 py-3 flex justify-between items-center">
-                    <h3 class="text-base font-semibold text-slate-800 flex items-center gap-2">
-                        <i class="fa-solid fa-user-plus text-blue-600"></i>
-                        Tambah Pelanggan Baru
-                    </h3>
-                    <button @click="showModalTambahPelanggan = false"
-                        class="text-slate-400 hover:text-slate-600 transition">
-                        <i class="fa-solid fa-xmark text-lg"></i>
-                    </button>
-                </div>
-
-                {{-- Body --}}
-                <div class="p-6 space-y-4">
-                    <div>
-                        <label class="block text-sm font-medium text-slate-700 mb-2">Nama Pelanggan <span
-                                class="text-rose-500">*</span></label>
-                        <input type="text" x-model="newPelanggan.nama_pelanggan"
-                            class="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm text-slate-700
-                           focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition"
-                            placeholder="Masukkan nama pelanggan">
+                {{-- 💠 Modal Card --}}
+                <div x-show="showModalTambahPelanggan" x-transition.opacity.duration.200ms x-transition.scale.duration.250ms
+                    class="relative bg-white w-[420px] rounded-2xl shadow-xl border border-slate-200 overflow-hidden transform transition-all">
+                    {{-- Header --}}
+                    <div class="bg-slate-50 border-b border-slate-200 px-5 py-3 flex justify-between items-center">
+                        <h3 class="text-base font-semibold text-slate-800 flex items-center gap-2">
+                            <i class="fa-solid fa-user-plus text-blue-600"></i>
+                            Tambah Pelanggan Baru
+                        </h3>
+                        <button @click="showModalTambahPelanggan = false"
+                            class="text-slate-400 hover:text-slate-600 transition">
+                            <i class="fa-solid fa-xmark text-lg"></i>
+                        </button>
                     </div>
 
-                    <div>
-                        <label class="block text-sm font-medium text-slate-700 mb-2">Kontak</label>
-                        <input type="text" x-model="newPelanggan.kontak"
-                            class="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm text-slate-700
+                    {{-- Body --}}
+                    <div class="p-6 space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-2">Nama Pelanggan <span
+                                    class="text-rose-500">*</span></label>
+                            <input type="text" x-model="newPelanggan.nama_pelanggan"
+                                class="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm text-slate-700
                            focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition"
-                            placeholder="Nomor HP / WhatsApp">
-                    </div>
+                                placeholder="Masukkan nama pelanggan">
+                        </div>
 
-                    <div>
-                        <label class="block text-sm font-medium text-slate-700 mb-2">Alamat</label>
-                        <textarea x-model="newPelanggan.alamat" rows="2"
-                            class="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm text-slate-700
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-2">Kontak</label>
+                            <input type="text" x-model="newPelanggan.kontak"
+                                class="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm text-slate-700
                            focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition"
-                            placeholder="Alamat pelanggan (opsional)"></textarea>
-                    </div>
+                                placeholder="Nomor HP / WhatsApp">
+                        </div>
 
-                    <div>
-                        <label class="block text-sm font-medium text-slate-700 mb-2">Level</label>
-                        <select x-model="newPelanggan.level"
-                            class="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm text-slate-700
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-2">Alamat</label>
+                            <textarea x-model="newPelanggan.alamat" rows="2"
+                                class="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm text-slate-700
+                           focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition"
+                                placeholder="Alamat pelanggan (opsional)"></textarea>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-2">Level</label>
+                            <select x-model="newPelanggan.level"
+                                class="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm text-slate-700
                            focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition bg-white">
-                            <option value="retail">Retail</option>
-                            <option value="grosir">Grosir</option>
-                        </select>
+                                <option value="retail">Retail</option>
+                                <option value="grosir">Grosir</option>
+                            </select>
+                        </div>
                     </div>
-                </div>
 
-                {{-- Footer --}}
-                <div class="flex justify-end gap-3 px-6 py-4 bg-slate-50 border-t border-slate-200">
-                    <button @click="showModalTambahPelanggan = false"
-                        class="px-5 py-2.5 rounded-lg border border-slate-300 text-slate-600 hover:bg-slate-100 transition font-medium">
-                        Batal
-                    </button>
+                    {{-- Footer --}}
+                    <div class="flex justify-end gap-3 px-6 py-4 bg-slate-50 border-t border-slate-200">
+                        <button @click="showModalTambahPelanggan = false"
+                            class="px-5 py-2.5 rounded-lg border border-slate-300 text-slate-600 hover:bg-slate-100 transition font-medium">
+                            Batal
+                        </button>
 
-                    <button @click="savePelangganBaru"
-                        class="px-5 py-2.5 rounded-lg font-medium text-white bg-[#334976] hover:bg-[#2d3f6d] 
+                        <button @click="savePelangganBaru"
+                            class="px-5 py-2.5 rounded-lg font-medium text-white bg-[#334976] hover:bg-[#2d3f6d] 
                        shadow-sm hover:shadow-md transition">
-                        <i class="fa-solid fa-save mr-1.5"></i> Simpan
-                    </button>
+                            <i class="fa-solid fa-save mr-1.5"></i> Simpan
+                        </button>
+                    </div>
                 </div>
             </div>
-        </div>
+        @endcan
 
     </div>
 
@@ -729,6 +799,15 @@
                         this.selectedPelangganLevel = 'retail';
                     }
 
+                    console.log('=== DEBUG HARGA DARI BACKEND ===');
+                    @foreach ($penjualan->items as $it)
+                        console.log({
+                            item: '{{ $it->item->nama_item }}',
+                            harga_db: {{ $it->harga }},
+                            harga_type: '{{ gettype($it->harga) }}'
+                        });
+                    @endforeach
+
                     @foreach ($penjualan->items as $it)
                         this.form.items.push({
                             item_id: {{ $it->item_id }},
@@ -741,7 +820,7 @@
                             jumlah: {{ $it->jumlah }},
                             harga: {{ $it->harga }},
                             stok: 0,
-                            harga_manual: false,
+                            harga_manual: true,
                             showNote: false, // ✅ TAMBAHKAN
                             _dropdownOpen: false, // ✅ TAMBAHKAN
                             gudangs: {!! json_encode(
@@ -765,7 +844,13 @@
                                     str_contains(strtolower(optional($it->item->kategori)->nama_kategori ?? ''), 'spandex'),
                             ) }}
                         });
+                        console.log('Item pushed:', {
+                            nama: '{{ $it->item->nama_item }}',
+                            harga: {{ $it->harga }},
+                            harga_manual: true
+                        });
                     @endforeach
+
 
                     this.$nextTick(() => {
                         this.form.items.forEach((item, idx) => {
@@ -1083,10 +1168,16 @@
                     const selected = item.gudangs.find(g => g.gudang_id == item.gudang_id && g.satuan_id == item.satuan_id);
                     if (selected) {
                         item.stok = selected.stok || 0;
-                        item.harga = this.getHargaByLevel(selected);
+                        // ✅ HANYA UPDATE HARGA JIKA BUKAN HARGA MANUAL
+                        if (!item.harga_manual) {
+                            item.harga = this.getHargaByLevel(selected);
+                        }
                     } else {
                         item.stok = 0;
-                        item.harga = 0;
+                        // ✅ JANGAN TIMPA HARGA MANUAL
+                        if (!item.harga_manual) {
+                            item.harga = 0;
+                        }
                     }
                     this.recalc();
                 },
@@ -1202,24 +1293,49 @@
                     }
                 },
 
+                // GANTI METHOD cancelDraft INI:
+
                 async cancelDraft() {
-                    if (!confirm('Yakin ingin menghapus transaksi draft ini?')) return;
+                    if (!(await this.confirmDelete('Yakin ingin menghapus transaksi draft ini?'))) return;
+
+                    this.isSaving = true;
                     try {
                         const res = await fetch(`/penjualan/${this.form.id}/cancel`, {
                             method: 'DELETE',
                             headers: {
-                                'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                                'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                                'Accept': 'application/json',
+                                'Content-Type': 'application/json'
                             }
                         });
-                        if (!res.ok) throw new Error('Gagal menghapus draft.');
+
+                        // 🔍 Debug: Lihat response yang didapat
+                        const data = await res.json();
+                        console.log('Cancel Response:', {
+                            status: res.status,
+                            data
+                        });
+
+                        if (!res.ok) {
+                            // ❌ Tampilkan error dari backend
+                            const errMsg = data.message || data.error || 'Gagal menghapus draft.';
+                            this.showToast(errMsg, 'error');
+                            return;
+                        }
+
+                        // ✅ Sukses
                         this.showToast('Transaksi draft berhasil dihapus.', 'success');
-                        window.location.href = '/penjualan';
+                        setTimeout(() => {
+                            window.location.href = '/penjualan';
+                        }, 1000);
+
                     } catch (err) {
-                        console.error(err);
-                        this.showToast('Terjadi kesalahan saat menghapus draft.', 'error');
+                        console.error('Error:', err);
+                        this.showToast(`Terjadi kesalahan: ${err.message}`, 'error');
+                    } finally {
+                        this.isSaving = false;
                     }
                 },
-
                 // ✅ TAMBAHKAN function printNota (SAMA SEPERTI DI CREATE)
                 async printNota(type) {
                     try {
@@ -1268,7 +1384,74 @@
 
                 goBack() {
                     window.location.href = '/penjualan';
-                }
+                },
+
+                showToast(msg, type = 'success') {
+                    const bg = type === 'error' ?
+                        'bg-rose-50 text-rose-700 border border-rose-200' :
+                        type === 'info' ?
+                        'bg-blue-50 text-blue-700 border border-blue-200' :
+                        'bg-emerald-50 text-emerald-700 border border-emerald-200';
+                    const icon = type === 'error' ? 'fa-circle-xmark' :
+                        type === 'info' ? 'fa-info-circle' :
+                        'fa-circle-check';
+                    const el = document.createElement('div');
+                    el.className =
+                        `fixed top-6 right-6 z-50 flex items-center gap-2 px-4 py-3 rounded-md border shadow ${bg}`;
+                    el.innerHTML = `<i class="fa-solid ${icon}"></i><span>${msg}</span>`;
+                    document.body.appendChild(el);
+                    setTimeout(() => el.remove(), 3500);
+                },
+
+                // Method 2: Confirm Dialog (menggantikan alert)
+                confirmDelete(message) {
+                    const el = document.createElement('div');
+                    el.className = 'fixed inset-0 z-[9999] flex items-center justify-center';
+                    el.innerHTML = `
+        <div class="absolute inset-0 bg-black/40 "></div>
+        <div class="relative bg-white rounded-2xl shadow-xl w-96 p-6 space-y-4 border border-slate-200">
+            <div class="flex items-start gap-3">
+                <div class="flex-shrink-0 w-10 h-10 bg-rose-100 rounded-lg flex items-center justify-center">
+                    <i class="fa-solid fa-exclamation-triangle text-rose-600"></i>
+                </div>
+                <div>
+                    <h3 class="text-base font-semibold text-slate-800">Konfirmasi</h3>
+                    <p class="text-sm text-slate-600 mt-1">${message}</p>
+                </div>
+            </div>
+            <div class="flex justify-end gap-3 pt-4 border-t border-slate-200">
+                <button id="cancel-btn" class="px-4 py-2 rounded-lg border border-slate-300 text-slate-600 hover:bg-slate-50 transition font-medium">
+                    Batal
+                </button>
+                <button id="confirm-btn" class="px-4 py-2 rounded-lg bg-rose-600 text-white hover:bg-rose-700 transition font-medium">
+                    Hapus
+                </button>
+            </div>
+        </div>
+    `;
+
+                    document.body.appendChild(el);
+
+                    return new Promise(resolve => {
+                        document.getElementById('cancel-btn').addEventListener('click', () => {
+                            el.remove();
+                            resolve(false);
+                        });
+
+                        document.getElementById('confirm-btn').addEventListener('click', () => {
+                            el.remove();
+                            resolve(true);
+                        });
+
+                        el.addEventListener('click', (e) => {
+                            if (e.target === el.firstChild) {
+                                el.remove();
+                                resolve(false);
+                            }
+                        });
+                    });
+                },
+
             }
         }
     </script>

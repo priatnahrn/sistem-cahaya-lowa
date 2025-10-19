@@ -6,7 +6,7 @@ use App\Models\Gudang;
 use App\Models\Item;
 use App\Models\ItemGudang;
 use App\Models\ItemPenjualan;
-use App\Models\ItemProduksi;
+use App\Models\LogActivity;
 use App\Models\Pelanggan;
 use App\Models\Pengiriman;
 use App\Models\Penjualan;
@@ -19,9 +19,11 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Picqer\Barcode\BarcodeGeneratorSVG;
+use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 
 class PenjualanController extends Controller
 {
+    use AuthorizesRequests;
 
     /**
      * Update total_stok untuk 1 baris ItemGudang
@@ -52,21 +54,26 @@ class PenjualanController extends Controller
 
     public function index()
     {
+        // ✅ Check permission view
+        $this->authorize('penjualan.view');
+
         $penjualans = Penjualan::with(['pelanggan', 'items.item', 'pengiriman'])
             ->orderBy('tanggal', 'desc')
-            ->get(); // Gunakan get() karena sudah ada pagination di Alpine.js
+            ->get();
 
         return view('auth.penjualan.index', compact('penjualans'));
     }
 
     public function create()
     {
+        // ✅ Check permission create
+        $this->authorize('penjualan.create');
+
         $pelanggans = Pelanggan::orderBy('nama_pelanggan')->get();
         $gudangs = Gudang::orderBy('nama_gudang')->get();
 
-        // ✅ TAMBAHKAN 'kategori' di eager loading
         $items = Item::with([
-            'kategori',  // ✅ TAMBAHKAN INI
+            'kategori',
             'gudangItems.gudang',
             'gudangItems.satuan'
         ])
@@ -94,6 +101,9 @@ class PenjualanController extends Controller
 
     public function store(Request $request)
     {
+        // ✅ Check permission create
+        $this->authorize('penjualan.create');
+
         $isDraft = $request->boolean('is_draft', false);
 
         $rules = [
@@ -215,6 +225,14 @@ class PenjualanController extends Controller
                 }
             }
 
+            LogActivity::create([
+                'user_id'       => Auth::id(),
+                'activity_type' => 'create_penjualan',
+                'description'   => 'Membuat penjualan ' . $penjualan->no_faktur,
+                'ip_address'    => $request->ip(),
+                'user_agent'    => $request->userAgent(),
+            ]);
+
             return response()->json([
                 'message' => $message,
                 'id' => $penjualan->id,
@@ -229,9 +247,6 @@ class PenjualanController extends Controller
             ], 500);
         }
     }
-
-
-
 
     /**
      * API: Search items by nama or kode
@@ -256,7 +271,7 @@ class PenjualanController extends Controller
                     'id' => $item->id,
                     'nama_item' => $item->nama_item,
                     'kode_item' => $item->kode_item,
-                    'kategori' => $item->kategori?->nama_kategori ?? null, // ✅ kirim kategori
+                    'kategori' => $item->kategori?->nama_kategori ?? null,
                     'gudangs' => $item->gudangItems->map(fn($ig) => [
                         'gudang_id' => $ig->gudang?->id,
                         'nama_gudang' => $ig->gudang?->nama_gudang,
@@ -273,14 +288,11 @@ class PenjualanController extends Controller
         return response()->json($items);
     }
 
-
-
     /**
      * API: Get item by barcode (untuk scanner)
      */
     public function getItemByBarcode($barcode)
     {
-        // ✅ TAMBAHKAN eager load 'kategori'
         $item = Item::with('kategori')
             ->where('barcode', $barcode)
             ->orWhere('kode_item', $barcode)
@@ -293,7 +305,6 @@ class PenjualanController extends Controller
             ], 404);
         }
 
-        // Ambil semua gudang & stok terkait
         $gudangs = ItemGudang::where('item_id', $item->id)
             ->with(['gudang:id,nama_gudang', 'satuan:id,nama_satuan,harga_retail,partai_kecil,harga_grosir'])
             ->orderBy('gudang_id')
@@ -316,12 +327,11 @@ class PenjualanController extends Controller
             'nama_item' => $item->nama_item,
             'kode_item' => $item->kode_item,
             'barcode' => $item->barcode,
-            'kategori' => $item->kategori?->nama_kategori ?? '',  // ✅ TAMBAHKAN INI
+            'kategori' => $item->kategori?->nama_kategori ?? '',
             'satuan_default' => $item->satuan_id,
             'gudangs' => $gudangs,
         ]);
     }
-
 
     /**
      * API: Get stock for specific item, gudang, satuan
@@ -358,7 +368,7 @@ class PenjualanController extends Controller
     public function getPrice(Request $request)
     {
         $satuanId = $request->get('satuan_id');
-        $level = $request->get('level', 'retail'); // retail, partai_kecil, grosir
+        $level = $request->get('level', 'retail');
         $isWalkin = $request->get('is_walkin', false);
 
         if (!$satuanId) {
@@ -374,7 +384,6 @@ class PenjualanController extends Controller
         $partaiKecil = (float) ($satuan->partai_kecil ?? 0);
         $hargaGrosir = (float) ($satuan->harga_grosir ?? 0);
 
-        // Logic sama seperti di store
         if ($isWalkin) {
             $harga = $partaiKecil ?: $hargaRetail ?: $hargaGrosir;
         } else {
@@ -395,9 +404,11 @@ class PenjualanController extends Controller
         ]);
     }
 
-
     public function show($id)
     {
+        // ✅ Tidak perlu authorize - user dengan permission view sudah bisa akses
+        // User tanpa permission update tetap bisa lihat (read-only)
+
         $penjualan = Penjualan::with([
             'pelanggan',
             'items' => function ($query) {
@@ -416,18 +427,15 @@ class PenjualanController extends Controller
         ])->findOrFail($id);
 
         foreach ($penjualan->items as $it) {
-            // Jika database masih model lama (catatan_produksi kosong, tapi keterangan digabung)
             if ($it->keterangan && !$it->catatan_produksi) {
                 $parts = explode(' - ', $it->keterangan, 2);
                 $it->keterangan = trim($parts[0]);
                 $it->catatan_produksi = isset($parts[1]) ? trim($parts[1]) : '';
             } else {
-                // Gunakan nilai asli dari database
                 $it->keterangan = $it->keterangan ?? '';
                 $it->catatan_produksi = $it->catatan_produksi ?? '';
             }
         }
-
 
         $gudangs = Gudang::all();
         $items = Item::with(['gudangItems.gudang', 'gudangItems.satuan'])->get();
@@ -439,29 +447,26 @@ class PenjualanController extends Controller
         ]);
     }
 
-
     public function print(Request $request, $id)
     {
-        $type = $request->get('type', 'kecil'); // default kecil
+        $type = $request->get('type', 'kecil');
         $penjualan = Penjualan::with(['items.item', 'items.satuan', 'createdBy'])->findOrFail($id);
 
-        // === Generate Barcode dari nomor faktur ===
         $generator = new BarcodeGeneratorSVG();
         $barcode = $generator->getBarcode($penjualan->no_faktur, $generator::TYPE_CODE_128);
 
         if ($type === 'kecil') {
-            // langsung tampilkan halaman HTML thermal
             return view('auth.penjualan.print_kecil', compact('penjualan', 'barcode'));
         } else {
-            // untuk nota besar masih bisa pakai PDF kalau mau
             return view('auth.penjualan.print_besar', compact('penjualan', 'barcode'));
         }
     }
 
-
-
     public function update(Request $request, $id)
     {
+        // ✅ Check permission update
+        $this->authorize('penjualan.update');
+
         $penjualan = Penjualan::with('items')->findOrFail($id);
         $isDraftRequest = $request->boolean('is_draft', false);
 
@@ -525,7 +530,6 @@ class PenjualanController extends Controller
 
                     Log::info("🔙 Stok dikembalikan: item_id={$oldItem->item_id}, dari {$stokSebelum} ke {$gudangItem->stok}");
 
-                    // ✅ Update total_stok setelah stok dikembalikan
                     $this->updateTotalStok($oldItem->item_id, $oldItem->gudang_id, $oldItem->satuan_id);
                 }
             }
@@ -571,7 +575,6 @@ class PenjualanController extends Controller
                         Log::info("📉 Stok dikurangi: item_id={$it['item_id']}, dari {$stokSebelum} ke {$gudangItem->stok}");
                     }
 
-                    // ✅ Update total_stok setelah stok dikurangi
                     $this->updateTotalStok($it['item_id'], $it['gudang_id'], $it['satuan_id']);
                 }
             }
@@ -638,7 +641,21 @@ class PenjualanController extends Controller
                 ]);
                 Log::info("✅ Tagihan diupdate menjadi lunas");
             }
+            
 
+            $penjualan->update([
+                'status_bayar' => $statusBayar,
+                'updated_by' => Auth::id(),
+            ]);
+            Log::info("✅ Penjualan diupdate: status_bayar=$statusBayar");
+
+            LogActivity::create([
+                'user_id'       => Auth::id(),
+                'activity_type' => 'update_penjualan',
+                'description'   => 'Memperbarui penjualan ' . $penjualan->no_faktur,
+                'ip_address'    => request()->ip(),
+                'user_agent'    => request()->userAgent(),
+            ]);
             DB::commit();
 
             return response()->json(['message' => 'Penjualan berhasil diperbarui.'], 200);
@@ -652,10 +669,8 @@ class PenjualanController extends Controller
         }
     }
 
-
     /**
      * API: Cari penjualan berdasarkan kode nota (no_faktur)
-     * Digunakan untuk fitur pembayaran (scan barcode / input manual)
      */
     public function searchPenjualan(Request $request)
     {
@@ -684,7 +699,7 @@ class PenjualanController extends Controller
             'total' => (float) $penjualan->total,
             'dibayar' => (float) $dibayar,
             'sisa' => (float) ($penjualan->sisa ?? max(0, $penjualan->total - $dibayar)),
-            'status_bayar' => $penjualan->status_bayar, // ✅ Langsung ambil dari kolom di database
+            'status_bayar' => $penjualan->status_bayar,
             'items' => $penjualan->items->map(fn($it) => [
                 'id' => $it->id,
                 'nama_item' => $it->item->nama_item ?? '-',
@@ -700,18 +715,19 @@ class PenjualanController extends Controller
      */
     public function cancelDraft($id)
     {
+        // ✅ Check permission delete (untuk cancel draft)
+        $this->authorize('penjualan.delete');
+
         DB::beginTransaction();
         try {
             $penjualan = Penjualan::with('items')->findOrFail($id);
 
-            // 🛡️ Validasi: Hanya draft yang bisa dibatalkan
             if ($penjualan->is_draft != 1) {
                 return response()->json([
                     'message' => 'Hanya transaksi draft yang bisa dibatalkan.'
                 ], 400);
             }
 
-            // 🔄 Kembalikan stok semua item & update total_stok
             foreach ($penjualan->items as $item) {
                 $gudangItem = ItemGudang::where('item_id', $item->item_id)
                     ->where('gudang_id', $item->gudang_id)
@@ -726,16 +742,22 @@ class PenjualanController extends Controller
 
                     Log::info("♻️ Stok dikembalikan (cancel draft): item_id={$item->item_id} dari {$stokLama} ke {$gudangItem->stok}");
 
-                    // ✅ Update total_stok setelah stok dikembalikan
                     $this->updateTotalStok($item->item_id, $item->gudang_id, $item->satuan_id);
                 }
             }
 
-            // 🗑️ Hapus data terkait (pengiriman & tagihan)
             Pengiriman::where('penjualan_id', $penjualan->id)->delete();
             TagihanPenjualan::where('penjualan_id', $penjualan->id)->delete();
             $penjualan->items()->delete();
             $penjualan->delete();
+
+            LogActivity::create([
+                'user_id'       => Auth::id(),
+                'activity_type' => 'cancel_draft_penjualan',
+                'description'   => 'Membatalkan draft penjualan ' . $penjualan->no_faktur,
+                'ip_address'    => request()->ip(),
+                'user_agent'    => request()->userAgent(),
+            ]);
 
             DB::commit();
 
@@ -753,17 +775,18 @@ class PenjualanController extends Controller
         }
     }
 
-
     /**
      * 🗑️ Hapus Penjualan (dengan pengembalian stok)
      */
     public function destroy($id)
     {
+        // ✅ Check permission delete
+        $this->authorize('penjualan.delete');
+
         DB::beginTransaction();
         try {
             $penjualan = Penjualan::with('items')->findOrFail($id);
 
-            // 🛡️ Validasi: Tidak bisa hapus penjualan yang sudah lunas
             if ($penjualan->status_bayar === 'paid') {
                 return response()->json([
                     'success' => false,
@@ -771,7 +794,6 @@ class PenjualanController extends Controller
                 ], 400);
             }
 
-            // 🔄 Kembalikan stok semua item & update total_stok
             foreach ($penjualan->items as $item) {
                 $gudangItem = ItemGudang::where('item_id', $item->item_id)
                     ->where('gudang_id', $item->gudang_id)
@@ -786,20 +808,26 @@ class PenjualanController extends Controller
 
                     Log::info("🧩 Stok dikembalikan (hapus): item_id={$item->item_id} dari {$stokLama} ke {$gudangItem->stok}");
 
-                    // ✅ Update total_stok setelah stok dikembalikan
                     $this->updateTotalStok($item->item_id, $item->gudang_id, $item->satuan_id);
                 }
             }
 
-            // 📝 Simpan info untuk log
             $noFaktur = $penjualan->no_faktur;
             $pelanggan = optional($penjualan->pelanggan)->nama_pelanggan ?? 'Customer';
 
-            // 🗑️ Hapus data terkait (pengiriman & tagihan)
             Pengiriman::where('penjualan_id', $penjualan->id)->delete();
             TagihanPenjualan::where('penjualan_id', $penjualan->id)->delete();
             $penjualan->items()->delete();
             $penjualan->delete();
+
+              LogActivity::create([
+                'user_id'       => Auth::id(),
+                'activity_type' => 'delete_penjualan',
+                'description'   => 'Menghapus penjualan ' . $penjualan->no_faktur,
+                'ip_address'    => request()->ip(),
+                'user_agent'    => request()->userAgent(),
+            ]);
+
 
             DB::commit();
 

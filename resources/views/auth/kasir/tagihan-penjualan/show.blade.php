@@ -225,55 +225,60 @@
         {{-- Riwayat Pembayaran / Catatan --}}
         @if ($tagihan->catatan)
             <div class="bg-white border border-slate-200 rounded-xl overflow-hidden">
-                <div class="px-6 py-4 border-b border-slate-200 bg-slate-50 flex items-center justify-between">
+                <div class="px-6 py-4 border-b border-slate-200 bg-slate-50">
                     <h3 class="text-base font-semibold text-slate-700 flex items-center gap-2">
-                        <i class="fa-solid fa-clock-rotate-left text-[#344579]"></i>
+                        <i class="fa-solid fa-file-lines text-[#344579]"></i>
                         Riwayat Pembayaran
                     </h3>
-                    <span class="text-xs text-slate-500 bg-slate-200 px-2 py-1 rounded">
-                        {{ count(array_filter(explode("\n", $tagihan->catatan))) }} transaksi
-                    </span>
                 </div>
                 <div class="px-6 py-4">
-                    <div class="relative space-y-4">
-                        {{-- Timeline line --}}
-                        <div class="absolute left-4 top-0 bottom-0 w-0.5 bg-slate-200"></div>
-
-                        @foreach (array_filter(explode("\n", $tagihan->catatan)) as $index => $catatan)
-                            <div class="relative flex gap-4 items-start">
-                                {{-- Timeline dot --}}
+                    <div class="space-y-3">
+                        @foreach (explode("\n", $tagihan->catatan) as $index => $catatan)
+                            @if (trim($catatan))
                                 <div
-                                    class="relative z-10 flex-shrink-0 w-8 h-8 rounded-full bg-green-100 border-2 border-green-500 flex items-center justify-center">
-                                    <i class="fa-solid fa-check text-green-600 text-xs"></i>
+                                    class="flex gap-3 pb-3 items-start {{ !$loop->last ? 'border-b border-slate-100' : '' }}">
+                                    <div
+                                        class="flex-shrink-0 w-8 h-8 rounded-full bg-[#344579]/10 flex items-center justify-center">
+                                        <span class="text-xs font-semibold text-[#344579]">{{ $index + 1 }}</span>
+                                    </div>
+                                    <div class="flex-1 min-w-0 pt-2">
+                                        <p class="text-sm text-slate-700 break-words">{{ trim($catatan) }}</p>
+                                        @if (preg_match('/\d{2}\/\d{2}\/\d{4}/', $catatan, $matches))
+                                            <p class="text-xs text-slate-500 mt-1">
+                                                <i class="fa-solid fa-calendar-days mr-1"></i>
+                                                {{ $matches[0] }}
+                                            </p>
+                                        @endif
+                                    </div>
                                 </div>
-
-                                {{-- Content --}}
-                                <div class="flex-1 bg-slate-50 rounded-lg p-3 border border-slate-200">
-                                    <p class="text-sm text-slate-700 font-medium">{{ trim($catatan) }}</p>
-                                </div>
-                            </div>
+                            @endif
                         @endforeach
                     </div>
                 </div>
             </div>
         @endif
 
+
         {{-- Tombol Aksi --}}
         <div class="flex justify-end gap-3">
-            <a href="{{ route('tagihan-penjualan.index') }}"
-                class="px-5 py-2.5 rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50 transition font-medium">
-                <i class="fa-solid fa-arrow-left mr-2"></i> Kembali
-            </a>
-            @if ($tagihan->sisa > 0)
-                <button @click="openBayarModal()"
-                    class="px-5 py-2.5 rounded-lg bg-[#344579] text-white hover:bg-[#2e3e6a] transition shadow font-medium">
-                    <i class="fa-solid fa-money-bill-wave mr-2"></i> Bayar Sekarang
-                </button>
+            @can('tagihan_penjualan.update')
+                @if ($tagihan->sisa > 0)
+                    <button @click="openBayarModal()"
+                        class="px-5 py-2.5 rounded-lg bg-[#344579] text-white hover:bg-[#2e3e6a] transition shadow font-medium">
+                        <i class="fa-solid fa-money-bill-wave mr-2"></i> Bayar Sekarang
+                    </button>
+                @else
+                    <button disabled class="px-5 py-2.5 rounded-lg bg-green-100 text-green-700 cursor-not-allowed font-medium">
+                        <i class="fa-solid fa-check-circle mr-2"></i> Lunas
+                    </button>
+                @endif
             @else
-                <button disabled class="px-5 py-2.5 rounded-lg bg-green-100 text-green-700 cursor-not-allowed font-medium">
-                    <i class="fa-solid fa-check-circle mr-2"></i> Lunas
+                {{-- Jika user tidak punya permission update, tombol dinonaktifkan atau disembunyikan --}}
+                <button disabled title="Anda tidak memiliki akses untuk membayar tagihan"
+                    class="px-5 py-2.5 rounded-lg bg-slate-300 text-slate-500 cursor-not-allowed font-medium">
+                    <i class="fa-solid fa-lock mr-2"></i> Bayar Sekarang
                 </button>
-            @endif
+            @endcan
         </div>
 
         {{-- MODAL PEMBAYARAN --}}

@@ -7,20 +7,20 @@ use App\Models\Item;
 use App\Models\ItemGudang;
 use App\Models\ItemPembelian;
 use App\Models\KategoriItem;
+use App\Models\LogActivity;
 use App\Models\Satuan;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Picqer\Barcode\BarcodeGeneratorSVG;
 use Illuminate\Support\Str;
 
-
 class ItemController extends Controller
 {
     /**
-     * Tampilkan daftar item untuk index page.
-     * Mengembalikan koleksi yang sudah dipetakan sesuai kebutuhan view.
+     * Display a listing of items.
      */
     public function index(Request $request)
     {
@@ -31,9 +31,8 @@ class ItemController extends Controller
         return view('auth.items.index', compact('items'));
     }
 
-
     /**
-     * Form create item.
+     * Show the form for creating a new item.
      */
     public function create()
     {
@@ -44,22 +43,8 @@ class ItemController extends Controller
     }
 
     /**
-     * Tampilkan detail item.
+     * Store a newly created item in storage.
      */
-    public function show($id)
-    {
-        $item = Item::with(['kategori', 'satuans', 'primarySatuan'])->findOrFail($id);
-        $kategori_items = KategoriItem::orderBy('nama_kategori')->get();
-        $gudangs = Gudang::orderBy('nama_gudang')->get();
-
-        return view('auth.items.show', compact('item', 'kategori_items', 'gudangs'));
-    }
-
-    /**
-     * Simpan item + satuans + inisialisasi ItemGudang.
-     * Menerima form multipart (file foto) dari itemsWizard.
-     */
-
     public function store(Request $request)
     {
         $rules = [
@@ -82,11 +67,10 @@ class ItemController extends Controller
 
         DB::beginTransaction();
         try {
-            // 📌 Ambil kategori
+            // Generate kode item
             $kategori = KategoriItem::findOrFail($validated['kategori_item_id']);
             $namaKategori = strtoupper($kategori->nama_kategori);
 
-            // 📌 Tentukan kode item (pakai input user atau auto-generate)
             if (!empty($validated['kode_item'])) {
                 $kodeItem = strtoupper($validated['kode_item']);
             } else {
@@ -107,7 +91,7 @@ class ItemController extends Controller
                 $kodeItem = $prefix . '-' . $randomNumber;
             }
 
-            // 📌 Upload foto
+            // Upload foto
             $fotoPath = null;
             if ($request->hasFile('foto')) {
                 $ext = $request->file('foto')->getClientOriginalExtension();
@@ -115,7 +99,7 @@ class ItemController extends Controller
                 $fotoPath = $request->file('foto')->storeAs('items', $fileName, 'public');
             }
 
-            // 📌 Generate barcode (pakai kode item)
+            // Generate barcode
             $barcode = $kodeItem;
             $generator = new BarcodeGeneratorSVG();
             $barcodeSVG = $generator->getBarcode($barcode, $generator::TYPE_CODE_128);
@@ -123,7 +107,7 @@ class ItemController extends Controller
             $barcodePath = 'barcodes/' . $barcode . '.svg';
             Storage::disk('public')->put($barcodePath, $barcodeSVG);
 
-            // 📌 Simpan item
+            // Simpan item
             $item = Item::create([
                 'kode_item'        => $kodeItem,
                 'barcode'          => $barcode,
@@ -134,7 +118,7 @@ class ItemController extends Controller
                 'foto_path'        => $fotoPath,
             ]);
 
-            // 📌 Simpan satuans
+            // Simpan satuans
             $satuanIds = [];
             foreach ($validated['satuans'] as $idx => $s) {
                 $isBase = isset($s['is_base']) && in_array($s['is_base'], [true, '1', 1, 'true']);
@@ -152,7 +136,7 @@ class ItemController extends Controller
                 $satuanIds[$idx] = $created->id;
             }
 
-            // 📌 Primary satuan
+            // Set primary satuan
             if ($request->filled('satuan_primary_index')) {
                 $primIdx = (int) $request->input('satuan_primary_index');
                 if (isset($satuanIds[$primIdx])) {
@@ -162,7 +146,7 @@ class ItemController extends Controller
                 Satuan::where('id', reset($satuanIds))->update(['is_base' => true]);
             }
 
-            // 📌 Stok awal di semua gudang (per satuan)
+            // Inisialisasi stok di semua gudang
             $gudangs = Gudang::all();
             $batch = [];
 
@@ -183,27 +167,229 @@ class ItemController extends Controller
                 ItemGudang::insert($batch);
             }
 
+            LogActivity::create([
+                'user_id'       => Auth::id(),
+                'activity_type' => 'create_item',
+                'description'   => 'Created item: ' . $item->nama_item . ' (' . $item->kode_item . ')',
+                'ip_address'    => $request->ip(),
+                'user_agent'    => $request->userAgent(),
+            ]);
 
             DB::commit();
 
             return redirect()->route('items.index')
-                ->with('success', 'Item berhasil dibuat, foto & barcode otomatis digenerate.');
+                ->with('success', 'Item berhasil ditambahkan dengan foto & barcode otomatis.');
         } catch (\Throwable $e) {
             DB::rollBack();
+            
+            Log::error('Error store item: ' . $e->getMessage(), [
+                'trace' => $e->getTraceAsString(),
+            ]);
 
-            dd('Error Store Item:', $e->getMessage(), $e->getFile(), $e->getLine());
+            return back()
+                ->withErrors(['error' => 'Terjadi kesalahan saat menyimpan item: ' . $e->getMessage()])
+                ->withInput();
         }
     }
 
+    /**
+     * Display the specified item.
+     */
+    public function show($id)
+    {
+        $item = Item::with(['kategori', 'satuans', 'primarySatuan'])->findOrFail($id);
+        $kategori_items = KategoriItem::orderBy('nama_kategori')->get();
+        $gudangs = Gudang::orderBy('nama_gudang')->get();
+
+        return view('auth.items.show', compact('item', 'kategori_items', 'gudangs'));
+    }
+
+    /**
+     * Update the specified item in storage.
+     */
+    public function update(Request $request, $id)
+    {
+        $rules = [
+            'kode_item'        => 'required|string|max:50|unique:items,kode_item,' . $id,
+            'nama_item'        => 'required|string|max:191',
+            'kategori_item_id' => 'required|exists:kategori_items,id',
+            'foto'             => 'nullable|image|max:5120',
+            'satuans'          => 'required|array|min:1',
+            'satuans.*.id'           => 'nullable|exists:satuans,id',
+            'satuans.*.nama_satuan'  => 'required|string|max:100',
+            'satuans.*.jumlah'       => 'nullable|integer',
+            'satuans.*.harga_retail' => 'nullable|numeric|min:0',
+            'satuans.*.partai_kecil' => 'nullable|numeric|min:0',
+            'satuans.*.harga_grosir' => 'nullable|numeric|min:0',
+            'satuan_primary_index'   => 'nullable|integer|min:0',
+        ];
+
+        $validated = $request->validate($rules);
+
+        DB::beginTransaction();
+        try {
+            $item = Item::findOrFail($id);
+
+            // Update foto jika ada upload baru
+            $fotoPath = $item->foto_path;
+            if ($request->hasFile('foto')) {
+                if ($fotoPath && Storage::disk('public')->exists($fotoPath)) {
+                    Storage::disk('public')->delete($fotoPath);
+                }
+                $ext = $request->file('foto')->getClientOriginalExtension();
+                $fileName = $validated['kode_item'] . '_' . time() . '.' . $ext;
+                $fotoPath = $request->file('foto')->storeAs('items', $fileName, 'public');
+            }
+
+            // Update item
+            $item->update([
+                'kode_item'        => $validated['kode_item'],
+                'nama_item'        => $validated['nama_item'],
+                'kategori_item_id' => $validated['kategori_item_id'],
+                'foto_path'        => $fotoPath,
+            ]);
+
+            // Kelola satuans (update existing, create new, delete removed)
+            $existingIds = $item->satuans()->pluck('id')->toArray();
+            $requestIds  = [];
+
+            foreach ($validated['satuans'] as $s) {
+                if (!empty($s['id'])) {
+                    // Update existing satuan
+                    $sat = $item->satuans()->where('id', $s['id'])->first();
+                    if ($sat) {
+                        $sat->update([
+                            'nama_satuan'  => $s['nama_satuan'],
+                            'jumlah'       => $s['jumlah'] ?? 1,
+                            'harga_retail' => $s['harga_retail'] !== '' ? $s['harga_retail'] : null,
+                            'partai_kecil' => $s['partai_kecil'] !== '' ? $s['partai_kecil'] : null,
+                            'harga_grosir' => $s['harga_grosir'] !== '' ? $s['harga_grosir'] : null,
+                            'is_base'      => 0,
+                        ]);
+                        $requestIds[] = $sat->id;
+                    }
+                } else {
+                    // Create new satuan
+                    $created = $item->satuans()->create([
+                        'nama_satuan'  => $s['nama_satuan'],
+                        'jumlah'       => $s['jumlah'] ?? 1,
+                        'harga_retail' => $s['harga_retail'] !== '' ? $s['harga_retail'] : null,
+                        'partai_kecil' => $s['partai_kecil'] !== '' ? $s['partai_kecil'] : null,
+                        'harga_grosir' => $s['harga_grosir'] !== '' ? $s['harga_grosir'] : null,
+                        'is_base'      => 0,
+                    ]);
+                    $requestIds[] = $created->id;
+                }
+            }
+
+            // Hapus satuan yang tidak ada di request
+            $toDelete = array_diff($existingIds, $requestIds);
+            if (!empty($toDelete)) {
+                $item->satuans()->whereIn('id', $toDelete)->delete();
+            }
+
+            // Set primary satuan
+            if ($request->filled('satuan_primary_index')) {
+                $primIdx = (int) $request->input('satuan_primary_index');
+                if (isset($requestIds[$primIdx])) {
+                    $item->satuans()->where('id', $requestIds[$primIdx])->update(['is_base' => true]);
+                }
+            } elseif (!empty($requestIds)) {
+                $item->satuans()->where('id', $requestIds[0])->update(['is_base' => true]);
+            }
+
+            LogActivity::create([
+                'user_id'       => Auth::id(),
+                'activity_type' => 'update_item',
+                'description'   => 'Updated item: ' . $item->nama_item . ' (' . $item->kode_item . ')',
+                'ip_address'    => $request->ip(),
+                'user_agent'    => $request->userAgent(),
+            ]);
+
+            DB::commit();
+
+            return redirect()->route('items.index')
+                ->with('success', 'Item berhasil diperbarui.');
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            
+            Log::error('Error update item: ' . $e->getMessage(), [
+                'id' => $id,
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return back()
+                ->withErrors(['error' => 'Terjadi kesalahan saat memperbarui item: ' . $e->getMessage()])
+                ->withInput();
+        }
+    }
+
+    /**
+     * Remove the specified item from storage.
+     */
+    public function destroy($id)
+    {
+        try {
+            $item = Item::findOrFail($id);
+
+            // Optional: Check jika item masih digunakan di transaksi
+            // if ($item->itemPenjualans()->count() > 0) {
+            //     return response()->json([
+            //         'success' => false,
+            //         'message' => 'Item tidak dapat dihapus karena sudah digunakan dalam transaksi.'
+            //     ], 422);
+            // }
+
+            // Hapus file foto & barcode
+            if ($item->foto_path && Storage::disk('public')->exists($item->foto_path)) {
+                Storage::disk('public')->delete($item->foto_path);
+            }
+            if ($item->barcode_path && Storage::disk('public')->exists($item->barcode_path)) {
+                Storage::disk('public')->delete($item->barcode_path);
+            }
+
+            // Hapus relasi
+            $item->satuans()->delete();
+            ItemGudang::where('item_id', $item->id)->delete();
+            ItemPembelian::where('item_id', $item->id)->delete();
+
+            $item->delete();
+
+            LogActivity::create([
+                'user_id'       => Auth::id(),
+                'activity_type' => 'delete_item',
+                'description'   => 'Deleted item: ' . $item->nama_item . ' (' . $item->kode_item . ')',
+                'ip_address'    => request()->ip(),
+                'user_agent'    => request()->userAgent(),
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Item berhasil dihapus.'
+            ]);
+        } catch (\Throwable $e) {
+            Log::error('Error delete item: ' . $e->getMessage(), ['id' => $id]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan saat menghapus item: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Search items (for autocomplete/select2).
+     */
     public function search(Request $request)
     {
         $q = trim((string) $request->get('q', ''));
         $limit = (int) $request->get('limit', 15);
+        
         if (mb_strlen($q) < 2) {
             return response()->json([]);
         }
 
-        $items = Item::with(['satuans', 'kategori'])  // ✅ TAMBAHKAN 'kategori'
+        $items = Item::with(['satuans', 'kategori'])
             ->where('nama_item', 'like', "%{$q}%")
             ->orWhere('kode_item', 'like', "%{$q}%")
             ->orderByDesc('id')
@@ -222,7 +408,6 @@ class ItemController extends Controller
                 ];
             })->values();
 
-            // default satuan (ambil yang is_base jika ada)
             $satuan_default = $it->satuans->firstWhere('is_base', true)?->id
                 ?? ($it->satuans->first()?->id ?? null);
 
@@ -230,7 +415,7 @@ class ItemController extends Controller
                 'id' => $it->id,
                 'kode_item' => $it->kode_item,
                 'nama_item' => $it->nama_item,
-                'kategori' => $it->kategori?->nama_kategori ?? '',  // ✅ TAMBAHKAN INI
+                'kategori' => $it->kategori?->nama_kategori ?? '',
                 'satuans' => $satuans,
                 'satuan_default' => $satuan_default,
             ];
@@ -239,11 +424,13 @@ class ItemController extends Controller
         return response()->json($results);
     }
 
-    // GET /items/{id}/prices?satuan_id=...&walkin=1&pelanggan_id=...
+    /**
+     * Get prices for specific item and satuan.
+     */
     public function getPrices($id, Request $request)
     {
         $satuanId = $request->query('satuan_id');
-        $walkinFlag = (bool) $request->query('walkin', false); // frontend sends is_walkin/force_walkin as walkin=1
+        $walkinFlag = (bool) $request->query('walkin', false);
         $pelangganId = $request->query('pelanggan_id');
 
         $item = Item::with('satuans')->find($id);
@@ -251,7 +438,7 @@ class ItemController extends Controller
             return response()->json(['message' => 'Item tidak ditemukan'], 404);
         }
 
-        // cari satuan target
+        // Cari satuan target
         $satuan = null;
         if ($satuanId) {
             $satuan = $item->satuans->firstWhere('id', (int)$satuanId);
@@ -264,7 +451,7 @@ class ItemController extends Controller
         $partaiKecil = (float) ($satuan->partai_kecil ?? 0);
         $hargaGrosir = (float) ($satuan->harga_grosir ?? 0);
 
-        // resolve price server-side (prioritas: force walkin -> grosir jika pelanggan terdaftar -> walkin -> retail)
+        // Resolve price logic
         if ($walkinFlag) {
             $resolved = $partaiKecil ?: $hargaRetail ?: $hargaGrosir;
         } else {
@@ -275,7 +462,7 @@ class ItemController extends Controller
             }
         }
 
-        // ambil harga pembelian terakhir (HPP) untuk referensi
+        // Get last purchase price (HPP)
         $lastPurchase = ItemPembelian::where('item_id', $id)
             ->when($satuan?->id, fn($q) => $q->where('satuan_id', $satuan->id))
             ->orderByDesc('created_at')
@@ -293,154 +480,5 @@ class ItemController extends Controller
                 'jumlah' => (int) ($satuan->jumlah ?? 1),
             ],
         ]);
-    }
-
-    /**
-     * Update simple item (basic fields).
-     */
-    public function update(Request $request, $id)
-    {
-        $rules = [
-            'kode_item'        => 'required|string|max:50',
-            'nama_item'        => 'required|string|max:191',
-            'kategori_item_id' => 'required|exists:kategori_items,id',
-            'foto'             => 'nullable|image|max:5120',
-            'satuans'          => 'required|array|min:1',
-            'satuans.*.id'           => 'nullable|exists:satuans,id',
-            'satuans.*.nama_satuan'  => 'required|string|max:100',
-            'satuans.*.jumlah'       => 'nullable|integer', // ❗ tidak pakai min:1, fallback = 1
-            'satuans.*.harga_retail' => 'nullable|numeric|min:0',
-            'satuans.*.partai_kecil' => 'nullable|numeric|min:0',
-            'satuans.*.harga_grosir' => 'nullable|numeric|min:0',
-            'satuan_primary_index'   => 'nullable|integer|min:0',
-        ];
-
-        $validated = $request->validate($rules);
-
-        DB::beginTransaction();
-        try {
-            $item = Item::findOrFail($id);
-
-            // 📌 Update foto kalau ada upload baru
-            $fotoPath = $item->foto_path;
-            if ($request->hasFile('foto')) {
-                if ($fotoPath && Storage::disk('public')->exists($fotoPath)) {
-                    Storage::disk('public')->delete($fotoPath);
-                }
-                $ext = $request->file('foto')->getClientOriginalExtension();
-                $fileName = $validated['kode_item'] . '_' . time() . '.' . $ext;
-                $fotoPath = $request->file('foto')->storeAs('items', $fileName, 'public');
-            }
-
-            // 📌 Update item (kode_item tetap ikut, tapi gak bisa diubah di UI)
-            $item->update([
-                'kode_item'        => $validated['kode_item'],
-                'nama_item'        => $validated['nama_item'],
-                'kategori_item_id' => $validated['kategori_item_id'],
-                'foto_path'        => $fotoPath,
-            ]);
-
-            // 📌 Ambil id satuan lama
-            $existingIds = $item->satuans()->pluck('id')->toArray();
-            $requestIds  = [];
-
-            foreach ($validated['satuans'] as $s) {
-                // kalau ada id, update
-                if (!empty($s['id'])) {
-                    $sat = $item->satuans()->where('id', $s['id'])->first();
-                    if ($sat) {
-                        $sat->update([
-                            'nama_satuan'  => $s['nama_satuan'],
-                            'jumlah'       => $s['jumlah'] ?? 1,
-                            'harga_retail' => $s['harga_retail'] !== '' ? $s['harga_retail'] : null,
-                            'partai_kecil' => $s['partai_kecil'] !== '' ? $s['partai_kecil'] : null,
-                            'harga_grosir' => $s['harga_grosir'] !== '' ? $s['harga_grosir'] : null,
-                            'is_base'      => 0,
-                        ]);
-                        $requestIds[] = $sat->id;
-                    }
-                } else {
-                    // kalau tidak ada id, buat baru
-                    $created = $item->satuans()->create([
-                        'nama_satuan'  => $s['nama_satuan'],
-                        'jumlah'       => $s['jumlah'] ?? 1,
-                        'harga_retail' => $s['harga_retail'] !== '' ? $s['harga_retail'] : null,
-                        'partai_kecil' => $s['partai_kecil'] !== '' ? $s['partai_kecil'] : null,
-                        'harga_grosir' => $s['harga_grosir'] !== '' ? $s['harga_grosir'] : null,
-                        'is_base'      => 0,
-                    ]);
-                    $requestIds[] = $created->id;
-                }
-            }
-
-            // 📌 Hapus satuan yang tidak ada di request
-            $toDelete = array_diff($existingIds, $requestIds);
-            if (!empty($toDelete)) {
-                $item->satuans()->whereIn('id', $toDelete)->delete();
-            }
-
-            // 📌 Set primary satuan
-            if ($request->filled('satuan_primary_index')) {
-                $primIdx = (int) $request->input('satuan_primary_index');
-                if (isset($requestIds[$primIdx])) {
-                    $item->satuans()->where('id', $requestIds[$primIdx])->update(['is_base' => true]);
-                }
-            } elseif (!empty($requestIds)) {
-                $item->satuans()->where('id', $requestIds[0])->update(['is_base' => true]);
-            }
-
-            DB::commit();
-
-            return redirect()->route('items.index', $item->id)->with('success', 'Item berhasil diperbarui.');
-        } catch (\Throwable $e) {
-            DB::rollBack();
-            Log::error('Error update item: ' . $e->getMessage(), [
-                'id' => $id,
-                'trace' => $e->getTraceAsString(),
-            ]);
-            return back()->withErrors(['error' => 'Terjadi kesalahan saat memperbarui item.'])->withInput();
-        }
-    }
-
-
-    /**
-     * Hapus item.
-     */
-    public function destroy($id)
-    {
-        $item = Item::find($id);
-        if (!$item) {
-            if (request()->expectsJson()) {
-                return response()->json(['error' => 'Item tidak ditemukan.'], 404);
-            }
-            return redirect()->route('items.index')->withErrors(['error' => 'Item tidak ditemukan.']);
-        }
-
-        try {
-            // Hapus relasi
-            if ($item->foto_path && Storage::disk('public')->exists($item->foto_path)) {
-                Storage::disk('public')->delete($item->foto_path);
-            }
-            if ($item->barcode_path && Storage::disk('public')->exists($item->barcode_path)) {
-                Storage::disk('public')->delete($item->barcode_path);
-            }
-            $item->satuans()->delete();
-            ItemGudang::where('item_id', $item->id)->delete();
-            ItemPembelian::where('item_id', $item->id)->delete();
-
-            $item->delete();
-
-            if (request()->expectsJson()) {
-                return response()->json(['success' => true]);
-            }
-            return redirect()->route('items.index')->with('success', 'Item berhasil dihapus.');
-        } catch (\Throwable $e) {
-            Log::error('Error delete item: ' . $e->getMessage(), ['id' => $id]);
-
-            if (request()->expectsJson()) {
-                return response()->json(['error' => 'Terjadi kesalahan saat menghapus data.'], 500);
-            }
-            return back()->withErrors(['error' => 'Terjadi kesalahan saat menghapus data.'])->withInput();
-        }
     }
 }

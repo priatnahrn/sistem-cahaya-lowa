@@ -28,7 +28,9 @@
         </div>
 
         {{-- INFORMASI UMUM (readonly) --}}
-        <div class="bg-white border border-slate-200 rounded-xl px-6 py-4 space-y-4 opacity-75 pointer-events-none">
+
+        <div class="bg-white border border-slate-200 rounded-xl px-6 py-4 space-y-4"
+            @cannot('mutasi_stok.update') class= "opacity-75 pointer-events-none" @endcannot>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                     <label class="block text-sm text-slate-700 mb-2">Nomor Mutasi</label>
@@ -134,12 +136,14 @@
                                 </td>
 
                                 {{-- Hapus --}}
-                                <td class="px-2 py-3 text-center">
-                                    <button type="button" @click="removeItem(idx)"
-                                        class="text-rose-600 hover:text-rose-800">
-                                        <i class="fa-solid fa-trash"></i>
-                                    </button>
-                                </td>
+                                @can('mutasi_stok.update')
+                                    <td class="px-2 py-3 text-center">
+                                        <button type="button" @click="removeItem(idx)"
+                                            class="text-rose-600 hover:text-rose-800">
+                                            <i class="fa-solid fa-trash"></i>
+                                        </button>
+                                    </td>
+                                @endcan
                             </tr>
                         </template>
                     </tbody>
@@ -147,12 +151,14 @@
             </div>
 
             {{-- Tombol Tambah Item --}}
-            <div class="m-4">
-                <button type="button" @click="addItem"
-                    class="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded border-2 border-dashed border-slate-200 bg-slate-50 text-slate-600">
-                    <i class="fa-solid fa-plus"></i> Tambah Item Baru
-                </button>
-            </div>
+            @can('mutasi_stok.update')
+                <div class="m-4">
+                    <button type="button" @click="addItem"
+                        class="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded border-2 border-dashed border-slate-200 bg-slate-50 text-slate-600">
+                        <i class="fa-solid fa-plus"></i> Tambah Item Baru
+                    </button>
+                </div>
+            @endcan
         </div>
 
         {{-- ACTION BUTTONS --}}
@@ -161,13 +167,25 @@
                 class="px-4 py-2 rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50">
                 Kembali
             </a>
-            <button @click="update" type="button" :disabled="!isChanged" class="px-4 py-2 rounded-lg text-white"
-                :class="isChanged ? 'bg-[#344579] hover:bg-[#2d3e6f]' : 'bg-gray-300 cursor-not-allowed'">
-                Simpan Perubahan
-            </button>
+            @can('mutasi_stok.update')
+                <button @click="update" type="button" :disabled="!isChanged" class="px-4 py-2 rounded-lg text-white"
+                    :class="isChanged ? 'bg-[#344579] hover:bg-[#2d3e6f]' : 'bg-gray-300 cursor-not-allowed'">
+                    Simpan Perubahan
+                </button>
+            @endcan
         </div>
     </div>
 
+    {{-- ✅ Info Box untuk User Read-Only --}}
+    @cannot('mutasi_stok.update')
+        <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 flex items-start gap-3">
+            <i class="fa-solid fa-info-circle text-blue-600 text-lg mt-0.5"></i>
+            <div class="text-sm text-blue-700">
+                <p class="font-medium">Mode Tampilan</p>
+                <p class="mt-1">Anda hanya dapat melihat data ini. Hubungi administrator untuk melakukan perubahan.</p>
+            </div>
+        </div>
+    @endcannot
 
 
     <script>

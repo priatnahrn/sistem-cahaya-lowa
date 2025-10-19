@@ -3,6 +3,17 @@
 @section('title', 'Detail Pembelian')
 
 @section('content')
+    @cannot('pembelian.update')
+        <style>
+            input:disabled,
+            select:disabled,
+            textarea:disabled {
+                background-color: #f8fafc !important;
+                cursor: not-allowed !important;
+                opacity: 0.7;
+            }
+        </style>
+    @endcannot
     <div x-data="pembelianEditPage()" class="space-y-6">
 
         {{-- 🔙 Tombol Kembali --}}
@@ -29,7 +40,7 @@
                                     supplierResults = [];
                                 }
                             "
-                            placeholder="Cari supplier"
+                            placeholder="Cari supplier" @cannot('pembelian.update') disabled readonly @endcannot
                             class="w-full pl-4 pr-12 py-2.5 rounded-lg border border-slate-300
                                 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition">
 
@@ -58,6 +69,7 @@
                 {{-- Checkbox Lunas --}}
                 <div class="flex items-center gap-2 mt-6">
                     <input type="checkbox" id="lunas" x-model="form.lunas"
+                        @cannot('pembelian.update') disabled @endcannot
                         class="w-5 h-5 text-indigo-600 rounded border-gray-300 focus:ring-2 focus:ring-blue-200">
                     <label for="lunas" class="text-sm font-medium text-slate-700 cursor-pointer">Lunas</label>
                 </div>
@@ -74,7 +86,7 @@
                 {{-- Tanggal --}}
                 <div>
                     <label class="block text-sm font-medium text-slate-700 mb-2">Tanggal</label>
-                    <input type="date" x-model="form.tanggal"
+                    <input type="date" x-model="form.tanggal" @cannot('pembelian.update') disabled @endcannot
                         class="w-full px-3 py-2.5 rounded-lg border border-slate-300 text-slate-700
                             focus:border-blue-500 focus:ring-2 focus:ring-blue-200">
                 </div>
@@ -83,6 +95,7 @@
                 <div>
                     <label class="block text-sm font-medium text-slate-700 mb-2">Deskripsi</label>
                     <input type="text" x-model="form.deskripsi" placeholder="Opsional"
+                        @cannot('pembelian.update') disabled @endcannot
                         class="w-full px-3 py-2.5 rounded-lg border border-slate-300 text-slate-700
                             focus:border-blue-500 focus:ring-2 focus:ring-blue-200">
                 </div>
@@ -122,6 +135,7 @@
                                 <td class="px-5 py-4 align-middle">
                                     <div class="relative">
                                         <input type="text" x-model="item.query"
+                                            @cannot('pembelian.update') disabled readonly @endcannot
                                             @input.debounce.300ms="
                                                 if (item.query.length >= 2) {
                                                     searchItem(idx);
@@ -162,7 +176,8 @@
                                 {{-- Gudang --}}
                                 <td class="px-5 py-4 text-center align-middle">
                                     <div class="relative">
-                                        <select x-model="item.gudang_id" @change="updateSatuanOptions(idx)"
+                                        <select x-model="item.gudang_id" @cannot('pembelian.update') disabled @endcannot
+                                            @change="updateSatuanOptions(idx)"
                                             class="w-full border border-slate-300 rounded-lg px-3 py-2.5 pr-8 text-sm appearance-none
                                                 focus:border-blue-500 focus:ring-2 focus:ring-blue-200">
                                             <option value="">Pilih</option>
@@ -178,6 +193,7 @@
                                 {{-- Jumlah --}}
                                 <td class="px-5 py-4 text-center align-middle">
                                     <input type="text" :value="formatJumlah(item.jumlah)"
+                                        @cannot('pembelian.update') disabled readonly @endcannot
                                         @input="item.jumlah = parseFloat($event.target.value.replace(/\./g, '').replace(',', '.')) || 0; recalc()"
                                         class="no-spinner w-24 text-center border border-slate-300 rounded-lg px-2 py-2.5 
                                             focus:border-blue-500 focus:ring-1 focus:ring-blue-200"
@@ -188,6 +204,7 @@
                                 <td class="px-5 py-4 align-middle">
                                     <div class="relative">
                                         <select x-model.number="item.satuan_id"
+                                            @cannot('pembelian.update') disabled @endcannot
                                             class="w-full border border-slate-300 rounded-lg px-3 py-2.5 pr-8 text-sm appearance-none
                                                 focus:border-blue-500 focus:ring-2 focus:ring-blue-200">
                                             <template x-for="s in item.satuans" :key="s.id">
@@ -206,6 +223,7 @@
                                         <span
                                             class="absolute left-2 top-1/2 -translate-y-1/2 text-slate-500 text-sm">Rp</span>
                                         <input type="text" :value="formatRupiah(item.harga)"
+                                            @cannot('pembelian.update') disabled readonly @endcannot
                                             @input="updateHarga(idx, $event.target.value)"
                                             class="pl-7 pr-2 w-full text-right border border-slate-300 rounded-lg py-2.5 
                                                 focus:border-blue-500 focus:ring-1 focus:ring-blue-200" />
@@ -219,24 +237,28 @@
                                 </td>
 
                                 {{-- Hapus --}}
-                                <td class="px-3 py-4 text-center align-middle">
-                                    <button type="button" @click="removeItem(idx)"
-                                        class="text-rose-600 hover:text-rose-800 transition">
-                                        <i class="fa-solid fa-trash"></i>
-                                    </button>
-                                </td>
+                                @can('pembelian.update')
+                                    <td class="px-3 py-4 text-center align-middle">
+                                        <button type="button" @click="removeItem(idx)"
+                                            class="text-rose-600 hover:text-rose-800 transition">
+                                            <i class="fa-solid fa-trash"></i>
+                                        </button>
+                                    </td>
+                                @endcan
                             </tr>
                         </template>
                     </tbody>
                 </table>
 
                 {{-- Button Tambah Item Manual --}}
-                <div class="m-4">
-                    <button type="button" @click="addItem"
-                        class="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded border-2 border-dashed border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100 transition">
-                        <i class="fa-solid fa-plus"></i> Tambah Item Baru
-                    </button>
-                </div>
+                @can('pembelian.update')
+                    <div class="m-4">
+                        <button type="button" @click="addItem"
+                            class="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded border-2 border-dashed border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100 transition">
+                            <i class="fa-solid fa-plus"></i> Tambah Item Baru
+                        </button>
+                    </div>
+                @endcan
             </div>
         </div>
 
@@ -255,6 +277,7 @@
                     <div class="relative">
                         <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-sm">Rp</span>
                         <input type="text" :value="formatRupiah(form.biaya_transport)"
+                            @cannot('pembelian.update') disabled readonly @endcannot
                             @input="updateTransport($event.target.value)" placeholder="0"
                             class="pl-10 pr-3 w-full border border-slate-300 rounded-lg px-3 py-2.5 text-right 
                                 focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-500" />
@@ -275,15 +298,21 @@
                         class="px-5 py-2.5 rounded-lg border border-slate-300 text-slate-600 hover:bg-slate-100 transition">
                         Kembali
                     </a>
-                    <button @click="update" type="button" :disabled="!canSubmit()"
-                        :class="[
-                            'px-5 py-2.5 rounded-lg text-white font-medium transition w-full',
-                            canSubmit() ?
-                            'bg-[#334579] hover:bg-[#2d3e6f] cursor-pointer' :
-                            'bg-slate-300 cursor-not-allowed'
-                        ]">
-                        Simpan Perubahan
-                    </button>
+                    @can('pembelian.update')
+                        <button @click="update" type="button" :disabled="!canSubmit()"
+                            :class="[
+                                'px-5 py-2.5 rounded-lg text-white font-medium transition w-full',
+                                canSubmit() ?
+                                'bg-[#334579] hover:bg-[#2d3e6f] cursor-pointer' :
+                                'bg-slate-300 cursor-not-allowed'
+                            ]">
+                            Simpan Perubahan
+                        </button>
+                    @else
+                        <span class="px-5 py-2.5 rounded-lg bg-slate-100 text-slate-500 text-sm text-center w-full">
+                            <i class="fa-solid fa-eye mr-2"></i> Mode Lihat Saja
+                        </span>
+                    @endcan
                 </div>
             </div>
         </div>
@@ -321,7 +350,7 @@
                                 ) !!},
                                 jumlah: {{ (float) $it->jumlah }},
                                 harga: {{ (int) $it->harga_beli }},
-                                 _dropdownOpen: false,
+                                _dropdownOpen: false,
                             },
                         @endforeach
                     ]
@@ -374,17 +403,17 @@
 
                 // === ITEM ===
                 async searchItem(idx) {
-    const q = this.form.items[idx].query;
-    if (!q || q.length < 2) {
-        this.form.items[idx].results = [];
-        this.form.items[idx]._dropdownOpen = false; // ✅ CLOSE jika < 2 char
-        return;
-    }
-    const res = await fetch(`{{ route('items.search') }}?q=${encodeURIComponent(q)}`);
-    const data = await res.json();
-    this.form.items[idx].results = data;
-    this.form.items[idx]._dropdownOpen = true; // ✅ OPEN saat ada hasil
-},
+                    const q = this.form.items[idx].query;
+                    if (!q || q.length < 2) {
+                        this.form.items[idx].results = [];
+                        this.form.items[idx]._dropdownOpen = false; // ✅ CLOSE jika < 2 char
+                        return;
+                    }
+                    const res = await fetch(`{{ route('items.search') }}?q=${encodeURIComponent(q)}`);
+                    const data = await res.json();
+                    this.form.items[idx].results = data;
+                    this.form.items[idx]._dropdownOpen = true; // ✅ OPEN saat ada hasil
+                },
 
                 selectItem(idx, item) {
                     this.form.items[idx].item_id = item.id;
@@ -422,7 +451,7 @@
                         satuans: [],
                         jumlah: 1,
                         harga: 0,
-                         _dropdownOpen: false,
+                        _dropdownOpen: false,
                     });
                 },
 

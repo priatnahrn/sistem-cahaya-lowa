@@ -148,7 +148,7 @@
         {{-- DETAIL INFO --}}
         <div style="text-align:left">
             No Faktur : {{ $penjualan->no_faktur }}<br>
-            Tanggal : {{ \Carbon\Carbon::parse($penjualan->tanggal)->format('d/m/Y H:i') }}<br>
+            Tanggal : {{ \Carbon\Carbon::parse($penjualan->tanggal)->setTimezone('Asia/Makassar')->format('d/m/Y H:i') }}<br>
             Admin : {{ $penjualan->createdBy->name ?? '-' }}
         </div>
 

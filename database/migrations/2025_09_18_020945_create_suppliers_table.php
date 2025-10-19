@@ -16,8 +16,11 @@ return new class extends Migration
             $table->string('nama_supplier');
             $table->string('kontak')->nullable();
             $table->text('alamat')->nullable();
-            $table->enum('nama_bank', ['BCA', 'BNI', 'BRI', 'Mandiri', 'BSI', 'BTN', 'SMBC', 'Lainnya'])->nullable();
+            $table->enum('nama_bank', ['BCA', 'BNI', 'BRI', 'Mandiri', 'BSI', 'BTN', 'Lainnya'])->nullable();
             $table->string('nomor_rekening')->nullable();
+            $table->string('atas_nama')->nullable();
+            $table->foreignId('created_by')->constrained('users')->onDelete('cascade');
+            $table->foreignId('updated_by')->constrained('users')->onDelete('cascade');
             $table->timestamps();
         });
     }

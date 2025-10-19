@@ -2,20 +2,27 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\LogActivity;
 use App\Models\Pengiriman;
 use App\Models\Penjualan;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 
 class PengirimanController extends Controller
 {
+    use AuthorizesRequests;
+
     /**
      * Tampilkan semua daftar pengiriman
      */
     public function index()
     {
+        // ✅ Check permission view
+        $this->authorize('pengiriman.view');
+
         $pengirimans = Pengiriman::with(['penjualan.pelanggan'])
             ->orderBy('created_at', 'desc')
             ->get()
@@ -61,16 +68,17 @@ class PengirimanController extends Controller
         return view('auth.penjualan.pengiriman.index', compact('pengirimans', 'pelanggan'));
     }
 
-
     /**
      * Tampilkan detail pengiriman tertentu
+     * ✅ Semua user dengan permission view bisa lihat detail (read-only)
      */
     public function show($id)
     {
+        // ✅ Tidak perlu authorize - user dengan permission view sudah bisa akses
+        // User tanpa permission update tetap bisa lihat (read-only)
+
         $pengiriman = Pengiriman::with(['penjualan.items.item', 'penjualan.pelanggan'])
             ->findOrFail($id);
-
-
 
         return view('auth.penjualan.pengiriman.show', compact('pengiriman'));
     }
@@ -80,6 +88,9 @@ class PengirimanController extends Controller
      */
     public function update(Request $request, $id)
     {
+        // ✅ Check permission update
+        $this->authorize('pengiriman.update');
+
         $pengiriman = Pengiriman::findOrFail($id);
 
         $data = $request->validate([
@@ -96,6 +107,7 @@ class PengirimanController extends Controller
                 'alamat' => $data['alamat'] ?? $pengiriman->alamat,
                 'status_pengiriman' => $data['status'],
                 'supir' => $data['supir'] ?? $pengiriman->supir,
+                'updated_by' => Auth::id(),
             ]);
 
             if ($request->wantsJson() || $request->ajax()) {
@@ -106,19 +118,33 @@ class PengirimanController extends Controller
                 ]);
             }
 
+            LogActivity::create([
+                'user_id'       => Auth::id(),
+                'activity_type' => 'update_pengiriman',
+                'description'   => 'Updated pengiriman: ' . $pengiriman->no_pengiriman . ' to status ' . $data['status'],
+                'ip_address'    => $request->ip(),
+                'user_agent'    => $request->userAgent(),
+            ]);
+
             return redirect()->back()->with('success', 'Pengiriman berhasil diperbarui');
         } catch (\Throwable $e) {
             Log::error('Pengiriman update error: ' . $e->getMessage() . ' | Line: ' . $e->getLine());
-            return response()->json([
-                'success' => false,
-                'message' => 'Gagal memperbarui pengiriman',
-                'error' => $e->getMessage(),
-                'line' => $e->getLine(),
-            ], 500);
+
+            if ($request->wantsJson() || $request->ajax()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Gagal memperbarui pengiriman',
+                    'error' => $e->getMessage(),
+                ], 500);
+            }
+
+            return back()->withErrors(['error' => 'Gagal memperbarui pengiriman: ' . $e->getMessage()]);
         }
     }
 
-
+    /**
+     * Search pengiriman berdasarkan kode (untuk barcode scanner)
+     */
     public function search(Request $request)
     {
         $kode = $request->query('kode');
@@ -147,7 +173,7 @@ class PengirimanController extends Controller
         }
 
         // Jika tidak ada penjualan sama sekali
-        if (! $penjualan) {
+        if (!$penjualan) {
             return response()->json(['message' => 'Penjualan tidak ditemukan.'], 404);
         }
 
@@ -202,46 +228,64 @@ class PengirimanController extends Controller
         ]);
     }
 
-
     /**
      * Hapus pengiriman
      */
     public function destroy($id)
     {
+        // ✅ Check permission delete
+        $this->authorize('pengiriman.delete');
+
         DB::beginTransaction();
 
         try {
             $pengiriman = Pengiriman::findOrFail($id);
 
-            // ✅ Cegah hapus jika status sudah diterima
-            if ($pengiriman->status_pengiriman === 'diterima') {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Pengiriman yang sudah diterima tidak dapat dihapus.',
-                ], 400);
-            }
+            // ✅ Cegah hapus jika status sudah diterima atau dalam pengiriman
+            if (in_array($pengiriman->status_pengiriman, ['diterima', 'dalam_pengiriman'])) {
+                if (request()->wantsJson()) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Pengiriman yang sudah diterima atau dalam pengiriman tidak dapat dihapus.',
+                    ], 400);
+                }
 
-            // ✅ Hapus relasi turunan kalau ada (contoh: log, item pengiriman, dsb)
-            // kalau model Pengiriman punya relasi ke tabel lain, hapus dulu di sini.
-            // Contoh:
-            // $pengiriman->detailPengiriman()->delete();
+                return back()->withErrors(['error' => 'Pengiriman yang sudah diterima atau dalam pengiriman tidak dapat dihapus.']);
+            }
 
             $pengiriman->delete();
 
+            LogActivity::create([
+                'user_id'       => Auth::id(),
+                'activity_type' => 'delete_pengiriman',
+                'description'   => 'Deleted pengiriman: ' . $pengiriman->no_pengiriman,
+                'ip_address'    => request()->ip(),
+                'user_agent'    => request()->userAgent(),
+            ]);
+
             DB::commit();
 
-            return response()->json([
-                'success' => true,
-                'message' => 'Data pengiriman berhasil dihapus.',
-            ]);
+            if (request()->wantsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Data pengiriman berhasil dihapus.',
+                ]);
+            }
+
+            return redirect()->route('pengiriman.index')->with('success', 'Data pengiriman berhasil dihapus.');
         } catch (\Throwable $e) {
             DB::rollBack();
             Log::error('Gagal menghapus pengiriman: ' . $e->getMessage());
-            return response()->json([
-                'success' => false,
-                'message' => 'Terjadi kesalahan saat menghapus pengiriman.',
-                'error' => $e->getMessage(),
-            ], 500);
+
+            if (request()->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Terjadi kesalahan saat menghapus pengiriman.',
+                    'error' => $e->getMessage(),
+                ], 500);
+            }
+
+            return back()->withErrors(['error' => 'Terjadi kesalahan saat menghapus pengiriman: ' . $e->getMessage()]);
         }
     }
 }

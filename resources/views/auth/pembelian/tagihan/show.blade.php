@@ -108,7 +108,7 @@
                         class="w-full px-3 py-2 rounded-lg border border-slate-200 bg-slate-50 text-slate-700">
                 </div>
             </div>
-            
+
 
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
@@ -237,13 +237,14 @@
                     <div class="space-y-3">
                         @foreach (explode("\n", $tagihan->catatan) as $index => $catatan)
                             @if (trim($catatan))
-                                <div class="flex gap-3 pb-3 {{ !$loop->last ? 'border-b border-slate-100' : '' }}">
+                                <div
+                                    class="flex gap-3 pb-3 items-start {{ !$loop->last ? 'border-b border-slate-100' : '' }}">
                                     <div
                                         class="flex-shrink-0 w-8 h-8 rounded-full bg-[#344579]/10 flex items-center justify-center">
                                         <span class="text-xs font-semibold text-[#344579]">{{ $index + 1 }}</span>
                                     </div>
-                                    <div class="flex-1">
-                                        <p class="text-sm text-slate-700">{{ trim($catatan) }}</p>
+                                    <div class="flex-1 min-w-0 pt-2">
+                                        <p class="text-sm text-slate-700 break-words">{{ trim($catatan) }}</p>
                                         @if (preg_match('/\d{2}\/\d{2}\/\d{4}/', $catatan, $matches))
                                             <p class="text-xs text-slate-500 mt-1">
                                                 <i class="fa-solid fa-calendar-days mr-1"></i>
@@ -259,16 +260,30 @@
             </div>
         @endif
 
+        {{-- BAGIAN YANG PERLU DIUBAH DI TAGIHAN-PEMBELIAN SHOW VIEW (Edit/Bayar Page) --}}
+
+        {{-- 1️⃣ TOMBOL AKSI - Tambah permission check pada tombol Bayar Sekarang --}}
         {{-- Tombol Bayar --}}
         <div class="flex justify-end gap-3">
-            <a href="{{ route('tagihan-pembelian.show', $tagihan->id) }}"
-                class="px-5 py-2.5 rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50 transition font-medium">
-                <i class="fa-solid fa-arrow-left mr-2"></i> Kembali
-            </a>
-            <button @click="openBayarModal()"
-                class="px-5 py-2.5 rounded-lg bg-[#344579] text-white hover:bg-[#2e3e6a] transition shadow font-medium">
-                <i class="fa-solid fa-money-bill-wave mr-2"></i> Bayar Sekarang
-            </button>
+
+            @can('tagihan_pembelian.update')
+                @if ($tagihan->sisa > 0)
+                    <button @click="openBayarModal()"
+                        class="px-5 py-2.5 rounded-lg bg-[#344579] text-white hover:bg-[#2e3e6a] transition shadow font-medium">
+                        <i class="fa-solid fa-money-bill-wave mr-2"></i> Bayar Sekarang
+                    </button>
+                @else
+                    <button disabled class="px-5 py-2.5 rounded-lg bg-green-100 text-green-700 cursor-not-allowed font-medium">
+                        <i class="fa-solid fa-check-circle mr-2"></i> Lunas
+                    </button>
+                @endif
+            @else
+                {{-- Jika user tidak punya permission update, tombol dinonaktifkan atau disembunyikan --}}
+                <button disabled title="Anda tidak memiliki akses untuk membayar tagihan"
+                    class="px-5 py-2.5 rounded-lg bg-slate-300 text-slate-500 cursor-not-allowed font-medium">
+                    <i class="fa-solid fa-lock mr-2"></i> Bayar Sekarang
+                </button>
+            @endcan
         </div>
 
         {{-- MODAL PEMBAYARAN --}}
@@ -449,14 +464,6 @@
                                         transfer</p>
                                 </div>
                             @endif
-                        </div>
-
-                        {{-- CATATAN --}}
-                        <div>
-                            <label class="block text-sm font-medium text-slate-700 mb-2">Catatan (Opsional)</label>
-                            <textarea x-model="catatan" rows="3" placeholder="Tambahkan catatan pembayaran..."
-                                class="w-full px-3 py-2 rounded-lg border border-slate-200 text-slate-700 text-sm
-                               focus:ring-2 focus:ring-[#344579]/20 focus:border-[#344579] focus:outline-none resize-none"></textarea>
                         </div>
 
                     </div>

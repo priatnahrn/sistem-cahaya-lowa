@@ -6,14 +6,18 @@ use App\Models\Gudang;
 use App\Models\Item;
 use App\Models\ItemGudang;
 use App\Models\ItemPenjualan;
+use App\Models\LogActivity;
 use App\Models\Penjualan;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 
 class PenjualanCepatController extends Controller
 {
+    use AuthorizesRequests;
+
     /**
      * ✅ Helper: Update total_stok untuk 1 baris ItemGudang
      */
@@ -45,6 +49,9 @@ class PenjualanCepatController extends Controller
      */
     public function index(Request $request)
     {
+        // ✅ Check permission view
+        $this->authorize('penjualan_cepat.view');
+
         $penjualanCepat = Penjualan::query()
             ->with('pelanggan')
             ->where('no_faktur', 'like', 'JC%')
@@ -67,11 +74,13 @@ class PenjualanCepatController extends Controller
      */
     public function create()
     {
-        // ✅ Tambahkan 'kategori' ke eager loading
+        // ✅ Check permission create
+        $this->authorize('penjualan_cepat.create');
+
         $items = Item::with([
             'gudangItems.gudang',
             'gudangItems.satuan',
-            'kategori' // ✅ PENTING
+            'kategori'
         ])->get();
 
         $itemsJson = $items->map(function ($i) {
@@ -79,7 +88,7 @@ class PenjualanCepatController extends Controller
                 'id' => $i->id,
                 'kode_item' => $i->kode_item,
                 'nama_item' => $i->nama_item,
-                'kategori' => $i->kategori?->nama_kategori ?? '', // ✅ PENTING
+                'kategori' => $i->kategori?->nama_kategori ?? '',
                 'gudangs' => $i->gudangItems->map(function ($gi) {
                     $satuan = $gi->satuan;
                     return [
@@ -111,10 +120,12 @@ class PenjualanCepatController extends Controller
 
     /**
      * 💾 Simpan data penjualan cepat ke database
-     * ⚠️ TIDAK ADA TAGIHAN - Langsung bayar di kasir
      */
     public function store(Request $request)
     {
+        // ✅ Check permission create
+        $this->authorize('penjualan_cepat.create');
+
         $request->validate([
             'no_faktur' => 'required|string|max:50',
             'tanggal' => 'required|date',
@@ -126,31 +137,29 @@ class PenjualanCepatController extends Controller
             'items.*.jumlah' => 'required|numeric|min:1',
             'items.*.harga' => 'required|numeric|min:0',
             'items.*.total' => 'required|numeric|min:0',
-            'items.*.keterangan' => 'nullable|string|max:1000', // ✅ Support keterangan
+            'items.*.keterangan' => 'nullable|string|max:1000',
         ]);
 
         DB::beginTransaction();
 
         try {
-            // 🔹 Tentukan apakah ini draft/pending
             $isDraft = $request->boolean('is_draft', false);
-            $statusBayar = $isDraft ? 'unpaid' : 'unpaid'; // unpaid sampai pembayaran dilakukan
+            $statusBayar = $isDraft ? 'unpaid' : 'unpaid';
 
-            // === 1️⃣ Buat header penjualan ===
             $penjualan = Penjualan::create([
                 'no_faktur' => $request->no_faktur,
                 'tanggal' => $request->tanggal . ' ' . now()->format('H:i:s'),
-                'pelanggan_id' => null, // Penjualan cepat tidak wajib ada pelanggan
+                'pelanggan_id' => null,
                 'sub_total' => $request->total,
-                'biaya_transport' => 0, // Selalu 0 untuk penjualan cepat (ambil sendiri)
+                'biaya_transport' => 0,
                 'total' => $request->total,
                 'status_bayar' => $statusBayar,
-                'mode' => 'ambil', // ✅ Selalu ambil sendiri untuk penjualan cepat
+                'mode' => 'ambil',
                 'is_draft' => $isDraft,
                 'created_by' => Auth::id(),
+                'updated_by' => Auth::id(),
             ]);
 
-            // === 2️⃣ Simpan detail item & kurangi stok ===
             foreach ($request->items as $item) {
                 ItemPenjualan::create([
                     'penjualan_id' => $penjualan->id,
@@ -160,11 +169,11 @@ class PenjualanCepatController extends Controller
                     'jumlah' => $item['jumlah'],
                     'harga' => $item['harga'],
                     'total' => $item['total'],
-                    'keterangan' => $item['keterangan'] ?? null, // ✅ Simpan keterangan
+                    'keterangan' => $item['keterangan'] ?? null,
                     'created_by' => Auth::id(),
+                    'updated_by' => Auth::id(),
                 ]);
 
-                // ✅ Kurangi stok (hanya kalau bukan draft)
                 if (!$isDraft) {
                     $ig = ItemGudang::where('item_id', $item['item_id'])
                         ->where('gudang_id', $item['gudang_id'])
@@ -179,13 +188,18 @@ class PenjualanCepatController extends Controller
 
                         Log::info("🧾 Stok berkurang (Penjualan Cepat): item_id={$item['item_id']} gudang_id={$item['gudang_id']} dari {$stokLama} ke {$ig->stok}");
 
-                        // ✅ Update total_stok
                         $this->updateTotalStok($item['item_id'], $item['gudang_id'], $item['satuan_id']);
                     }
                 }
             }
 
-            // ❌ TIDAK ADA TAGIHAN untuk penjualan cepat
+            LogActivity::create([
+                'user_id'       => Auth::id(),
+                'activity_type' => 'create_penjualan_cepat',
+                'description'   => 'Created penjualan cepat: ' . $penjualan->no_faktur,
+                'ip_address'    => $request->ip(),
+                'user_agent'    => $request->userAgent(),
+            ]);
 
             DB::commit();
 
@@ -226,77 +240,12 @@ class PenjualanCepatController extends Controller
             ->with([
                 'gudangItems.gudang',
                 'gudangItems.satuan',
-                'kategori' // ✅ PENTING
+                'kategori'
             ])
             ->limit(15)
             ->get();
 
         return response()->json($items->map(function ($i) {
-            return [
-                'id' => $i->id,
-                'kode_item' => $i->kode_item,
-                'nama_item' => $i->nama_item,
-                'kategori' => $i->kategori?->nama_kategori ?? '', // ✅ PENTING
-                'gudangs' => $i->gudangItems->map(function ($gi) {
-                    $satuan = $gi->satuan;
-                    return [
-                        'gudang_id' => $gi->gudang_id,
-                        'nama_gudang' => $gi->gudang->nama_gudang ?? '-',
-                        'satuan_id' => $gi->satuan_id,
-                        'nama_satuan' => $satuan->nama_satuan ?? '-',
-                        'stok' => (float) ($gi->stok ?? 0),
-                        'harga_retail' => (float) ($satuan->harga_retail ?? 0),
-                        'harga_partai_kecil' => (float) ($satuan->partai_kecil ?? 0),
-                        'harga_grosir' => (float) ($satuan->harga_grosir ?? 0),
-                    ];
-                })
-            ];
-        }));
-    }
-
-    /**
-     * 🧾 Tampilkan detail penjualan cepat (adjustable mode)
-     */
-    public function show($id)
-    {
-        $penjualan = Penjualan::with([
-            'items' => function ($query) {
-                $query->with([
-                    'item' => function ($q) {
-                        $q->with([
-                            'kategori', // ✅ PENTING
-                            'gudangItems' => function ($gq) {
-                                $gq->with(['gudang', 'satuan']);
-                            }
-                        ]);
-                    },
-                    'gudang',
-                    'satuan'
-                ]);
-            }
-        ])->findOrFail($id);
-
-        // ✅ Parse keterangan (untuk backward compatibility)
-        foreach ($penjualan->items as $it) {
-            if ($it->keterangan && !$it->catatan_produksi) {
-                $parts = explode(' - ', $it->keterangan, 2);
-                $it->keterangan = trim($parts[0]);
-                $it->catatan_produksi = isset($parts[1]) ? trim($parts[1]) : '';
-            } else {
-                $it->keterangan = $it->keterangan ?? '';
-                $it->catatan_produksi = $it->catatan_produksi ?? '';
-            }
-        }
-
-        // ✅ Load semua items dengan kategori untuk dropdown
-        $items = Item::with([
-            'kategori',
-            'gudangItems.gudang',
-            'gudangItems.satuan'
-        ])->get();
-
-        // ✅ Format items JSON (sama seperti di create)
-        $itemsJson = $items->map(function ($i) {
             return [
                 'id' => $i->id,
                 'kode_item' => $i->kode_item,
@@ -316,6 +265,71 @@ class PenjualanCepatController extends Controller
                     ];
                 })
             ];
+        }));
+    }
+
+    /**
+     * 🧾 Tampilkan detail penjualan cepat
+     * ✅ Semua user dengan permission view bisa lihat detail (read-only)
+     */
+    public function show($id)
+    {
+        // ✅ Tidak perlu authorize - user dengan permission view sudah bisa akses
+        // User tanpa permission update tetap bisa lihat (read-only)
+
+        $penjualan = Penjualan::with([
+            'items' => function ($query) {
+                $query->with([
+                    'item' => function ($q) {
+                        $q->with([
+                            'kategori',
+                            'gudangItems' => function ($gq) {
+                                $gq->with(['gudang', 'satuan']);
+                            }
+                        ]);
+                    },
+                    'gudang',
+                    'satuan'
+                ]);
+            }
+        ])->findOrFail($id);
+
+        foreach ($penjualan->items as $it) {
+            if ($it->keterangan && !$it->catatan_produksi) {
+                $parts = explode(' - ', $it->keterangan, 2);
+                $it->keterangan = trim($parts[0]);
+                $it->catatan_produksi = isset($parts[1]) ? trim($parts[1]) : '';
+            } else {
+                $it->keterangan = $it->keterangan ?? '';
+                $it->catatan_produksi = $it->catatan_produksi ?? '';
+            }
+        }
+
+        $items = Item::with([
+            'kategori',
+            'gudangItems.gudang',
+            'gudangItems.satuan'
+        ])->get();
+
+        $itemsJson = $items->map(function ($i) {
+            return [
+                'id' => $i->id,
+                'kode_item' => $i->kode_item,
+                'nama_item' => $i->nama_item,
+                'kategori' => $i->kategori?->nama_kategori ?? '',
+                'gudangs' => $i->gudangItems->map(function ($ig) {
+                    return [
+                        'gudang_id' => $ig->gudang_id,
+                        'nama_gudang' => $ig->gudang->nama_gudang ?? '-',
+                        'satuan_id' => $ig->satuan_id,
+                        'nama_satuan' => $ig->satuan->nama_satuan ?? '-',
+                        'stok' => (float) ($ig->stok ?? 0),
+                        'harga_retail' => (float) ($ig->satuan->harga_retail ?? 0),
+                        'harga_partai_kecil' => (float) ($ig->satuan->partai_kecil ?? 0),
+                        'harga_grosir' => (float) ($ig->satuan->harga_grosir ?? 0),
+                    ];
+                })
+            ];
         });
 
         return view('auth.kasir.penjualan-cepat.show', [
@@ -326,10 +340,12 @@ class PenjualanCepatController extends Controller
 
     /**
      * ♻️ Update penjualan cepat dengan stok management
-     * ⚠️ TIDAK ADA TAGIHAN
      */
     public function update(Request $request, $id)
     {
+        // ✅ Check permission update
+        $this->authorize('penjualan_cepat.update');
+
         $penjualan = Penjualan::with('items')->findOrFail($id);
         $isDraftRequest = $request->boolean('is_draft', false);
 
@@ -355,9 +371,8 @@ class PenjualanCepatController extends Controller
                 ? \Carbon\Carbon::parse($data['tanggal'] . ' ' . now()->format('H:i:s'))
                 : now();
 
-            $statusBayar = $isDraftRequest ? 'unpaid' : $penjualan->status_bayar; // Pertahankan status bayar yang ada
+            $statusBayar = $isDraftRequest ? 'unpaid' : $penjualan->status_bayar;
 
-            // 🧾 UPDATE HEADER PENJUALAN
             $penjualan->update([
                 'no_faktur' => $data['no_faktur'],
                 'tanggal' => $tanggal,
@@ -368,7 +383,6 @@ class PenjualanCepatController extends Controller
                 'updated_by' => Auth::id(),
             ]);
 
-            // 🔁 KEMBALIKAN STOK LAMA & UPDATE TOTAL_STOK
             foreach ($penjualan->items as $oldItem) {
                 $gudangItem = ItemGudang::where('item_id', $oldItem->item_id)
                     ->where('gudang_id', $oldItem->gudang_id)
@@ -383,15 +397,12 @@ class PenjualanCepatController extends Controller
 
                     Log::info("🔙 Stok dikembalikan (Penjualan Cepat): item_id={$oldItem->item_id}, dari {$stokSebelum} ke {$gudangItem->stok}");
 
-                    // ✅ Update total_stok setelah stok dikembalikan
                     $this->updateTotalStok($oldItem->item_id, $oldItem->gudang_id, $oldItem->satuan_id);
                 }
             }
 
-            // 🧹 HAPUS ITEM LAMA
             $penjualan->items()->delete();
 
-            // 📦 TAMBAH ITEM BARU
             foreach ($data['items'] as $it) {
                 $jumlah = (float) $it['jumlah'];
                 $harga = (float) $it['harga'];
@@ -406,6 +417,7 @@ class PenjualanCepatController extends Controller
                     'total' => $total,
                     'keterangan' => $it['keterangan'] ?? null,
                     'created_by' => Auth::id(),
+                    'updated_by' => Auth::id(),
                 ]);
 
                 if (!$isDraftRequest) {
@@ -423,12 +435,17 @@ class PenjualanCepatController extends Controller
                         Log::info("📉 Stok dikurangi (Penjualan Cepat): item_id={$it['item_id']}, dari {$stokSebelum} ke {$gudangItem->stok}");
                     }
 
-                    // ✅ Update total_stok setelah stok dikurangi
                     $this->updateTotalStok($it['item_id'], $it['gudang_id'], $it['satuan_id']);
                 }
             }
 
-            // ❌ TIDAK ADA TAGIHAN untuk penjualan cepat
+            LogActivity::create([
+                'user_id'       => Auth::id(),
+                'activity_type' => 'update_penjualan_cepat',
+                'description'   => 'Updated penjualan cepat: ' . $penjualan->no_faktur,
+                'ip_address'    => $request->ip(),
+                'user_agent'    => $request->userAgent(),
+            ]);
 
             DB::commit();
 
@@ -450,23 +467,27 @@ class PenjualanCepatController extends Controller
 
     /**
      * 🗑️ Hapus Penjualan Cepat (dengan pengembalian stok)
-     * ⚠️ TIDAK ADA TAGIHAN
      */
     public function destroy($id)
     {
+        // ✅ Check permission delete
+        $this->authorize('penjualan_cepat.delete');
+
         DB::beginTransaction();
         try {
             $penjualan = Penjualan::with('items')->findOrFail($id);
 
-            // 🛡️ Validasi: Tidak bisa hapus penjualan yang sudah lunas
             if ($penjualan->status_bayar === 'paid') {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Tidak dapat menghapus penjualan yang sudah lunas.'
-                ], 400);
+                if (request()->wantsJson()) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Tidak dapat menghapus penjualan yang sudah lunas.'
+                    ], 400);
+                }
+
+                return back()->withErrors(['error' => 'Tidak dapat menghapus penjualan yang sudah lunas.']);
             }
 
-            // 🔄 Kembalikan stok semua item & update total_stok
             foreach ($penjualan->items as $item) {
                 $gudangItem = ItemGudang::where('item_id', $item->item_id)
                     ->where('gudang_id', $item->gudang_id)
@@ -481,55 +502,73 @@ class PenjualanCepatController extends Controller
 
                     Log::info("♻️ Stok dikembalikan (hapus Penjualan Cepat): item_id={$item->item_id} dari {$stokLama} ke {$gudangItem->stok}");
 
-                    // ✅ Update total_stok setelah stok dikembalikan
                     $this->updateTotalStok($item->item_id, $item->gudang_id, $item->satuan_id);
                 }
             }
 
-            // 📝 Simpan info untuk log
             $noFaktur = $penjualan->no_faktur;
 
-            // 🗑️ Hapus data terkait (TIDAK ADA TAGIHAN)
             $penjualan->items()->delete();
             $penjualan->delete();
 
+            LogActivity::create([
+                'user_id'       => Auth::id(),
+                'activity_type' => 'delete_penjualan_cepat',
+                'description'   => 'Deleted penjualan cepat: ' . $noFaktur,
+                'ip_address'    => request()->ip(),
+                'user_agent'    => request()->userAgent(),
+            ]);
             DB::commit();
 
             Log::info("Penjualan Cepat {$noFaktur} dihapus oleh user " . Auth::id());
 
-            return response()->json([
-                'success' => true,
-                'message' => "Penjualan cepat {$noFaktur} berhasil dihapus, stok dikembalikan."
-            ], 200);
+            if (request()->wantsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => "Penjualan cepat {$noFaktur} berhasil dihapus, stok dikembalikan."
+                ], 200);
+            }
+
+            return redirect()->route('penjualan-cepat.index')->with('success', "Penjualan cepat {$noFaktur} berhasil dihapus.");
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
             DB::rollBack();
-            return response()->json([
-                'success' => false,
-                'message' => 'Data penjualan tidak ditemukan.'
-            ], 404);
+
+            if (request()->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Data penjualan tidak ditemukan.'
+                ], 404);
+            }
+
+            return back()->withErrors(['error' => 'Data penjualan tidak ditemukan.']);
         } catch (\Throwable $e) {
             DB::rollBack();
             Log::error('Delete PenjualanCepat error: ' . $e->getMessage());
 
-            return response()->json([
-                'success' => false,
-                'message' => 'Gagal menghapus penjualan cepat.',
-                'error' => $e->getMessage()
-            ], 500);
+            if (request()->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Gagal menghapus penjualan cepat.',
+                    'error' => $e->getMessage()
+                ], 500);
+            }
+
+            return back()->withErrors(['error' => 'Gagal menghapus penjualan cepat: ' . $e->getMessage()]);
         }
     }
 
     /**
      * ❌ Batalkan/Hapus Draft Penjualan Cepat
-     * ⚠️ TIDAK ADA TAGIHAN
      */
     public function cancelDraft($id)
     {
+        // ✅ Check permission delete (untuk cancel draft)
+        $this->authorize('penjualan_cepat.delete');
+
         DB::beginTransaction();
         try {
             $penjualan = Penjualan::with('items')->findOrFail($id);
 
-            // 🛡️ Validasi: Hanya draft yang bisa dibatalkan
             if ($penjualan->is_draft != 1) {
                 return response()->json([
                     'success' => false,
@@ -537,7 +576,6 @@ class PenjualanCepatController extends Controller
                 ], 400);
             }
 
-            // 🔄 Kembalikan stok semua item & update total_stok
             foreach ($penjualan->items as $item) {
                 $gudangItem = ItemGudang::where('item_id', $item->item_id)
                     ->where('gudang_id', $item->gudang_id)
@@ -552,14 +590,20 @@ class PenjualanCepatController extends Controller
 
                     Log::info("♻️ Stok dikembalikan (cancel draft Penjualan Cepat): item_id={$item->item_id} dari {$stokLama} ke {$gudangItem->stok}");
 
-                    // ✅ Update total_stok setelah stok dikembalikan
                     $this->updateTotalStok($item->item_id, $item->gudang_id, $item->satuan_id);
                 }
             }
 
-            // 🗑️ Hapus data terkait (TIDAK ADA TAGIHAN)
             $penjualan->items()->delete();
             $penjualan->delete();
+
+            LogActivity::create([
+                'user_id'       => Auth::id(),
+                'activity_type' => 'delete_penjualan_cepat',
+                'description'   => 'Cancelled draft penjualan cepat: ' . $penjualan->no_faktur,
+                'ip_address'    => request()->ip(),
+                'user_agent'    => request()->userAgent(),
+            ]);
 
             DB::commit();
 

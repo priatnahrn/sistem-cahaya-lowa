@@ -5,61 +5,121 @@ namespace Database\Seeders;
 use Illuminate\Database\Seeder;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
+use Illuminate\Support\Facades\DB;
 
 class RolesAndPermissionsSeeder extends Seeder
 {
-    public function run(): void
+    public function run()
     {
+        // Reset cached roles and permissions
         app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();
 
-        // daftar permissions dari kebutuhan sistem
-        $permissions = [
-            'auth.login',
+        echo "🔄 Memulai seeding permissions dan roles...\n\n";
 
-            // Item
-            'item.create','item.update','item.delete','item.view','item.export','item.search','item.filter','item.show',
-            'category.create','category.update','category.delete','category.view',
-
-            // Gudang
-            'gudang.create','gudang.update','gudang.delete','gudang.view','gudang.show',
-
-            // User
-            'user.create','user.update','user.delete','user.view',
-
-            // Penjualan
-            'penjualan.create','penjualan.pending','penjualan.update','penjualan.delete',
-            'penjualan.addRow','penjualan.removeRow','penjualan.print','penjualan.view','penjualan.show',
-
-            // Pembelian
-            'pembelian.create','pembelian.pending','pembelian.update','pembelian.delete',
-            'pembelian.addRow','pembelian.removeRow',
-
-            // Supplier
-            'supplier.create','supplier.update','supplier.delete','supplier.view',
-
-            // Pelanggan
-            'pelanggan.create','pelanggan.update','pelanggan.delete','pelanggan.view',
-
-            // Kasir
-            'kasir.create','kasir.pending','kasir.update','kasir.delete','kasir.print','kasir.priceList',
-
-            // Kas Keuangan
-            'cashIn.create','cashOut.create','cashflow.view','cashflow.export',
+        // ================================
+        // 📋 DAFTAR SEMUA MODULE
+        // ================================
+        $modules = [
+            'dashboard',
+            'penjualan',
+            'penjualan_cepat',
+            'retur_penjualan',
+            'tagihan_penjualan',
+            'pengiriman',
+            'pembayaran',
+            'pembelian',
+            'tagihan_pembelian',
+            'retur_pembelian',
+            'gudang',
+            'supplier',
+            'pelanggan',
+            'items',
+            'kategori_items',
+            'produksi',
+            'mutasi_stok',
+            'users',
+            'roles',
+            'activity_logs',
+            'payrolls',
+            'cashflows',
+            'profile',
         ];
 
-        foreach ($permissions as $permission) {
-            Permission::firstOrCreate(['name' => $permission, 'guard_name' => 'web']);
+        // ================================
+        // 🎯 ACTIONS UNTUK SETIAP MODULE
+        // ================================
+        $actions = ['view', 'create', 'update', 'delete'];
+
+        // ================================
+        // 🔄 GENERATE PERMISSIONS
+        // ================================
+        DB::beginTransaction();
+        
+        try {
+            $totalPermissions = 0;
+            
+            foreach ($modules as $module) {
+                echo "📦 Membuat permissions untuk module: {$module}\n";
+                
+                foreach ($actions as $action) {
+                    $permissionName = "{$module}.{$action}";
+                    
+                    Permission::firstOrCreate(
+                        ['name' => $permissionName],
+                        ['guard_name' => 'web']
+                    );
+                    
+                    $totalPermissions++;
+                    echo "   ✅ {$permissionName}\n";
+                }
+            }
+
+            echo "\n";
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n";
+            echo "✅ Total {$totalPermissions} permissions berhasil dibuat!\n";
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n";
+
+            // ================================
+            // 👑 BUAT ROLE SUPER ADMIN
+            // ================================
+            echo "👑 Membuat role Super Admin...\n";
+            
+            $superAdmin = Role::firstOrCreate(
+                ['name' => 'super-admin'],
+                ['guard_name' => 'web']
+            );
+
+            // Assign SEMUA permissions ke Super Admin
+            $allPermissions = Permission::all();
+            $superAdmin->syncPermissions($allPermissions);
+
+            echo "✅ Role 'super-admin' berhasil dibuat!\n";
+            echo "✅ Super Admin memiliki {$allPermissions->count()} permissions\n\n";
+
+            DB::commit();
+
+            // ================================
+            // 📊 SUMMARY
+            // ================================
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n";
+            echo "📊 SUMMARY\n";
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n";
+            echo "✅ Total Permissions: " . Permission::count() . "\n";
+            echo "✅ Total Roles: " . Role::count() . "\n";
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n";
+
+            // ================================
+            // 🎉 SUCCESS MESSAGE
+            // ================================
+            echo "🎉 Seeding berhasil!\n";
+            echo "💡 Jangan lupa assign role 'super-admin' ke user Anda\n";
+            echo "💡 Gunakan: php artisan tinker\n";
+            echo "💡 Lalu: \$user = User::find(1); \$user->assignRole('super-admin');\n\n";
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            echo "❌ Error: " . $e->getMessage() . "\n";
+            throw $e;
         }
-
-        // roles
-        $superAdmin = Role::firstOrCreate(['name' => 'super-admin', 'guard_name' => 'web']);
-        $admin      = Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
-        $user       = Role::firstOrCreate(['name' => 'user', 'guard_name' => 'web']);
-        $guest      = Role::firstOrCreate(['name' => 'guest', 'guard_name' => 'web']);
-
-        // role permission policy (contoh, bisa diubah sesuai kebutuhan)
-        $superAdmin->syncPermissions(Permission::all()); // full akses
-
-       
     }
 }

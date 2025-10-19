@@ -7,13 +7,12 @@
 
     <div x-data="produksiShowPage()" x-init="init()" class="space-y-6">
 
-        {{-- 🧭 Breadcrumb --}}
-        <div class="flex items-center gap-3">
-            <a href="{{ route('produksi.index') }}" class="text-slate-500 hover:underline text-sm">Produksi</a>
-            <div class="text-sm text-slate-400">/</div>
-            <span class="px-3 py-1 rounded-md bg-blue-50 text-blue-700 border border-blue-200 font-medium text-sm">
-                {{ $produksi->no_produksi }}
-            </span>
+       <div>
+            <a href="{{ route('produksi.index') }}"
+                class="inline-flex items-center gap-2 text-sm text-slate-600 hover:text-[#334976] font-medium transition-colors">
+                <i class="fa-solid fa-arrow-left text-gray-600 hover:text-[#334976]"></i>
+                <span>Kembali</span>
+            </a>
         </div>
 
         {{-- 🧩 Informasi Produksi --}}
@@ -95,8 +94,9 @@
                                 <td class="px-4 py-3 font-medium">{{ $item->item->nama_item ?? '-' }}</td>
                                 <td class="px-4 py-3 text-center">{{ number_format($item->jumlah_dibutuhkan) }}</td>
                                 <td class="px-4 py-3 text-center">{{ $item->itemPenjualan->satuan->nama_satuan }}</td>
-                               
-                                <td class="px-4 py-3 text-slate-600 ">Rp {{ number_format($item->itemPenjualan->total ?? 0, 0, ',', '.') }}</td>
+
+                                <td class="px-4 py-3 text-slate-600 ">Rp
+                                    {{ number_format($item->itemPenjualan->total ?? 0, 0, ',', '.') }}</td>
                             </tr>
                         @empty
                             <tr>
@@ -111,6 +111,7 @@
         </div>
 
 
+
         {{-- 🎯 Tombol Aksi --}}
         <div class="flex justify-end gap-3">
             <a href="{{ route('produksi.index') }}"
@@ -118,17 +119,19 @@
                 <i class="fa-solid fa-arrow-left mr-1.5"></i> Kembali
             </a>
 
-            @if ($produksi->status === 'pending')
-                <button @click="updateStatus('{{ $produksi->id }}', 'in_progress')"
-                    class="px-5 py-2.5 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition">
-                    <i class="fa-solid fa-industry mr-1.5"></i> Tandai Sedang Diproduksi
-                </button>
-            @elseif ($produksi->status === 'in_progress')
-                <button @click="updateStatus('{{ $produksi->id }}', 'completed')"
-                    class="px-5 py-2.5 rounded-lg bg-green-600 text-white hover:bg-green-700 transition">
-                    <i class="fa-solid fa-circle-check mr-1.5"></i> Tandai Selesai
-                </button>
-            @endif
+            @can('produksi.update')
+                @if ($produksi->status === 'pending')
+                    <button @click="updateStatus('{{ $produksi->id }}', 'in_progress')"
+                        class="px-5 py-2.5 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition">
+                        <i class="fa-solid fa-industry mr-1.5"></i> Tandai Sedang Diproduksi
+                    </button>
+                @elseif ($produksi->status === 'in_progress')
+                    <button @click="updateStatus('{{ $produksi->id }}', 'completed')"
+                        class="px-5 py-2.5 rounded-lg bg-green-600 text-white hover:bg-green-700 transition">
+                        <i class="fa-solid fa-circle-check mr-1.5"></i> Tandai Selesai
+                    </button>
+                @endif
+            @endcan
         </div>
     </div>
 

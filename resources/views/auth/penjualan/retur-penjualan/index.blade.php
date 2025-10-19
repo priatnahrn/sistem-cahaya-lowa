@@ -65,12 +65,13 @@
         <div
             class="bg-white border border-slate-200 rounded-xl px-6 py-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
             <div class="flex items-center gap-3">
-                <a href="{{ route('retur-penjualan.create') }}"
-                    class="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-white bg-[#344579] hover:bg-[#2e3e6a] shadow">
-                    <i class="fa-solid fa-plus"></i> Tambah Retur
-                </a>
+                @can('retur_penjualan.create')
+                    <a href="{{ route('retur-penjualan.create') }}"
+                        class="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-white bg-[#344579] hover:bg-[#2e3e6a] shadow">
+                        <i class="fa-solid fa-plus"></i> Tambah Retur
+                    </a>
+                @endcan
             </div>
-
             <div class="flex items-center gap-3">
                 <div class="relative">
                     <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
@@ -178,12 +179,15 @@
                                 <td class="px-4 py-3" x-text="(currentPage-1)*pageSize + idx + 1"></td>
                                 <td class="px-4 py-3 font-medium" x-text="r.nomor_retur"></td>
                                 <td class="px-4 py-3 text-slate-600" x-text="fmtTanggal(r.tanggal)"></td>
-                                <td class="px-4 py-3 text-green-600 font-medium whitespace-normal break-words leading-snug max-w-[220px]">
-                                    <a :href="r.url" class="hover:underline hover:text-[#2e3e6a] transition block" x-text="r.pelanggan"></a>
+                                <td
+                                    class="px-4 py-3 text-green-600 font-medium whitespace-normal break-words leading-snug max-w-[220px]">
+                                    <a :href="r.url" class="hover:underline hover:text-[#2e3e6a] transition block"
+                                        x-text="r.pelanggan"></a>
                                 </td>
                                 <td class="px-4 py-3 text-right font-semibold" x-text="formatCurrency(r.total)"></td>
                                 <td class="px-4 py-3">
-                                    <span class="inline-flex items-center gap-2 text-xs font-medium px-2.5 py-1 rounded-full"
+                                    <span
+                                        class="inline-flex items-center gap-2 text-xs font-medium px-2.5 py-1 rounded-full"
                                         :class="badgeClass(r.status)">
                                         <span class="w-2 h-2 rounded-full" :class="dotClass(r.status)"></span>
                                         <span x-text="statusLabel(r.status)"></span>
@@ -295,7 +299,8 @@
                         <div class="text-sm text-amber-700">
                             <p class="font-medium">Perhatian:</p>
                             <p class="mt-1">Tindakan ini akan menghapus data retur. Proses ini
-                                <strong>tidak dapat dibatalkan</strong>.</p>
+                                <strong>tidak dapat dibatalkan</strong>.
+                            </p>
                         </div>
                     </div>
                 </div>
@@ -325,10 +330,12 @@
                 class="w-full text-left px-4 py-2 text-sm hover:bg-slate-50 flex items-center gap-2 text-slate-700">
                 <i class="fa-solid fa-eye text-blue-500"></i> Detail
             </button>
-            <button @click="confirmDelete(dropdownData)"
-                class="w-full text-left px-4 py-2 text-sm hover:bg-red-50 flex items-center gap-2 text-red-600">
-                <i class="fa-solid fa-trash"></i> Hapus
-            </button>
+            @can('retur_penjualan.delete')
+                <button @click="confirmDelete(dropdownData)"
+                    class="w-full text-left px-4 py-2 text-sm hover:bg-red-50 flex items-center gap-2 text-red-600 rounded-b-lg">
+                    <i class="fa-solid fa-trash"></i> Hapus
+                </button>
+            @endcan
         </div>
     </div>
 
@@ -338,9 +345,10 @@
                 fn($r) => [
                     'id' => $r->id,
                     'nomor_retur' => $r->no_retur,
-                    'tanggal' => $r->tanggal instanceof \Carbon\Carbon 
-                        ? $r->tanggal->timezone('Asia/Makassar')->format('Y-m-d H:i:s')
-                        : $r->tanggal ?? null,
+                    'tanggal' =>
+                        $r->tanggal instanceof \Carbon\Carbon
+                            ? $r->tanggal->timezone('Asia/Makassar')->format('Y-m-d H:i:s')
+                            : $r->tanggal ?? null,
                     'pelanggan' => optional($r->penjualan->pelanggan)->nama_pelanggan ?? 'Customer',
                     'total' => (float) ($r->total ?? 0),
                     'status' => $r->status,
@@ -358,7 +366,7 @@
                 pageSize: 10,
                 currentPage: 1,
                 maxPageButtons: 7,
-                
+
                 openActionId: null,
                 dropdownVisible: false,
                 dropdownData: {},
@@ -367,7 +375,7 @@
                     left: 0
                 },
                 _outsideClickHandler: null,
-                
+
                 showDeleteModal: false,
                 deleteItem: {},
 
@@ -397,37 +405,41 @@
 
                 fmtTanggal(iso) {
                     if (!iso) return '-';
-                    const d = new Date(iso);
-                    if (isNaN(d)) return iso;
-                    const dd = String(d.getDate()).padStart(2, '0');
-                    const mm = String(d.getMonth() + 1).padStart(2, '0');
-                    const yyyy = d.getFullYear();
-                    const hh = String(d.getHours()).padStart(2, '0');
-                    const mi = String(d.getMinutes()).padStart(2, '0');
+
+                    // Format dari backend: "2025-10-18 14:30:45"
+                    const parts = iso.split(' ');
+                    if (parts.length !== 2) return iso;
+
+                    const [datePart, timePart] = parts;
+                    const [yyyy, mm, dd] = datePart.split('-');
+                    const [hh, mi] = timePart.split(':');
+
                     return `${dd}-${mm}-${yyyy}, ${hh}:${mi}`;
                 },
 
                 sortIcon(field) {
                     if (this.sortBy !== field) return 'fa-sort ml-2 text-slate-400';
-                    return this.sortDir === 'asc' 
-                        ? 'fa-arrow-up ml-2 text-[#344579]' 
-                        : 'fa-arrow-down ml-2 text-[#344579]';
+                    return this.sortDir === 'asc' ?
+                        'fa-arrow-up ml-2 text-[#344579]' :
+                        'fa-arrow-down ml-2 text-[#344579]';
                 },
 
                 // --- FILTER + SORT ---
                 filteredList() {
                     const q = this.q.trim().toLowerCase();
-                    
+
                     let list = this.data.filter(r => {
-                        if (q && !(`${r.nomor_retur} ${r.pelanggan}`.toLowerCase().includes(q))) 
+                        if (q && !(`${r.nomor_retur} ${r.pelanggan}`.toLowerCase().includes(q)))
                             return false;
-                        if (this.filters.nomor_retur && !r.nomor_retur.toLowerCase().includes(this.filters.nomor_retur.toLowerCase())) 
+                        if (this.filters.nomor_retur && !r.nomor_retur.toLowerCase().includes(this.filters
+                                .nomor_retur.toLowerCase()))
                             return false;
-                        if (this.filters.pelanggan && !r.pelanggan.toLowerCase().includes(this.filters.pelanggan.toLowerCase())) 
+                        if (this.filters.pelanggan && !r.pelanggan.toLowerCase().includes(this.filters.pelanggan
+                                .toLowerCase()))
                             return false;
-                        if (this.filters.status && r.status !== this.filters.status) 
+                        if (this.filters.status && r.status !== this.filters.status)
                             return false;
-                        if (this.filters.tanggal && r.tanggal && r.tanggal.split(' ')[0] !== this.filters.tanggal) 
+                        if (this.filters.tanggal && r.tanggal && r.tanggal.split(' ')[0] !== this.filters.tanggal)
                             return false;
                         return true;
                     });
@@ -485,7 +497,9 @@
                     const max = this.maxPageButtons;
                     const current = this.currentPage;
 
-                    if (total <= max) return Array.from({ length: total }, (_, i) => i + 1);
+                    if (total <= max) return Array.from({
+                        length: total
+                    }, (_, i) => i + 1);
 
                     const pages = [];
                     const side = Math.floor((max - 3) / 2);
@@ -642,7 +656,9 @@
                 confirmDelete(item) {
                     if (!item) return;
                     this.closeDropdown();
-                    this.deleteItem = { ...item };
+                    this.deleteItem = {
+                        ...item
+                    };
                     this.showDeleteModal = true;
                 },
 
@@ -688,13 +704,14 @@
                 },
 
                 showNotification(type, message) {
-                    const bg = type === 'error' 
-                        ? 'bg-rose-50 text-rose-700 border border-rose-200' 
-                        : 'bg-emerald-50 text-emerald-700 border border-emerald-200';
+                    const bg = type === 'error' ?
+                        'bg-rose-50 text-rose-700 border border-rose-200' :
+                        'bg-emerald-50 text-emerald-700 border border-emerald-200';
                     const icon = type === 'error' ? 'fa-circle-xmark' : 'fa-circle-check';
 
                     const el = document.createElement('div');
-                    el.className = `fixed top-6 right-6 z-50 flex items-center gap-2 px-4 py-3 rounded-md border shadow ${bg}`;
+                    el.className =
+                        `fixed top-6 right-6 z-50 flex items-center gap-2 px-4 py-3 rounded-md border shadow ${bg}`;
                     el.innerHTML = `<i class="fa-solid ${icon}"></i><span>${message}</span>`;
 
                     document.body.appendChild(el);

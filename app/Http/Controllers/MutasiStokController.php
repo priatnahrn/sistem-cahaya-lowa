@@ -7,28 +7,31 @@ use App\Models\MutasiStokItem;
 use App\Models\Gudang;
 use App\Models\Item;
 use App\Models\ItemGudang;
+use App\Models\LogActivity;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
+use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 
 class MutasiStokController extends Controller
 {
+    use AuthorizesRequests;
+
     /**
      * Halaman daftar mutasi stok
      */
     public function index()
     {
-        // Ambil data mutasi (paginate)
+        // ✅ Check permission view
+        $this->authorize('mutasi_stok.view');
+
         $mutasis = MutasiStok::with(['gudangAsal', 'gudangTujuan'])
             ->latest()
             ->paginate(10);
 
-        // Ambil semua item yang diperlukan frontend (satuans + itemGudangs untuk stok)
-        // NOTE: bila jumlah item sangat besar, pertimbangkan endpoint pencarian daripada load semua
         $items = Item::with(['satuans', 'itemGudangs'])->get();
 
-        // Buat properti ringan untuk frontend (satuan_data & stok_data)
         $items->each(function ($item) {
             $item->stok_data = $item->itemGudangs->map(function ($g) {
                 return [
@@ -54,19 +57,18 @@ class MutasiStokController extends Controller
      */
     public function create()
     {
-        // Generate nomor mutasi otomatis (format: MS + dmy + 3-digit increment)
+        // ✅ Check permission create
+        $this->authorize('mutasi_stok.create');
+
+        // Generate nomor mutasi otomatis
         $dateCode = now()->format('dmy');
         $last = MutasiStok::latest()->first();
         $nextNum = $last ? intval(substr($last->no_mutasi, -3)) + 1 : 1;
         $newCode = 'MS' . $dateCode . str_pad($nextNum, 3, '0', STR_PAD_LEFT);
 
-        // Ambil daftar gudang
         $gudangs = Gudang::select('id', 'nama_gudang')->get();
-
-        // Ambil daftar item beserta satuan & stok di semua gudang
         $items = Item::with(['satuans', 'itemGudangs'])->get();
 
-        // Pasang properti ringan: stok_data & satuan_data
         $items->each(function ($item) {
             $item->stok_data = $item->itemGudangs->map(function ($g) {
                 return [
@@ -92,9 +94,11 @@ class MutasiStokController extends Controller
      */
     public function store(Request $request)
     {
+        // ✅ Check permission create
+        $this->authorize('mutasi_stok.create');
+
         $data = $request->json()->all();
 
-        // VALIDASI BASIC
         $validated = validator($data, [
             'no_mutasi' => 'required|unique:mutasi_stoks,no_mutasi',
             'tanggal' => 'required|date',
@@ -106,7 +110,7 @@ class MutasiStokController extends Controller
             'items.*.jumlah' => 'required|numeric|min:0.01',
         ])->validate();
 
-        // AGGREGATE permintaan per item+satuan (untuk validasi stok)
+        // AGGREGATE permintaan per item+satuan
         $required = [];
         foreach ($validated['items'] as $row) {
             $key = $row['item_id'] . '|' . $row['satuan_id'];
@@ -138,7 +142,6 @@ class MutasiStokController extends Controller
             ], 422);
         }
 
-        // Simpan transaksi
         try {
             DB::beginTransaction();
 
@@ -158,7 +161,6 @@ class MutasiStokController extends Controller
                     'jumlah' => $row['jumlah'],
                 ]);
 
-                // Kurangi stok gudang asal (sudah divalidasi ada)
                 $asal = ItemGudang::where([
                     'item_id' => $row['item_id'],
                     'gudang_id' => $validated['gudang_asal_id'],
@@ -169,7 +171,6 @@ class MutasiStokController extends Controller
                     $asal->decrement('stok', $row['jumlah']);
                 }
 
-                // Tambah / create stok gudang tujuan
                 $tujuan = ItemGudang::firstOrCreate([
                     'item_id' => $row['item_id'],
                     'gudang_id' => $validated['gudang_tujuan_id'],
@@ -178,6 +179,14 @@ class MutasiStokController extends Controller
 
                 $tujuan->increment('stok', $row['jumlah']);
             }
+
+            LogActivity::create([
+                'user_id'       => Auth::id(),
+                'activity_type' => 'create_mutasi_stok',
+                'description'   => 'Created mutasi stok: ' . $mutasi->no_mutasi,
+                'ip_address'    => $request->ip(),
+                'user_agent'    => $request->userAgent(),
+            ]);
 
             DB::commit();
 
@@ -195,16 +204,18 @@ class MutasiStokController extends Controller
 
     /**
      * Tampilkan detail mutasi stok (show)
+     * ✅ Semua user bisa lihat (untuk read-only mode)
      */
     public function show($id)
     {
+        // ✅ Tidak perlu authorize - user dengan permission view sudah bisa akses
+        // User tanpa permission update tetap bisa lihat (read-only)
+        
         $mutasi = MutasiStok::with(['items.item', 'items.satuan'])->findOrFail($id);
         $gudangs = Gudang::select('id', 'nama_gudang')->get();
 
-        // 🔹 Ambil semua item dengan relasi satuan & stok per gudang
         $items = Item::with(['satuans:id,item_id,nama_satuan', 'itemGudangs:id,item_id,gudang_id,satuan_id,stok'])->get();
 
-        // 🔹 Tambahkan data stok_data & satuan_data agar frontend bisa akses langsung
         $items->each(function ($item) {
             $item->stok_data = $item->itemGudangs->map(function ($g) {
                 return [
@@ -222,7 +233,6 @@ class MutasiStokController extends Controller
             })->values();
         });
 
-        // 🔹 Data untuk JS (form)
         $mutasiForJs = [
             'id' => $mutasi->id,
             'no_mutasi' => $mutasi->no_mutasi,
@@ -248,7 +258,6 @@ class MutasiStokController extends Controller
             })->values()->toArray(),
         ];
 
-        // 🔹 Data semua item untuk search di frontend
         $itemsArray = $items->map(fn($i) => [
             'id' => $i->id,
             'kode_item' => $i->kode_item,
@@ -257,19 +266,19 @@ class MutasiStokController extends Controller
             'stok_data' => $i->stok_data,
         ])->toArray();
 
-        // 🔹 Kirim ke view
         return view('auth.mutasi-stok.show', compact('mutasi', 'mutasiForJs', 'gudangs', 'itemsArray'));
     }
-
 
     /**
      * Update mutasi stok (edit)
      */
     public function update(Request $request, $id)
     {
+        // ✅ Check permission update
+        $this->authorize('mutasi_stok.update');
+
         $data = $request->json()->all();
 
-        // VALIDASI dasar
         $validated = validator($data, [
             'tanggal' => 'required|date',
             'gudang_asal_id' => 'required|exists:gudangs,id',
@@ -285,7 +294,6 @@ class MutasiStokController extends Controller
 
             $mutasi = MutasiStok::with('items')->findOrFail($id);
 
-            // Simpan original gudang untuk revert stok
             $origGudangAsal = $mutasi->gudang_asal_id;
             $origGudangTujuan = $mutasi->gudang_tujuan_id;
             $oldItems = $mutasi->items->map(function ($i) {
@@ -296,9 +304,8 @@ class MutasiStokController extends Controller
                 ];
             })->toArray();
 
-            // 1) Revert stok lama (kembalikan ke gudang asal lama, kurangi dari tujuan lama)
+            // 1) Revert stok lama
             foreach ($oldItems as $old) {
-                // tambah kembali ke asal lama
                 $asal = ItemGudang::firstOrCreate([
                     'item_id' => $old['item_id'],
                     'gudang_id' => $origGudangAsal,
@@ -306,7 +313,6 @@ class MutasiStokController extends Controller
                 ], ['stok' => 0]);
                 $asal->increment('stok', $old['jumlah']);
 
-                // kurangi di tujuan lama (jika ada)
                 $tujuan = ItemGudang::where([
                     'item_id' => $old['item_id'],
                     'gudang_id' => $origGudangTujuan,
@@ -317,10 +323,9 @@ class MutasiStokController extends Controller
                 }
             }
 
-            // Hapus item lama
             $mutasi->items()->delete();
 
-            // 2) Validasi stok untuk items baru (aggregate per kombinasi item+satuan)
+            // 2) Validasi stok untuk items baru
             $required = [];
             foreach ($validated['items'] as $row) {
                 $key = $row['item_id'] . '|' . $row['satuan_id'];
@@ -353,7 +358,7 @@ class MutasiStokController extends Controller
                 ], 422);
             }
 
-            // 3) Update mutasi utama (tanggal, gudang, updated_by)
+            // 3) Update mutasi utama
             $mutasi->update([
                 'tanggal_mutasi' => $validated['tanggal'],
                 'gudang_asal_id' => $validated['gudang_asal_id'],
@@ -370,7 +375,6 @@ class MutasiStokController extends Controller
                     'jumlah' => $row['jumlah'],
                 ]);
 
-                // Kurangi stok dari gudang asal baru
                 $asal = ItemGudang::where([
                     'item_id' => $row['item_id'],
                     'gudang_id' => $validated['gudang_asal_id'],
@@ -381,7 +385,6 @@ class MutasiStokController extends Controller
                     $asal->decrement('stok', $row['jumlah']);
                 }
 
-                // Tambah/firstOrCreate untuk tujuan baru
                 $tujuan = ItemGudang::firstOrCreate([
                     'item_id' => $row['item_id'],
                     'gudang_id' => $validated['gudang_tujuan_id'],
@@ -390,6 +393,14 @@ class MutasiStokController extends Controller
 
                 $tujuan->increment('stok', $row['jumlah']);
             }
+
+            LogActivity::create([
+                'user_id'       => Auth::id(),
+                'activity_type' => 'update_mutasi_stok',
+                'description'   => 'Updated mutasi stok: ' . $mutasi->no_mutasi,
+                'ip_address'    => $request->ip(),
+                'user_agent'    => $request->userAgent(),
+            ]);
 
             DB::commit();
 
@@ -400,6 +411,69 @@ class MutasiStokController extends Controller
                 'success' => false,
                 'message' => 'Terjadi kesalahan saat memperbarui data.',
                 'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * ✅ DELETE METHOD - Tambahkan untuk menghapus mutasi stok
+     */
+    public function destroy($id)
+    {
+        // ✅ Check permission delete
+        $this->authorize('mutasi_stok.delete');
+
+        try {
+            DB::beginTransaction();
+
+            $mutasi = MutasiStok::with('items')->findOrFail($id);
+
+            // Revert stok: kembalikan ke gudang asal, kurangi dari gudang tujuan
+            foreach ($mutasi->items as $item) {
+                // Tambah kembali ke gudang asal
+                $asal = ItemGudang::firstOrCreate([
+                    'item_id' => $item->item_id,
+                    'gudang_id' => $mutasi->gudang_asal_id,
+                    'satuan_id' => $item->satuan_id,
+                ], ['stok' => 0]);
+                $asal->increment('stok', $item->jumlah);
+
+                // Kurangi dari gudang tujuan
+                $tujuan = ItemGudang::where([
+                    'item_id' => $item->item_id,
+                    'gudang_id' => $mutasi->gudang_tujuan_id,
+                    'satuan_id' => $item->satuan_id,
+                ])->first();
+                
+                if ($tujuan) {
+                    $tujuan->decrement('stok', $item->jumlah);
+                }
+            }
+
+            // Hapus items dan mutasi
+            $mutasi->items()->delete();
+            $mutasi->delete();
+
+            LogActivity::create([
+                'user_id'       => Auth::id(),
+                'activity_type' => 'delete_mutasi_stok',
+                'description'   => 'Deleted mutasi stok: ' . $mutasi->no_mutasi,
+                'ip_address'    => request()->ip(),
+                'user_agent'    => request()->userAgent(),
+            ]);
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Mutasi stok berhasil dihapus dan stok telah dikembalikan.'
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan saat menghapus data: ' . $e->getMessage()
             ], 500);
         }
     }

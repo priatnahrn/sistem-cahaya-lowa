@@ -13,10 +13,8 @@
 
         {{-- ACTION BAR --}}
         <div
-            class="bg-white border border-slate-200 rounded-xl px-6 py-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-            <div class="flex items-center gap-2 order-first">
-                <h2 class="text-lg font-semibold text-[#344579]">📦 Daftar Produksi</h2>
-            </div>
+            class="bg-white border border-slate-200 rounded-xl px-6 py-4 flex flex-col md:flex-row md:items-center md:justify-end gap-3">
+           
 
             {{-- RIGHT: Search & Filter --}}
             <div class="flex items-center gap-3">
@@ -174,20 +172,24 @@
             <div x-cloak x-show="dropdownVisible" x-transition.origin.top.right data-dropdown
                 class="absolute w-44 bg-white border border-slate-200 rounded-lg shadow-xl z-[9999]"
                 :style="`top:${dropdownPos.top}; left:${dropdownPos.left}`" @click.stop>
+                {{-- Detail Button: Semua user dengan produksi.view bisa akses --}}
                 <a :href="dropdownData.url"
                     class="block text-left px-4 py-2 text-sm hover:bg-slate-50 flex items-center gap-2 text-slate-700">
                     <i class="fa-solid fa-eye text-blue-500"></i> Detail
                 </a>
 
-                <button @click="updateStatus(dropdownData.id, 'in_progress')"
-                    class="w-full text-left px-4 py-2 text-sm hover:bg-blue-50 flex items-center gap-2 text-blue-600">
-                    <i class="fa-solid fa-industry"></i> Tandai Produksi
-                </button>
+                {{-- Update Status Buttons: Hanya user dengan produksi.update bisa akses --}}
+                @can('produksi.update')
+                    <button @click="updateStatus(dropdownData.id, 'in_progress')"
+                        class="w-full text-left px-4 py-2 text-sm hover:bg-blue-50 flex items-center gap-2 text-blue-600">
+                        <i class="fa-solid fa-industry"></i> Tandai Produksi
+                    </button>
 
-                <button @click="updateStatus(dropdownData.id, 'completed')"
-                    class="w-full text-left px-4 py-2 text-sm hover:bg-green-50 flex items-center gap-2 text-green-600">
-                    <i class="fa-solid fa-circle-check"></i> Tandai Selesai
-                </button>
+                    <button @click="updateStatus(dropdownData.id, 'completed')"
+                        class="w-full text-left px-4 py-2 text-sm hover:bg-green-50 flex items-center gap-2 text-green-600">
+                        <i class="fa-solid fa-circle-check"></i> Tandai Selesai
+                    </button>
+                @endcan
             </div>
 
         </div>
@@ -232,6 +234,7 @@
                     top: 0,
                     left: 0
                 },
+                canUpdate: @json(Auth::user()?->can('produksi.update') ?? false),
 
                 init() {
                     console.log('📦 Data Produksi:', this.data);
@@ -264,7 +267,7 @@
                         return true;
                     });
 
-                    // 🔽 Sorting dinamis berdasarkan kolom
+                    // Sorting dinamis berdasarkan kolom
                     filtered.sort((a, b) => {
                         const dir = this.sortDir === 'asc' ? 1 : -1;
                         const field = this.sortBy;
@@ -288,18 +291,9 @@
                     return filtered;
                 },
 
-
                 filteredTotal() {
                     return this.filteredList().length
                 },
-
-                sortIcon(field) {
-                    if (this.sortBy !== field) return 'fa-sort text-slate-400';
-                    return this.sortDir === 'asc' ?
-                        'fa-sort-up text-[#344579]' :
-                        'fa-sort-down text-[#344579]';
-                },
-
 
                 totalPages() {
                     return Math.max(1, Math.ceil(this.filteredTotal() / this.pageSize))
@@ -350,9 +344,6 @@
                     this.q = '';
                     this.currentPage = 1;
                 },
-                // Format tanggal + jam
-
-
 
                 badgeStatus(st) {
                     if (st === 'pending') return 'bg-orange-50 text-orange-700 border border-orange-200';
@@ -380,7 +371,6 @@
                     const buttonRect = event.currentTarget.getBoundingClientRect();
                     const containerRect = event.currentTarget.closest('table').getBoundingClientRect();
 
-                    // hitung posisi relatif terhadap tabel
                     const top = buttonRect.bottom - containerRect.top + window.scrollY + 4;
                     const left = buttonRect.right - containerRect.left - 180 + window.scrollX;
 
@@ -391,7 +381,6 @@
 
                     this.dropdownVisible = true;
 
-                    // Deteksi klik luar
                     document.addEventListener('click', this.handleOutsideClick);
                 },
                 handleOutsideClick: (e) => {
@@ -408,8 +397,12 @@
                     document.removeEventListener('click', this.handleOutsideClick);
                 },
 
-
                 async updateStatus(id, status) {
+                    if (!this.canUpdate) {
+                        alert('Anda tidak memiliki izin untuk mengubah status produksi.');
+                        return;
+                    }
+
                     const token = document.querySelector('meta[name="csrf-token"]').content;
                     try {
                         const res = await fetch(`/produksi/${id}`, {

@@ -22,6 +22,8 @@ return new class extends Migration
                 ->constrained('kategori_items')
                 ->onDelete('cascade');                 
             $table->string('foto_path')->nullable();    
+            $table->foreignId('created_by')->constrained('users')->onDelete('cascade');
+            $table->foreignId('updated_by')->constrained('users')->onDelete('cascade');
             $table->timestamps();
             $table->softDeletes();
         });

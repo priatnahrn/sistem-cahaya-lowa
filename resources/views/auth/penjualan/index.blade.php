@@ -66,10 +66,12 @@
         <div
             class="bg-white border border-slate-200 rounded-xl px-6 py-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
             <div class="flex items-center gap-3">
-                <a href="{{ route('penjualan.create') }}"
-                    class="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-white bg-[#344579] hover:bg-[#2e3e6a] shadow">
-                    <i class="fa-solid fa-plus"></i> Tambah Penjualan Baru
-                </a>
+                @can('penjualan.create')
+                    <a href="{{ route('penjualan.create') }}"
+                        class="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-white bg-[#344579] hover:bg-[#2e3e6a] shadow">
+                        <i class="fa-solid fa-plus"></i> Tambah Penjualan Baru
+                    </a>
+                @endcan
             </div>
 
             <div class="flex items-center gap-3">
@@ -333,7 +335,8 @@
                         <div class="text-sm text-amber-700">
                             <p class="font-medium">Perhatian:</p>
                             <p class="mt-1">Tindakan ini akan menghapus data dan mengembalikan stok. Proses ini
-                                <strong>tidak dapat dibatalkan</strong>.</p>
+                                <strong>tidak dapat dibatalkan</strong>.
+                            </p>
                         </div>
                     </div>
                 </div>
@@ -441,10 +444,13 @@
                 <span>Print</span>
             </button>
 
-            <button @click="confirmDelete(dropdownData)"
-                class="w-full text-left px-4 py-2 text-sm hover:bg-red-50 flex items-center gap-2 text-red-600">
-                <i class="fa-solid fa-trash"></i> Hapus
-            </button>
+            {{-- ✅ Hapus - Hanya muncul jika user punya permission delete --}}
+            @can('penjualan.delete')
+                <button @click="confirmDelete(dropdownData)"
+                    class="w-full text-left px-4 py-2 text-sm hover:bg-red-50 flex items-center gap-2 text-red-600">
+                    <i class="fa-solid fa-trash"></i> Hapus
+                </button>
+            @endcan
         </div>
 
     </div>

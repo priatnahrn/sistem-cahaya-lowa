@@ -282,7 +282,8 @@
                         <div class="text-sm text-amber-700">
                             <p class="font-medium">Perhatian:</p>
                             <p class="mt-1">Tindakan ini akan menghapus tagihan beserta riwayat pembayarannya. Proses ini
-                                <strong>tidak dapat dibatalkan</strong>.</p>
+                                <strong>tidak dapat dibatalkan</strong>.
+                            </p>
                         </div>
                     </div>
                 </div>
@@ -308,18 +309,20 @@
                 class="w-full text-left px-4 py-2 text-sm hover:bg-slate-50 flex items-center gap-2 text-slate-700">
                 <i class="fa-solid fa-eye text-blue-500"></i> Detail
             </button>
-            <button @click="window.location = dropdownData.url + '/bayar'" :disabled="dropdownData.status === 'lunas'"
+            {{-- <button @click="window.location = dropdownData.url + '/bayar'" :disabled="dropdownData.status === 'lunas'"
                 :class="dropdownData.status === 'lunas' ? 'opacity-50 cursor-not-allowed' : 'hover:bg-green-50'"
                 class="w-full text-left px-4 py-2 text-sm flex items-center gap-2 text-green-600">
                 <i class="fa-solid fa-money-bill-wave"></i> Bayar
-            </button>
-            <button @click="confirmDelete(dropdownData)"
-                :disabled="dropdownData.status === 'lunas' && dropdownData.has_payments"
-                :class="(dropdownData.status === 'lunas' && dropdownData.has_payments) ? 'opacity-50 cursor-not-allowed' :
-                'hover:bg-red-50'"
-                class="w-full text-left px-4 py-2 text-sm flex items-center gap-2 text-red-600">
-                <i class="fa-solid fa-trash"></i> Hapus
-            </button>
+            </button> --}}
+            @can('tagihan_pembelian.delete')
+                <button @click="confirmDelete(dropdownData)"
+                    :disabled="dropdownData.status === 'lunas' && dropdownData.has_payments"
+                    :class="(dropdownData.status === 'lunas' && dropdownData.has_payments) ?
+                    'opacity-50 cursor-not-allowed' : 'hover:bg-red-50'"
+                    class="w-full text-left px-4 py-2 text-sm flex items-center gap-2 text-red-600 rounded-b-lg">
+                    <i class="fa-solid fa-trash"></i> Hapus
+                </button>
+            @endcan
         </div>
 
     </div>

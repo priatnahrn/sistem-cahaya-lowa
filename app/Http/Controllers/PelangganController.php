@@ -2,32 +2,42 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\LogActivity;
 use Illuminate\Http\Request;
 use App\Models\Pelanggan;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 
 class PelangganController extends Controller
 {
+    use AuthorizesRequests;
+
     public function index()
     {
-        $auth = Auth::user();
-        if (!$auth) {
-            return response()->json(['message' => 'Unauthorized'], 401);
-        }
+        // ✅ Check permission view
+        $this->authorize('pelanggan.view');
+
         $pelanggans = Pelanggan::all();
         return view('auth.pelanggan.index', compact('pelanggans'));
     }
 
     public function create()
     {
+        // ✅ Check permission create
+        $this->authorize('pelanggan.create');
 
         return view('auth.pelanggan.create');
     }
 
-
+    /**
+     * ✅ Search endpoint - minimal permission view untuk search
+     */
     public function search(Request $request)
     {
+        // ✅ Check permission view (user harus bisa view untuk search)
+        $this->authorize('pelanggan.view');
+
         $q = $request->query('q', '');
         if (strlen($q) < 2) {
             return response()->json([]);
@@ -45,10 +55,8 @@ class PelangganController extends Controller
 
     public function store(Request $request)
     {
-        $auth = Auth::user();
-        if (!$auth) {
-            return response()->json(['message' => 'Unauthorized'], 401);
-        }
+        // ✅ Check permission create
+        $this->authorize('pelanggan.create');
 
         $validated = $request->validate([
             'nama_pelanggan' => 'required|string|max:255',
@@ -71,6 +79,14 @@ class PelangganController extends Controller
                 ], 201);
             }
 
+            LogActivity::create([
+                'user_id'       => Auth::id(),
+                'activity_type' => 'create_pelanggan',
+                'description'   => 'Created pelanggan: ' . $pelanggan->nama_pelanggan,
+                'ip_address'    => $request->ip(),
+                'user_agent'    => $request->userAgent(),
+            ]);
+
             // Fallback: request normal (via browser form)
             return redirect()->route('pelanggan.index')
                 ->with('success', 'Pelanggan berhasil dibuat.');
@@ -85,31 +101,25 @@ class PelangganController extends Controller
         }
     }
 
-
+    /**
+     * Display the specified pelanggan.
+     * ✅ Semua user bisa lihat detail (untuk read-only mode)
+     */
     public function show($id)
     {
-        $auth = Auth::user();
-        if (!$auth) {
-            return response()->json(['message' => 'Unauthorized'], 401);
-        }
-        $pelanggan = Pelanggan::find($id);
-        if (!$pelanggan) {
-            return redirect()->route('pelanggan.index')->withErrors(['error' => 'Pelanggan tidak ditemukan.']);
-        }
+        // ✅ Tidak perlu authorize - user dengan permission view sudah bisa akses
+        // User tanpa permission update tetap bisa lihat (read-only)
+
+        $pelanggan = Pelanggan::findOrFail($id);
         return view('auth.pelanggan.show', compact('pelanggan'));
     }
 
     public function update(Request $request, $id)
     {
-        $auth = Auth::user();
-        if (!$auth) {
-            return response()->json(['message' => 'Unauthorized'], 401);
-        }
+        // ✅ Check permission update
+        $this->authorize('pelanggan.update');
 
-        $pelanggan = Pelanggan::find($id);
-        if (!$pelanggan) {
-            return redirect()->route('pelanggan.index')->withErrors(['error' => 'Pelanggan tidak ditemukan.']);
-        }
+        $pelanggan = Pelanggan::findOrFail($id);
 
         $validated = $request->validate([
             'nama_pelanggan' => 'required|string|max:255',
@@ -120,27 +130,59 @@ class PelangganController extends Controller
 
         try {
             $pelanggan->update($validated);
-            return redirect()->route('pelanggan.index', $id)->with('success', 'Pelanggan berhasil diperbarui.');
+
+            LogActivity::create([
+                'user_id'       => Auth::id(),
+                'activity_type' => 'update_pelanggan',
+                'description'   => 'Updated pelanggan: ' . $pelanggan->nama_pelanggan,
+                'ip_address'    => $request->ip(),
+                'user_agent'    => $request->userAgent(),
+            ]);
+            return redirect()->route('pelanggan.index')
+                ->with('success', 'Pelanggan berhasil diperbarui.');
         } catch (\Exception $e) {
+            Log::error('Gagal memperbarui pelanggan: ' . $e->getMessage());
             return back()->withErrors(['error' => 'Terjadi kesalahan saat memperbarui data.'])->withInput();
         }
     }
 
     public function destroy($id)
     {
-        $auth = Auth::user();
-        if (!$auth) {
-            return response()->json(['message' => 'Unauthorized'], 401);
-        }
+        // ✅ Check permission delete
+        $this->authorize('pelanggan.delete');
 
         try {
-            $pelanggan = Pelanggan::find($id);
-            if (!$pelanggan) {
-                return redirect()->route('pelanggan.index')->withErrors(['error' => 'Pelanggan tidak ditemukan.']);
-            }
+            $pelanggan = Pelanggan::findOrFail($id);
             $pelanggan->delete();
-            return redirect()->route('pelanggan.index')->with('success', 'Pelanggan berhasil dihapus.');
+
+            // ✅ Return JSON untuk AJAX request
+            if (request()->expectsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Pelanggan berhasil dihapus.'
+                ]);
+            }
+
+            LogActivity::create([
+                'user_id'       => Auth::id(),
+                'activity_type' => 'delete_pelanggan',
+                'description'   => 'Deleted pelanggan: ' . $pelanggan->nama_pelanggan,
+                'ip_address'    => request()->ip(),
+                'user_agent'    => request()->userAgent(),
+            ]);
+
+            return redirect()->route('pelanggan.index')
+                ->with('success', 'Pelanggan berhasil dihapus.');
         } catch (\Exception $e) {
+            Log::error('Gagal menghapus pelanggan: ' . $e->getMessage());
+
+            if (request()->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Terjadi kesalahan saat menghapus data.'
+                ], 500);
+            }
+
             return back()->withErrors(['error' => 'Terjadi kesalahan saat menghapus data.']);
         }
     }

@@ -66,10 +66,12 @@
         <div
             class="bg-white border border-slate-200 rounded-xl px-6 py-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
             <div class="flex items-center gap-3">
+                @can('penjualan_cepat.create')
                 <a href="{{ route('penjualan-cepat.create') }}"
                     class="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-white bg-[#344579] hover:bg-[#2e3e6a] shadow">
                     <i class="fa-solid fa-add"></i> Tambah Penjualan Cepat
                 </a>
+                @endcan
             </div>
 
             <div class="flex items-center gap-3">
@@ -399,10 +401,13 @@
             </button>
 
             <!-- Tombol Hapus -->
+            @can('penjualan_cepat.delete')
+
             <button @click="confirmDelete(dropdownData)"
                 class="w-full text-left px-4 py-2 text-sm hover:bg-red-50 flex items-center gap-2 text-red-600">
                 <i class="fa-solid fa-trash"></i> Hapus
             </button>
+            @endcan
         </div>
     </div>
 

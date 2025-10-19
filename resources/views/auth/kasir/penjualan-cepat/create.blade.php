@@ -12,6 +12,10 @@
     <script src="//unpkg.com/alpinejs" defer></script>
 
     <style>
+        [x-cloak] {
+            display: none !important;
+        }
+
         /* Hapus spinner number */
         .no-spinner::-webkit-outer-spin-button,
         .no-spinner::-webkit-inner-spin-button {
@@ -388,7 +392,7 @@
 
                     <button @click="save()" type="button"
                         class="w-full bg-[#344579] hover:bg-[#2d3f6b] text-white py-2.5 rounded-md text-sm font-medium flex items-center justify-center gap-2">
-                        <i class="fa-solid fa-floppy-disk"></i> Simpan Transaksi
+                       Simpan 
                     </button>
                 </div>
             </div>
@@ -396,7 +400,7 @@
         <!-- 💳 MODAL PEMBAYARAN -->
         <div x-cloak x-show="showPaymentModal" x-transition.opacity
             class="fixed inset-0 z-[9999] flex items-center justify-center">
-            <div class="absolute inset-0 bg-black/40 backdrop-blur-sm" @click="showPaymentModal=false"></div>
+            <div class="absolute inset-0 bg-black/40 " @click="showPaymentModal=false"></div>
 
             <div class="bg-white rounded-2xl shadow-xl w-11/12 md:w-[420px] z-50 overflow-hidden animate-fadeIn">
                 <div class="px-6 py-4 border-b border-slate-200 flex justify-between items-center">
@@ -483,7 +487,7 @@
         <!-- ✅ MODAL PEMBAYARAN BERHASIL -->
         <div x-cloak x-show="showSuccessModal" x-transition.opacity
             class="fixed inset-0 z-[99999] flex items-center justify-center">
-            <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" @click="closeSuccessModal()"></div>
+            <div class="absolute inset-0 bg-black/50 " @click="closeSuccessModal()"></div>
 
             <div
                 class="bg-white rounded-2xl shadow-xl w-11/12 md:w-[420px] z-50 overflow-hidden animate-fadeIn text-center p-6">
@@ -510,10 +514,11 @@
                 </div>
 
                 <div class="mt-6 flex flex-col gap-3">
-                    <a :href="printUrl" target="_blank"
-                        class="px-4 py-2 rounded-lg bg-[#344579] text-white hover:bg-[#2e3e6a] transition font-medium flex items-center justify-center gap-2">
+                    <button @click="openPrint()" target="_blank"
+                        class="px-4 py-2 rounded-lg bg-[#344579] text-white hover:bg-[#2e3e6a] transition font-medium flex items-center justify-center gap-2"
+                        type="button">
                         <i class="fa-solid fa-print"></i> Cetak Nota
-                    </a>
+                    </button>
                     <button @click="closeSuccessModal()"
                         class="px-4 py-2 rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-100 transition font-medium flex items-center justify-center gap-2">
                         <i class="fa-solid fa-arrow-left"></i> Kembali ke Kasir
@@ -560,21 +565,26 @@
                 kembalian: 0,
                 showSuccessModal: false,
                 printUrl: '',
+                isNavigating: false,
 
                 init() {
+                    // ✅ RESET SEMUA MODAL STATE DI AWAL
+                    this.showPaymentModal = false;
+                    this.showSuccessModal = false;
+                    this.penjualanId = null;
+                    this.penjualanData = null;
+                    this.nominalBayarDisplay = '';
+                    this.nominalBayar = 0;
+                    this.kembalian = 0;
+
                     this.form.no_faktur = @json($noFaktur ?? '');
                     this.form.tanggal = @json(now()->format('Y-m-d'));
                     this.allItems = @json($itemsJson ?? []);
-
-                    // Debug kategori
-                    console.log('🔍 Total Items Loaded:', this.allItems.length);
-                    console.log('🔍 Sample Item (First 3):', this.allItems.slice(0, 3));
 
                     const spandekItems = this.allItems.filter(i =>
                         (i.kategori || '').toLowerCase().includes('spandek') ||
                         (i.kategori || '').toLowerCase().includes('spandex')
                     );
-                    console.log('🔍 Items dengan kategori Spandek:', spandekItems.length);
 
                     this.focusScanner();
                     document.addEventListener('click', (e) => {
@@ -582,6 +592,7 @@
                         if (!['input', 'textarea', 'select'].includes(tag)) this.focusScanner();
                     });
                 },
+
 
                 focusScanner() {
                     setTimeout(() => this.$refs.barcodeInput?.focus(), 100);
@@ -691,6 +702,11 @@
                     });
                 },
 
+                openPrint() {
+                    if (this.printUrl) {
+                        window.open(this.printUrl, '_blank');
+                    }
+                },
                 removeItem(i) {
                     this.form.items.splice(i, 1);
                     this.recalc();
@@ -1148,10 +1164,21 @@
                     }
                 },
 
+
+
+                // Update closeSuccessModal():
                 closeSuccessModal() {
+                    if (this.isNavigating) return; // Prevent double action
+
+                    this.isNavigating = true;
                     this.showSuccessModal = false;
-                    setTimeout(() => window.location.reload(), 800);
+
+                    // Redirect dengan delay minimal
+                    setTimeout(() => {
+                        window.location.href = '/penjualan-cepat';
+                    }, 300);
                 },
+
 
                 notify(message, type = 'info') {
                     console.log(`[${type.toUpperCase()}] ${message}`);

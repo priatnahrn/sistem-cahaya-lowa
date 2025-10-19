@@ -12,15 +12,12 @@
     }">
 
 
-        {{-- BREADCRUMB --}}
-        <div class="flex items-center gap-3">
-            <a href="{{ route('gudang.index') }}" class="text-slate-500 hover:underline text-sm">Gudang</a>
-            <div class="text-sm text-slate-400">/</div>
-            <div class="inline-flex items-center text-sm">
-                <span class="px-3 py-1 rounded-md bg-[#E9F3FF] text-[#1D4ED8] border border-[#BFDBFE] font-medium">
-                    Tambah Gudang Baru
-                </span>
-            </div>
+        <div>
+            <a href="{{ route('gudang.index') }}"
+                class="inline-flex items-center gap-2 text-sm text-slate-600 hover:text-[#334976] font-medium transition-colors">
+                <i class="fa-solid fa-arrow-left text-gray-600 hover:text-[#334976]"></i>
+                <span>Kembali</span>
+            </a>
         </div>
 
         {{-- FORM CARD --}}

@@ -2,19 +2,25 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\{Pembelian, ItemPembelian, Item, Gudang, ItemGudang, Satuan, Supplier, TagihanPembelian};
+use App\Models\{Pembelian, ItemPembelian, Item, Gudang, ItemGudang, LogActivity, Satuan, Supplier, TagihanPembelian};
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\{Auth, DB, Log};
 use Illuminate\Validation\Rule;
 use Carbon\Carbon;
+use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 
 class PembelianController extends Controller
 {
+    use AuthorizesRequests;
+
     /**
      * List data pembelian.
      */
     public function index()
     {
+        // ✅ Check permission view
+        $this->authorize('pembelian.view');
+
         $pembelians = Pembelian::with('supplier')
             ->orderBy('tanggal', 'desc')
             ->paginate(15);
@@ -35,6 +41,9 @@ class PembelianController extends Controller
      */
     public function create()
     {
+        // ✅ Check permission create
+        $this->authorize('pembelian.create');
+
         $suppliers = Supplier::orderBy('nama_supplier')->get();
         $items     = Item::orderBy('nama_item')->get();
         $gudangs   = Gudang::orderBy('nama_gudang')->get();
@@ -74,6 +83,9 @@ class PembelianController extends Controller
      */
     public function store(Request $request)
     {
+        // ✅ Check permission create
+        $this->authorize('pembelian.create');
+
         $validated = $request->validate([
             'supplier_id'        => 'nullable|exists:suppliers,id',
             'tanggal'            => 'required|date',
@@ -158,6 +170,14 @@ class PembelianController extends Controller
                 $this->createTagihanPembelian($pembelian);
             }
 
+            LogActivity::create([
+                'user_id'       => Auth::id(),
+                'activity_type' => 'create_pembelian',
+                'description'   => 'Created pembelian: ' . $noFaktur,
+                'ip_address'    => $request->ip(),
+                'user_agent'    => $request->userAgent(),
+            ]);
+
             DB::commit();
 
             return redirect()->route('pembelian.index')
@@ -200,12 +220,22 @@ class PembelianController extends Controller
             'updated_by'   => Auth::id(),
         ]);
 
+        LogActivity::create([
+            'user_id'       => Auth::id(),
+            'activity_type' => 'create_tagihan_pembelian',
+            'description'   => 'Created tagihan pembelian: ' . $noTagihan . ' untuk pembelian ' . $pembelian->no_faktur,
+            'ip_address'    => request()->ip(),
+            'user_agent'    => request()->userAgent(),
+        ]);
+
         Log::info("✅ Tagihan pembelian berhasil dibuat", [
             'pembelian_id' => $pembelian->id,
             'no_faktur'    => $pembelian->no_faktur,
             'no_tagihan'   => $noTagihan,
             'total'        => $pembelian->total,
         ]);
+
+
     }
 
     /**
@@ -225,9 +255,13 @@ class PembelianController extends Controller
 
     /**
      * Detail pembelian.
+     * ✅ Semua user dengan permission view bisa lihat detail (untuk read-only mode)
      */
     public function show($id)
     {
+        // ✅ Tidak perlu authorize di sini - sudah di-handle di index
+        // User tanpa permission update tetap bisa lihat (read-only)
+
         $pembelian = Pembelian::with(['items.item', 'items.gudang', 'items.satuan', 'supplier'])
             ->findOrFail($id);
 
@@ -243,6 +277,9 @@ class PembelianController extends Controller
      */
     public function update(Request $request, $id)
     {
+        // ✅ Check permission update
+        $this->authorize('pembelian.update');
+
         $pembelian = Pembelian::with('items')->findOrFail($id);
 
         $validated = $request->validate([
@@ -391,6 +428,14 @@ class PembelianController extends Controller
                 'total_items' => $newItems->count(),
             ]);
 
+            LogActivity::create([
+                'user_id'       => Auth::id(),
+                'activity_type' => 'update_pembelian',
+                'description'   => 'Updated pembelian: ' . $pembelian->no_faktur,
+                'ip_address'    => $request->ip(),
+                'user_agent'    => $request->userAgent(),
+            ]);
+
             DB::commit();
             return response()->json(['success' => true, 'message' => 'Pembelian berhasil diperbarui']);
         } catch (\Throwable $e) {
@@ -425,6 +470,9 @@ class PembelianController extends Controller
      */
     public function destroy($id)
     {
+        // ✅ Check permission delete
+        $this->authorize('pembelian.delete');
+
         $pembelian = Pembelian::with('items')->findOrFail($id);
 
         DB::beginTransaction();
@@ -458,6 +506,14 @@ class PembelianController extends Controller
             // Hapus detail item dan header
             $pembelian->items()->delete();
             $pembelian->delete();
+
+            LogActivity::create([
+                'user_id'       => Auth::id(),
+                'activity_type' => 'delete_pembelian',
+                'description'   => 'Deleted pembelian: ' . $noFaktur,
+                'ip_address'    => request()->ip(),
+                'user_agent'    => request()->userAgent(),
+            ]);
 
             DB::commit();
 
