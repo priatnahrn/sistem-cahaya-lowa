@@ -40,7 +40,10 @@ class PelangganSeeder extends Seeder
         ];
 
         foreach ($data as $pelanggan) {
-            Pelanggan::create($pelanggan);
+            Pelanggan::create(array_merge($pelanggan, [
+                'created_by' => 1,  // tambahkan agar tidak error saat seeding
+                'updated_by' => 1,  // opsional, hapus kalau kolom ini tidak ada
+            ]));
         }
     }
 }

@@ -2,7 +2,6 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 use App\Models\Gudang;
 
@@ -13,7 +12,7 @@ class GudangSeeder extends Seeder
      */
     public function run(): void
     {
-         $data = [
+        $data = [
             [
                 'kode_gudang' => 'GDG-001',
                 'nama_gudang' => 'Gudang 1',
@@ -37,7 +36,10 @@ class GudangSeeder extends Seeder
         ];
 
         foreach ($data as $gudang) {
-            Gudang::create($gudang);
+            Gudang::create(array_merge($gudang, [
+                'created_by' => 1,   // ID user admin (ganti kalau perlu)
+                'updated_by' => 1,   // optional, kalau kolomnya ada
+            ]));
         }
     }
 }
