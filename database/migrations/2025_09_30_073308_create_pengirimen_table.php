@@ -18,8 +18,8 @@ return new class extends Migration
             $table->dateTime('tanggal_pengiriman');
             $table->enum('status_pengiriman', ['perlu_dikirim', 'dalam_pengiriman', 'diterima'])->default('perlu_dikirim');
             $table->string('supir')->nullable();
-            $table->foreignId('created_by')->constrained('users')->onDelete('cascade');
-            $table->foreignId('updated_by')->constrained('users')->onDelete('cascade');
+            $table->foreignId('created_by')->nullable()->constrained('users')->nullOnDelete();
+            $table->foreignId('updated_by')->nullable()->constrained('users')->nullOnDelete();
             $table->timestamps();
         });
     }

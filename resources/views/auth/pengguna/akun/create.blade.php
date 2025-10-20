@@ -75,16 +75,16 @@
                         <p x-show="errors.username" x-text="errors.username" class="text-red-500 text-xs mt-1"></p>
                     </div>
 
-                    {{-- Email (Optional) --}}
+                    {{-- No. Telepon (Optional) --}}
                     <div>
                         <label class="block text-sm font-medium text-slate-700 mb-2">
-                            Email <span class="text-slate-400 text-xs">(Opsional)</span>
+                            No. Telepon <span class="text-slate-400 text-xs">(Opsional)</span>
                         </label>
-                        <input type="email" x-model="form.email" placeholder="contoh@email.com"
+                        <input type="tel" x-model="form.phone" placeholder="08123456789"
                             class="w-full px-3 py-2.5 border border-slate-300 rounded-lg
                                focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition"
-                            :class="{ 'border-red-300 focus:border-red-500 focus:ring-red-200': errors.email }">
-                        <p x-show="errors.email" x-text="errors.email" class="text-red-500 text-xs mt-1"></p>
+                            :class="{ 'border-red-300 focus:border-red-500 focus:ring-red-200': errors.phone }">
+                        <p x-show="errors.phone" x-text="errors.phone" class="text-red-500 text-xs mt-1"></p>
                     </div>
                 </div>
 
@@ -118,7 +118,8 @@
                                 placeholder="Ulangi password"
                                 class="w-full px-3 py-2.5 border border-slate-300 rounded-lg pr-10
                                    focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition"
-                                :class="{ 'border-red-300 focus:border-red-500 focus:ring-red-200': errors.password_confirmation }">
+                                :class="{ 'border-red-300 focus:border-red-500 focus:ring-red-200': errors
+                                    .password_confirmation }">
                             <button type="button" @click="showPasswordConfirm = !showPasswordConfirm"
                                 class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
                                 <i class="fa-solid" :class="showPasswordConfirm ? 'fa-eye-slash' : 'fa-eye'"></i>
@@ -169,8 +170,7 @@
                 <div x-show="allRoles.length === 0" class="text-center py-8 text-slate-400">
                     <i class="fa-solid fa-shield text-4xl mb-2"></i>
                     <p>Belum ada role tersedia</p>
-                    <a href="{{ route('roles.create') }}"
-                        class="text-blue-600 hover:underline text-sm mt-2 inline-block">
+                    <a href="{{ route('roles.create') }}" class="text-blue-600 hover:underline text-sm mt-2 inline-block">
                         Buat role baru
                     </a>
                 </div>
@@ -205,11 +205,13 @@
 
     @php
         $rolesData = $roles
-            ->map(fn($r) => [
-                'id' => $r->id,
-                'name' => $r->name,
-                'permissions_count' => $r->permissions()->count(),
-            ])
+            ->map(
+                fn($r) => [
+                    'id' => $r->id,
+                    'name' => $r->name,
+                    'permissions_count' => $r->permissions()->count(),
+                ],
+            )
             ->toArray();
     @endphp
 
@@ -219,7 +221,7 @@
                 form: {
                     name: '',
                     username: '',
-                    email: '',
+                    phone: '',
                     password: '',
                     password_confirmation: '',
                     roles: []

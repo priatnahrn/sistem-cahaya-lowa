@@ -1,6 +1,5 @@
 <?php
 
-use App\Http\Controllers\CashflowController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\GajiController;
 use Illuminate\Support\Facades\Route;
@@ -20,6 +19,7 @@ use App\Http\Controllers\SupplierController;
 use App\Http\Controllers\ItemController;
 use App\Http\Controllers\KategoriItemController;
 use App\Http\Controllers\GudangController;
+use App\Http\Controllers\KasKeuanganController;
 use App\Http\Controllers\LogActivityController;
 use App\Http\Controllers\ProduksiController;
 use App\Http\Controllers\MutasiStokController;
@@ -45,6 +45,39 @@ Route::middleware('guest')->group(function () {
     Route::post('/login', [UserController::class, 'login']);
 });
 
+Route::get('/', function () {
+    if (!Auth::check()) {
+        return redirect()->route('login');
+    }
+
+    $user = Auth::user();
+
+    // Cari halaman pertama yang accessible
+    $accessiblePages = [
+        ['permission' => 'dashboard.view', 'route' => 'dashboard'],
+        ['permission' => 'penjualan_cepat.view', 'route' => 'penjualan-cepat.index'],
+        ['permission' => 'pembayaran.view', 'route' => 'pembayaran.index'],
+        ['permission' => 'penjualan.view', 'route' => 'penjualan.index'],
+        ['permission' => 'pembelian.view', 'route' => 'pembelian.index'],
+        ['permission' => 'gudang.view', 'route' => 'gudang.index'],
+        ['permission' => 'supplier.view', 'route' => 'supplier.index'],
+        ['permission' => 'items.view', 'route' => 'items.index'],
+        ['permission' => 'pelanggan.view', 'route' => 'pelanggan.index'],
+        ['permission' => 'cashflows.view', 'route' => 'kas-keuangan.index'],
+        ['permission' => 'payrolls.view', 'route' => 'gaji-karyawan.index'],
+        ['permission' => 'users.view', 'route' => 'users.index'],
+        ['permission' => 'roles.view', 'route' => 'roles.index'],
+    ];
+
+    foreach ($accessiblePages as $page) {
+        if ($user->can($page['permission'])) {
+            return redirect()->route($page['route']);
+        }
+    }
+
+    // Fallback ke profil
+    return redirect()->route('profil.index');
+});
 // ========================
 // 🔹 Authenticated Routes
 // ========================
@@ -53,7 +86,7 @@ Route::middleware('auth')->group(function () {
     // ------------------------
     // 🏠 Dashboard
     // ------------------------
-    Route::get('/dashboard', [DashboardController::class, 'index'])->middleware('permission:dashboard.view')->name('dashboard');
+    Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
     // ------------------------
     // 🔐 User Management
@@ -168,7 +201,7 @@ Route::middleware('auth')->group(function () {
     // ------------------------
     Route::prefix('penjualan/retur-penjualan')->name('retur-penjualan.')->middleware('permission:retur_penjualan.view')->group(function () {
         Route::get('/', [ReturPenjualanController::class, 'index'])->name('index');
-        
+
         Route::middleware('permission:retur_penjualan.create')->group(function () {
             Route::get('/create', [ReturPenjualanController::class, 'create'])->name('create');
             Route::post('/', [ReturPenjualanController::class, 'store'])->name('store');
@@ -292,13 +325,13 @@ Route::middleware('auth')->group(function () {
     // ------------------------
     Route::prefix('pembelian/retur-pembelian')->name('retur-pembelian.')->middleware('permission:retur_pembelian.view')->group(function () {
         Route::get('/', [ReturPembelianController::class, 'index'])->name('index');
-        
+
         Route::middleware('permission:retur_pembelian.create')->group(function () {
             Route::get('/create', [ReturPembelianController::class, 'create'])->name('create');
             Route::post('/store', [ReturPembelianController::class, 'store'])->name('store');
         });
         Route::get('/{id}', [ReturPembelianController::class, 'show'])->name('show');
-        
+
         Route::put('/{id}', [ReturPembelianController::class, 'update'])
             ->middleware('permission:retur_pembelian.update')
             ->name('update');
@@ -407,7 +440,7 @@ Route::middleware('auth')->group(function () {
         // ------------------------
         Route::prefix('categories')->name('categories.')->middleware('permission:kategori_items.view')->group(function () {
             Route::get('/', [KategoriItemController::class, 'index'])->name('index');
-            
+
             Route::middleware('permission:kategori_items.create')->group(function () {
                 Route::get('/create', [KategoriItemController::class, 'create'])->name('create');
                 Route::post('/store', [KategoriItemController::class, 'store'])->name('store');
@@ -433,28 +466,28 @@ Route::middleware('auth')->group(function () {
         Route::get('/', [ProduksiController::class, 'index'])->name('index');
         Route::get('/{id}', [ProduksiController::class, 'show'])->whereNumber('id')->name('show');
 
-        Route::put('/{id}/update', [ProduksiController::class, 'update'])
+        // ✅ Ubah ini (hapus /update)
+        Route::put('/{id}', [ProduksiController::class, 'update'])
             ->middleware('permission:produksi.update')
             ->whereNumber('id')
             ->name('update');
 
-        Route::delete('/{id}/delete', [ProduksiController::class, 'destroy'])
+        Route::delete('/{id}', [ProduksiController::class, 'destroy'])
             ->middleware('permission:produksi.delete')
             ->whereNumber('id')
             ->name('destroy');
     });
-
     // ------------------------
     // 🔄 Mutasi Stok
     // ------------------------
     Route::prefix('mutasi-stok')->name('mutasi-stok.')->middleware('permission:mutasi_stok.view')->group(function () {
         Route::get('/', [MutasiStokController::class, 'index'])->name('index');
-        
+
         Route::middleware('permission:mutasi_stok.create')->group(function () {
             Route::get('/create', [MutasiStokController::class, 'create'])->name('create');
             Route::post('/store', [MutasiStokController::class, 'store'])->name('store');
         });
-        
+
         Route::get('/{id}', [MutasiStokController::class, 'show'])->whereNumber('id')->name('show');
         Route::put('/{id}/update', [MutasiStokController::class, 'update'])
             ->middleware('permission:mutasi_stok.update')
@@ -471,8 +504,33 @@ Route::middleware('auth')->group(function () {
     // 📦 Kas Keuangan
     // ------------------------
     Route::prefix('kas-keuangan')->name('kas-keuangan.')->middleware('permission:cashflows.view')->group(function () {
-        Route::get('/', [CashflowController::class, 'index'])->name('index');
-        
+        // 📋 Daftar kas keuangan
+        Route::get('/', [KasKeuanganController::class, 'index'])->name('index');
+
+        // ➕ Tambah kas manual (pemasukan/pengeluaran internal)
+        Route::middleware('permission:cashflows.create')->group(function () {
+            Route::get('/create', [KasKeuanganController::class, 'create'])->name('create');
+            Route::post('/store', [KasKeuanganController::class, 'store'])->name('store');
+        });
+
+        // 📊 Laporan kas
+        Route::get('/laporan', [KasKeuanganController::class, 'laporan'])->name('laporan');
+
+        // 🧾 Detail kas
+        Route::get('/{id}', [KasKeuanganController::class, 'show'])
+            ->whereNumber('id')
+            ->name('show');
+
+        // 🔢 Hitung saldo kas (penyesuaian kas fisik)
+        Route::post('/hitung-saldo', [KasKeuanganController::class, 'hitungSaldo'])
+            ->middleware('permission:cashflows.create')
+            ->name('hitung-saldo');
+
+        // ❌ Hapus kas (hanya kas manual)
+        Route::delete('/{id}', [KasKeuanganController::class, 'destroy'])
+            ->middleware('permission:cashflows.delete')
+            ->whereNumber('id')
+            ->name('destroy');
     });
 
     // ------------------------
@@ -500,24 +558,24 @@ Route::middleware('auth')->group(function () {
 
 
     Route::prefix('log-activity')
-    ->name('log-activity.')
-    ->middleware('permission:activity_logs.view')
-    ->group(function () {
-        // Tampilkan daftar log
-        Route::get('/', [LogActivityController::class, 'index'])->name('index');
-        Route::post('/', [LogActivityController::class, 'store'])
-            ->name('store');
-        // Detail log tertentu
-        Route::get('/{logActivity}', [LogActivityController::class, 'show'])->name('show');
+        ->name('log-activity.')
+        ->middleware('permission:activity_logs.view')
+        ->group(function () {
+            // Tampilkan daftar log
+            Route::get('/', [LogActivityController::class, 'index'])->name('index');
+            Route::post('/', [LogActivityController::class, 'store'])
+                ->name('store');
+            // Detail log tertentu
+            Route::get('/{logActivity}', [LogActivityController::class, 'show'])->name('show');
 
-        // Hapus log tertentu
-        Route::delete('/{logActivity}', [LogActivityController::class, 'destroy'])->name('destroy');
+            // Hapus log tertentu
+            Route::delete('/{logActivity}', [LogActivityController::class, 'destroy'])->name('destroy');
 
-        // Hapus log lama berdasarkan jumlah hari
-        Route::post('/delete-old', [LogActivityController::class, 'deleteOldLogs'])
-            ->name('delete-old')
-            ->middleware('permission:activity_logs.delete'); // opsional, bisa kamu atur sesuai permission sistemmu
-    });
+            // Hapus log lama berdasarkan jumlah hari
+            Route::post('/delete-old', [LogActivityController::class, 'deleteOldLogs'])
+                ->name('delete-old')
+                ->middleware('permission:activity_logs.delete'); // opsional, bisa kamu atur sesuai permission sistemmu
+        });
 
     // ------------------------
     // 👤 Profil (Semua user bisa akses profil sendiri)

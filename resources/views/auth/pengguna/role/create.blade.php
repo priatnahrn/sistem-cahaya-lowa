@@ -226,7 +226,7 @@
                     'PEMBELIAN': ['pembelian', 'retur_pembelian', 'tagihan_pembelian'],
                     'MANAJEMEN TOKO': ['gudang', 'supplier', 'items', 'kategori_items', 'pelanggan', 'mutasi_stok', 'produksi'],
                     'MANAJEMEN PENGGUNA': ['roles', 'users', 'activity_logs'],
-                    'KEUANGAN': ['kas_keuangan', 'gaji_karyawan'],
+                    'KEUANGAN': ['cashflows', 'payrolls'],
                     'LAINNYA': [ 'profile'],
                 },
 

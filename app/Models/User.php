@@ -22,7 +22,7 @@ class User extends Authenticatable
      */
     protected $fillable = [
         'name',
-        'email',
+        'phone',
         'username',
         'password',
         'avatar',
@@ -51,4 +51,11 @@ class User extends Authenticatable
             'password' => 'hashed',
         ];
     }
+
+    public function kasKeuangan()
+    {
+        return $this->hasMany(KasKeuangan::class);
+    }
+
+
 }

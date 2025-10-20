@@ -75,16 +75,16 @@
                         <p x-show="errors.username" x-text="errors.username" class="text-red-500 text-xs mt-1"></p>
                     </div>
 
-                    {{-- Email --}}
+                    {{-- phone --}}
                     <div>
                         <label class="block text-sm font-medium text-slate-700 mb-2">
-                            Email <span class="text-slate-400 text-xs">(Opsional)</span>
+                            Phone <span class="text-slate-400 text-xs">(Opsional)</span>
                         </label>
-                        <input type="email" x-model="form.email" placeholder="contoh@email.com"
+                        <input type="tel" x-model="form.phone" placeholder="contoh@phone.com"
                             class="w-full px-3 py-2.5 border border-slate-300 rounded-lg
                                focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition"
-                            :class="{ 'border-red-300 focus:border-red-500 focus:ring-red-200': errors.email }">
-                        <p x-show="errors.email" x-text="errors.email" class="text-red-500 text-xs mt-1"></p>
+                            :class="{ 'border-red-300 focus:border-red-500 focus:ring-red-200': errors.phone }">
+                        <p x-show="errors.phone" x-text="errors.phone" class="text-red-500 text-xs mt-1"></p>
                     </div>
                 </div>
             </div>
@@ -262,7 +262,7 @@
                 form: {
                     name: '{{ $user->name }}',
                     username: '{{ $user->username }}',
-                    email: '{{ $user->email ?? '' }}',
+                    phone: '{{ $user->phone ?? '' }}',
                     password: '',
                     password_confirmation: '',
                     roles: @json($userRoles)
@@ -305,11 +305,11 @@
                         this.form.username.trim().length >= 6
                     );
 
-                    // Email validation (optional but must be valid if filled)
-                    let emailValid = true;
-                    if (this.form.email.trim() !== '') {
-                        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-                        emailValid = emailRegex.test(this.form.email);
+                    // phone validation (optional but must be valid if filled)
+                    let phoneValid = true;
+                    if (this.form.phone.trim() !== '') {
+                        const phoneRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                        phoneValid = phoneRegex.test(this.form.phone);
                     }
 
                     // Password validation (only if changePassword is true)
@@ -321,7 +321,7 @@
                         );
                     }
 
-                    return basicValid && emailValid && passwordValid;
+                    return basicValid && phoneValid && passwordValid;
                 },
 
                 async save() {
@@ -336,7 +336,7 @@
                     const payload = {
                         name: this.form.name,
                         username: this.form.username,
-                        email: this.form.email,
+                        phone: this.form.phone,
                         roles: this.form.roles,
                         _method: 'PUT'
                     };

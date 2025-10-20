@@ -14,7 +14,7 @@
         {{-- ACTION BAR --}}
         <div
             class="bg-white border border-slate-200 rounded-xl px-6 py-4 flex flex-col md:flex-row md:items-center md:justify-end gap-3">
-           
+
 
             {{-- RIGHT: Search & Filter --}}
             <div class="flex items-center gap-3">
@@ -121,7 +121,9 @@
                                 <td class="px-4 py-3 font-medium text-[#344579]" x-text="r.no_produksi"></td>
                                 <td class="px-4 py-3" x-text="r.tanggal_penjualan">
                                 </td>
-                                <td class="px-4 py-3 text-green-600" x-text="r.pelanggan"></td>
+                                <a href="dropdownData.url">
+                                    <td class="px-4 py-3 text-green-600" x-text="r.pelanggan"> </td>
+                                </a>
                                 <td class="px-4 py-3">
                                     <span
                                         class="inline-flex items-center gap-2 text-xs font-medium px-2.5 py-1 rounded-full"
@@ -177,19 +179,6 @@
                     class="block text-left px-4 py-2 text-sm hover:bg-slate-50 flex items-center gap-2 text-slate-700">
                     <i class="fa-solid fa-eye text-blue-500"></i> Detail
                 </a>
-
-                {{-- Update Status Buttons: Hanya user dengan produksi.update bisa akses --}}
-                @can('produksi.update')
-                    <button @click="updateStatus(dropdownData.id, 'in_progress')"
-                        class="w-full text-left px-4 py-2 text-sm hover:bg-blue-50 flex items-center gap-2 text-blue-600">
-                        <i class="fa-solid fa-industry"></i> Tandai Produksi
-                    </button>
-
-                    <button @click="updateStatus(dropdownData.id, 'completed')"
-                        class="w-full text-left px-4 py-2 text-sm hover:bg-green-50 flex items-center gap-2 text-green-600">
-                        <i class="fa-solid fa-circle-check"></i> Tandai Selesai
-                    </button>
-                @endcan
             </div>
 
         </div>

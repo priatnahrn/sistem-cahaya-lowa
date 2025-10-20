@@ -18,7 +18,7 @@ class PelangganController extends Controller
         // ✅ Check permission view
         $this->authorize('pelanggan.view');
 
-        $pelanggans = Pelanggan::all();
+        $pelanggans = Pelanggan::orderBy('nama_pelanggan')->get();
         return view('auth.pelanggan.index', compact('pelanggans'));
     }
 
@@ -66,9 +66,25 @@ class PelangganController extends Controller
         ]);
 
         try {
-            $pelanggan = Pelanggan::create($validated);
+            $pelanggan = Pelanggan::create([
+                'nama_pelanggan' => $validated['nama_pelanggan'],
+                'kontak' => $validated['kontak'] ?? null,
+                'alamat' => $validated['alamat'] ?? null,
+                'level' => $validated['level'],
+                'created_by' => Auth::id(),
+                'updated_by' => Auth::id(),
+            ]);
 
-            // 🧩 Selalu kirim JSON kalau request dari fetch (application/json)
+            // ✅ Log activity untuk semua request
+            LogActivity::create([
+                'user_id'       => Auth::id(),
+                'activity_type' => 'create_pelanggan',
+                'description'   => 'Created pelanggan: ' . $pelanggan->nama_pelanggan,
+                'ip_address'    => $request->ip(),
+                'user_agent'    => $request->userAgent(),
+            ]);
+
+            // 🧩 Kirim JSON kalau request dari fetch (application/json)
             if ($request->expectsJson() || $request->isJson()) {
                 return response()->json([
                     'id' => $pelanggan->id,
@@ -79,25 +95,21 @@ class PelangganController extends Controller
                 ], 201);
             }
 
-            LogActivity::create([
-                'user_id'       => Auth::id(),
-                'activity_type' => 'create_pelanggan',
-                'description'   => 'Created pelanggan: ' . $pelanggan->nama_pelanggan,
-                'ip_address'    => $request->ip(),
-                'user_agent'    => $request->userAgent(),
-            ]);
-
             // Fallback: request normal (via browser form)
             return redirect()->route('pelanggan.index')
                 ->with('success', 'Pelanggan berhasil dibuat.');
         } catch (\Exception $e) {
-            Log::error('Gagal menyimpan pelanggan: ' . $e->getMessage());
+            Log::error('Error store pelanggan: ' . $e->getMessage());
 
             if ($request->expectsJson() || $request->isJson()) {
-                return response()->json(['message' => 'Terjadi kesalahan saat menyimpan data.'], 500);
+                return response()->json([
+                    'message' => 'Terjadi kesalahan saat menyimpan data: ' . $e->getMessage()
+                ], 500);
             }
 
-            return back()->withErrors(['error' => 'Terjadi kesalahan saat menyimpan data.'])->withInput();
+            return back()
+                ->withErrors(['error' => 'Terjadi kesalahan saat menyimpan data: ' . $e->getMessage()])
+                ->withInput();
         }
     }
 
@@ -107,8 +119,8 @@ class PelangganController extends Controller
      */
     public function show($id)
     {
-        // ✅ Tidak perlu authorize - user dengan permission view sudah bisa akses
-        // User tanpa permission update tetap bisa lihat (read-only)
+        // ✅ User dengan permission view sudah bisa akses via middleware
+        $this->authorize('pelanggan.view');
 
         $pelanggan = Pelanggan::findOrFail($id);
         return view('auth.pelanggan.show', compact('pelanggan'));
@@ -129,7 +141,13 @@ class PelangganController extends Controller
         ]);
 
         try {
-            $pelanggan->update($validated);
+            $pelanggan->update([
+                'nama_pelanggan' => $validated['nama_pelanggan'],
+                'kontak' => $validated['kontak'] ?? null,
+                'alamat' => $validated['alamat'] ?? null,
+                'level' => $validated['level'],
+                'updated_by' => Auth::id(),
+            ]);
 
             LogActivity::create([
                 'user_id'       => Auth::id(),
@@ -138,11 +156,15 @@ class PelangganController extends Controller
                 'ip_address'    => $request->ip(),
                 'user_agent'    => $request->userAgent(),
             ]);
+
             return redirect()->route('pelanggan.index')
                 ->with('success', 'Pelanggan berhasil diperbarui.');
         } catch (\Exception $e) {
-            Log::error('Gagal memperbarui pelanggan: ' . $e->getMessage());
-            return back()->withErrors(['error' => 'Terjadi kesalahan saat memperbarui data.'])->withInput();
+            Log::error('Error update pelanggan: ' . $e->getMessage(), ['id' => $id]);
+            
+            return back()
+                ->withErrors(['error' => 'Terjadi kesalahan saat memperbarui data: ' . $e->getMessage()])
+                ->withInput();
         }
     }
 
@@ -153,7 +175,27 @@ class PelangganController extends Controller
 
         try {
             $pelanggan = Pelanggan::findOrFail($id);
+
+            // Optional: Check jika pelanggan masih memiliki transaksi
+            // if ($pelanggan->penjualans()->count() > 0) {
+            //     return response()->json([
+            //         'success' => false,
+            //         'message' => 'Pelanggan tidak dapat dihapus karena masih memiliki transaksi penjualan.'
+            //     ], 422);
+            // }
+
+            $pelangganName = $pelanggan->nama_pelanggan;
+            
             $pelanggan->delete();
+
+            // ✅ Log activity sebelum return
+            LogActivity::create([
+                'user_id'       => Auth::id(),
+                'activity_type' => 'delete_pelanggan',
+                'description'   => 'Deleted pelanggan: ' . $pelangganName,
+                'ip_address'    => request()->ip(),
+                'user_agent'    => request()->userAgent(),
+            ]);
 
             // ✅ Return JSON untuk AJAX request
             if (request()->expectsJson()) {
@@ -163,27 +205,20 @@ class PelangganController extends Controller
                 ]);
             }
 
-            LogActivity::create([
-                'user_id'       => Auth::id(),
-                'activity_type' => 'delete_pelanggan',
-                'description'   => 'Deleted pelanggan: ' . $pelanggan->nama_pelanggan,
-                'ip_address'    => request()->ip(),
-                'user_agent'    => request()->userAgent(),
-            ]);
-
             return redirect()->route('pelanggan.index')
                 ->with('success', 'Pelanggan berhasil dihapus.');
         } catch (\Exception $e) {
-            Log::error('Gagal menghapus pelanggan: ' . $e->getMessage());
+            Log::error('Error delete pelanggan: ' . $e->getMessage(), ['id' => $id]);
 
             if (request()->expectsJson()) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Terjadi kesalahan saat menghapus data.'
+                    'message' => 'Terjadi kesalahan saat menghapus data: ' . $e->getMessage()
                 ], 500);
             }
 
-            return back()->withErrors(['error' => 'Terjadi kesalahan saat menghapus data.']);
+            return back()
+                ->withErrors(['error' => 'Terjadi kesalahan saat menghapus data: ' . $e->getMessage()]);
         }
     }
 }

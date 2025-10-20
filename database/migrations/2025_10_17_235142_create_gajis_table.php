@@ -16,8 +16,8 @@ return new class extends Migration
             $table->decimal('utang', 15, 2)->default(0);
             $table->decimal('saldo', 15, 2);
             $table->string('keterangan')->nullable();
-            $table->foreignId('created_by')->constrained('users')->onDelete('cascade');
-            $table->foreignId('updated_by')->constrained('users')->onDelete('cascade');
+            $table->foreignId('created_by')->nullable()->constrained('users')->onDelete('cascade');
+            $table->foreignId('updated_by')->nullable()->constrained('users')->onDelete('cascade');
             $table->timestamps();
         });
     }

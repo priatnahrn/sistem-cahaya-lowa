@@ -198,13 +198,12 @@ class ReturPembelianController extends Controller
         return view('auth.pembelian.retur-pembelian.show', compact('retur'));
     }
 
-    // 📌 update retur (dengan handling stok yang benar)
+    // 📌 update retur (FIXED VERSION - dengan handling stok yang BENAR)
     public function update(Request $request, $id)
     {
-        // ✅ Check permission update
         $this->authorize('retur_pembelian.update');
 
-        $retur = ReturPembelian::with('items')->findOrFail($id);
+        $retur = ReturPembelian::with('items.itemPembelian')->findOrFail($id);
 
         $request->validate([
             'tanggal' => 'required|date',
@@ -228,33 +227,14 @@ class ReturPembelianController extends Controller
                 'status_baru' => $statusBaru,
             ]);
 
-            // 🔹 ROLLBACK STOK jika status lama = 'taken'
-            // Ini handle case: taken → pending atau taken → refund
+            // 🔹 STEP 1: ROLLBACK STOK dari items LAMA jika status lama = 'taken'
             if ($statusLama === 'taken') {
                 foreach ($retur->items as $oldItem) {
-                    $itemGudang = ItemGudang::where('item_id', $oldItem->itemPembelian->item_id)
-                        ->where('gudang_id', $oldItem->itemPembelian->gudang_id)
-                        ->where('satuan_id', $oldItem->itemPembelian->satuan_id)
-                        ->first();
-
-                    if ($itemGudang) {
-                        $stokLama = $itemGudang->stok;
-                        $itemGudang->stok += $oldItem->jumlah; // Kembalikan stok
-                        $itemGudang->total_stok = $itemGudang->stok * ($itemGudang->satuan->jumlah ?? 1);
-                        $itemGudang->save();
-
-                        Log::info('📦 Rollback stok (status lama: taken → ' . $statusBaru . ')', [
-                            'item_id' => $oldItem->itemPembelian->item_id,
-                            'gudang_id' => $oldItem->itemPembelian->gudang_id,
-                            'jumlah_dikembalikan' => $oldItem->jumlah,
-                            'stok_lama' => $stokLama,
-                            'stok_baru' => $itemGudang->stok,
-                        ]);
-                    }
+                    $this->restoreStock($oldItem);
                 }
             }
 
-            // 🔹 Update header retur
+            // 🔹 STEP 2: Update header retur
             $retur->update([
                 'tanggal'    => $request->tanggal,
                 'catatan'    => $request->catatan,
@@ -263,15 +243,18 @@ class ReturPembelianController extends Controller
                 'updated_by' => Auth::id(),
             ]);
 
-            // 🔹 Hapus items lama dan insert ulang
+            // 🔹 STEP 3: Hapus items lama
             $retur->items()->delete();
 
+            // 🔹 STEP 4: Insert items BARU
+            $newItems = [];
             foreach ($request->items as $row) {
                 $itemPembelian = ItemPembelian::findOrFail($row['item_pembelian_id']);
                 $jumlah   = (float) $row['jumlah'];
                 $harga    = (float) $itemPembelian->harga_beli;
                 $subtotal = $jumlah * $harga;
 
+                // Validasi: jumlah retur tidak boleh melebihi jumlah pembelian
                 if ($jumlah > $itemPembelian->jumlah) {
                     DB::rollBack();
                     return response()->json([
@@ -282,41 +265,21 @@ class ReturPembelianController extends Controller
                     ], 422);
                 }
 
-                ItemReturPembelian::create([
+                $newItem = ItemReturPembelian::create([
                     'retur_pembelian_id' => $retur->id,
                     'item_pembelian_id'  => $itemPembelian->id,
                     'jumlah'             => $jumlah,
                     'harga_beli'         => $harga,
                     'sub_total'          => $subtotal,
                 ]);
+
+                $newItems[] = $newItem;
             }
 
-            // 🔹 KURANGI STOK jika status baru = 'taken'
-            // Ini handle case: pending → taken atau refund → taken
+            // 🔹 STEP 5: KURANGI STOK untuk items BARU jika status baru = 'taken'
             if ($statusBaru === 'taken') {
-                foreach ($request->items as $row) {
-                    $itemPembelian = ItemPembelian::findOrFail($row['item_pembelian_id']);
-                    $jumlah = (float) $row['jumlah'];
-
-                    $itemGudang = ItemGudang::where('item_id', $itemPembelian->item_id)
-                        ->where('gudang_id', $itemPembelian->gudang_id)
-                        ->where('satuan_id', $itemPembelian->satuan_id)
-                        ->first();
-
-                    if ($itemGudang) {
-                        $stokLama = $itemGudang->stok;
-                        $itemGudang->stok = max(0, $itemGudang->stok - $jumlah);
-                        $itemGudang->total_stok = $itemGudang->stok * ($itemGudang->satuan->jumlah ?? 1);
-                        $itemGudang->save();
-
-                        Log::info('📉 Stok dikurangi (status baru: taken)', [
-                            'item_id' => $itemPembelian->item_id,
-                            'gudang_id' => $itemPembelian->gudang_id,
-                            'jumlah_retur' => $jumlah,
-                            'stok_lama' => $stokLama,
-                            'stok_baru' => $itemGudang->stok,
-                        ]);
-                    }
+                foreach ($newItems as $newItem) {
+                    $this->reduceStock($newItem);
                 }
             }
 
@@ -352,6 +315,64 @@ class ReturPembelianController extends Controller
                 'message' => 'Gagal update retur',
                 'error'   => $e->getMessage()
             ], 500);
+        }
+    }
+
+    // 📌 Helper: Kembalikan stok (dipanggil saat rollback dari status 'taken')
+    private function restoreStock($itemRetur)
+    {
+        $itemPembelian = $itemRetur->itemPembelian;
+
+        $itemGudang = ItemGudang::where('item_id', $itemPembelian->item_id)
+            ->where('gudang_id', $itemPembelian->gudang_id)
+            ->where('satuan_id', $itemPembelian->satuan_id)
+            ->first();
+
+        if ($itemGudang) {
+            $stokLama = $itemGudang->stok;
+            $itemGudang->stok += $itemRetur->jumlah; // Kembalikan stok
+            $itemGudang->total_stok = $itemGudang->stok * ($itemGudang->satuan->jumlah ?? 1);
+            $itemGudang->save();
+
+            Log::info('📦 Stok dikembalikan', [
+                'item_id' => $itemPembelian->item_id,
+                'gudang_id' => $itemPembelian->gudang_id,
+                'jumlah_dikembalikan' => $itemRetur->jumlah,
+                'stok_lama' => $stokLama,
+                'stok_baru' => $itemGudang->stok,
+            ]);
+        }
+    }
+
+    // 📌 Helper: Kurangi stok (dipanggil saat status berubah ke 'taken')
+    private function reduceStock($itemRetur)
+    {
+        $itemPembelian = $itemRetur->itemPembelian;
+
+        $itemGudang = ItemGudang::where('item_id', $itemPembelian->item_id)
+            ->where('gudang_id', $itemPembelian->gudang_id)
+            ->where('satuan_id', $itemPembelian->satuan_id)
+            ->first();
+
+        if ($itemGudang) {
+            $stokLama = $itemGudang->stok;
+
+            // Validasi: stok tidak boleh negatif
+            if ($itemGudang->stok < $itemRetur->jumlah) {
+                throw new \Exception("Stok tidak cukup untuk item {$itemPembelian->item->nama_item}. Stok tersedia: {$itemGudang->stok}, Dibutuhkan: {$itemRetur->jumlah}");
+            }
+
+            $itemGudang->stok -= $itemRetur->jumlah; // Kurangi stok
+            $itemGudang->total_stok = $itemGudang->stok * ($itemGudang->satuan->jumlah ?? 1);
+            $itemGudang->save();
+
+            Log::info('📉 Stok dikurangi', [
+                'item_id' => $itemPembelian->item_id,
+                'gudang_id' => $itemPembelian->gudang_id,
+                'jumlah_retur' => $itemRetur->jumlah,
+                'stok_lama' => $stokLama,
+                'stok_baru' => $itemGudang->stok,
+            ]);
         }
     }
 

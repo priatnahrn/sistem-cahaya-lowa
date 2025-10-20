@@ -67,8 +67,6 @@
                        appearance-none pr-8 bg-white">
                             <option value="">-- Pilih Level --</option>
                             <option value="retail" {{ old('level') == 'retail' ? 'selected' : '' }}>Retail</option>
-                            <option value="partai_kecil" {{ old('level') == 'partai_kecil' ? 'selected' : '' }}>Partai
-                                Kecil</option>
                             <option value="grosir" {{ old('level') == 'grosir' ? 'selected' : '' }}>Grosir</option>
                         </select>
 

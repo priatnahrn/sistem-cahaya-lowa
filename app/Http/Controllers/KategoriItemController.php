@@ -50,14 +50,17 @@ class KategoriItemController extends Controller
 
         $validated = $request->validate([
             'nama_kategori' => 'required|string|max:255|unique:kategori_items,nama_kategori',
-            'deskripsi' => 'nullable|string',
         ], [
             'nama_kategori.required' => 'Nama kategori wajib diisi.',
             'nama_kategori.unique' => 'Nama kategori sudah digunakan.',
         ]);
 
         try {
-            KategoriItem::create($validated);
+            KategoriItem::create([
+                'nama_kategori' => $validated['nama_kategori'],
+                'created_by' => Auth::id(),
+                'updated_by' => Auth::id(),
+            ]);
 
             LogActivity::create([
                 'user_id'       => Auth::id(),
@@ -104,14 +107,16 @@ class KategoriItemController extends Controller
 
         $validated = $request->validate([
             'nama_kategori' => 'required|string|max:255|unique:kategori_items,nama_kategori,' . $id,
-            'deskripsi' => 'nullable|string',
         ], [
             'nama_kategori.required' => 'Nama kategori wajib diisi.',
             'nama_kategori.unique' => 'Nama kategori sudah digunakan.',
         ]);
 
         try {
-            $category->update($validated);
+            $category->update([
+                'nama_kategori' => $validated['nama_kategori'],
+                'updated_by' => Auth::id(),
+            ]);
 
             LogActivity::create([
                 'user_id'       => Auth::id(),
@@ -151,12 +156,13 @@ class KategoriItemController extends Controller
                 ], 422);
             }
 
+            $categoryName = $category->nama_kategori;
             $category->delete();
 
             LogActivity::create([
                 'user_id'       => Auth::id(),
                 'activity_type' => 'delete_kategori_item',
-                'description'   => 'Deleted kategori item: ' . $category->nama_kategori,
+                'description'   => 'Deleted kategori item: ' . $categoryName,
                 'ip_address'    => request()->ip(),
                 'user_agent'    => request()->userAgent(),
             ]);

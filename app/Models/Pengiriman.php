@@ -15,6 +15,7 @@ class Pengiriman extends Model
         'tanggal_pengiriman',
         'status_pengiriman',
         'created_by',
+        'updated_by',
         'supir'
     ];
 
@@ -28,5 +29,11 @@ class Pengiriman extends Model
     public function creator()
     {
         return $this->belongsTo(User::class, 'created_by');
+    }
+
+    // Relasi ke User (pembuat pembaruan terakhir)
+    public function updater()
+    {
+        return $this->belongsTo(User::class, 'updated_by');
     }
 }

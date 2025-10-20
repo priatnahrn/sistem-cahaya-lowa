@@ -15,6 +15,8 @@ class MutasiStok extends Model
         'gudang_asal_id',
         'gudang_tujuan_id',
         'keterangan',
+        'created_by',
+        'updated_by',
     ];
 
     // Relasi ke tabel gudang (asal & tujuan)
@@ -38,4 +40,9 @@ class MutasiStok extends Model
     {
         return $this->belongsTo(User::class, 'created_by');
     }
+    public function updater()
+    {
+        return $this->belongsTo(User::class, 'updated_by');
+    }
 }
+

@@ -10,13 +10,24 @@ class KategoriItem extends Model
     
     protected $fillable = [
         'nama_kategori',
-        'deskripsi',
+        'created_by',
+        'updated_by',
     ];
 
 
     public function items()
     {
         return $this->hasMany(Item::class);
+    }
+
+    public function creator()
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
+
+    public function updater()
+    {
+        return $this->belongsTo(User::class, 'updated_by');
     }
     
 

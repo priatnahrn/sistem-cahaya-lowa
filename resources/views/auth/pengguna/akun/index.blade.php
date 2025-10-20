@@ -104,10 +104,10 @@
                     </select>
                 </div>
 
-                {{-- Filter Email --}}
+                {{-- Filter phone --}}
                 <div>
-                    <label class="block text-sm font-medium text-slate-700 mb-2">Email</label>
-                    <input type="text" placeholder="Cari email..." x-model="filters.email"
+                    <label class="block text-sm font-medium text-slate-700 mb-2">phone</label>
+                    <input type="text" placeholder="Cari phone..." x-model="filters.phone"
                         class="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm text-slate-700
                        focus:outline-none focus:ring-2 focus:ring-[#344579]/20 focus:border-[#344579]">
                 </div>
@@ -149,9 +149,9 @@
                                 Username
                                 <i class="fa-solid" :class="sortIcon('username')"></i>
                             </th>
-                            <th class="px-4 py-3 text-left cursor-pointer" @click="toggleSort('email')">
-                                Email
-                                <i class="fa-solid" :class="sortIcon('email')"></i>
+                            <th class="px-4 py-3 text-left cursor-pointer" @click="toggleSort('phone')">
+                                Phone
+                                <i class="fa-solid" :class="sortIcon('phone')"></i>
                             </th>
                             <th class="px-4 py-3">Role</th>
                             <th class="px-4 py-3 cursor-pointer" @click="toggleSort('created_at')">
@@ -168,7 +168,7 @@
                                 <td class="px-4 py-3 text-center" x-text="(currentPage-1)*pageSize + idx + 1"></td>
                                 <td class="px-4 py-3 font-medium text-slate-800" x-text="r.name"></td>
                                 <td class="px-4 py-3 text-slate-600" x-text="r.username"></td>
-                                <td class="px-4 py-3 text-slate-600" x-text="r.email"></td>
+                                <td class="px-4 py-3 text-slate-600" x-text="r.phone"></td>
                                 <td class="px-4 py-3 text-center">
                                     <template x-for="role in r.roles" :key="role">
                                         <span
@@ -323,7 +323,7 @@
                     'id' => $u->id,
                     'name' => $u->name,
                     'username' => $u->username,
-                    'email' => $u->email,
+                    'phone' => $u->phone,
                     'roles' => $u->roles->pluck('name')->toArray(),
                     'created_at' => $u->created_at?->timezone('Asia/Makassar')->format('Y-m-d H:i:s'),
                     'edit_url' => route('users.edit', $u->id),
@@ -339,7 +339,7 @@
                 q: '',
                 filters: {
                     role: '',
-                    email: '',
+                    phone: '',
                     username: ''
                 },
 
@@ -394,11 +394,11 @@
                     const q = this.q.trim().toLowerCase();
 
                     let list = this.data.filter(r => {
-                        if (q && !(`${r.name} ${r.username} ${r.email}`.toLowerCase().includes(q)))
+                        if (q && !(`${r.name} ${r.username} ${r.phone}`.toLowerCase().includes(q)))
                             return false;
                         if (this.filters.role && !r.roles.includes(this.filters.role))
                             return false;
-                        if (this.filters.email && !r.email.toLowerCase().includes(this.filters.email.toLowerCase()))
+                        if (this.filters.phone && !r.phone.toLowerCase().includes(this.filters.phone.toLowerCase()))
                             return false;
                         if (this.filters.username && !r.username.toLowerCase().includes(this.filters.username
                                 .toLowerCase()))
@@ -475,13 +475,13 @@
                 },
 
                 hasActiveFilters() {
-                    return this.filters.role || this.filters.email || this.filters.username;
+                    return this.filters.role || this.filters.phone || this.filters.username;
                 },
 
                 activeFiltersCount() {
                     let count = 0;
                     if (this.filters.role) count++;
-                    if (this.filters.email) count++;
+                    if (this.filters.phone) count++;
                     if (this.filters.username) count++;
                     return count;
                 },
@@ -489,7 +489,7 @@
                 resetFilters() {
                     this.filters = {
                         role: '',
-                        email: '',
+                        phone: '',
                         username: ''
                     };
                     this.q = '';

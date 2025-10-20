@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\KasKeuangan; // ✅ TAMBAHAN IMPORT
 use App\Models\LogActivity;
 use App\Models\Pembayaran;
 use App\Models\Penjualan;
@@ -22,7 +23,6 @@ class PembayaranController extends Controller
      */
     public function index(Request $request)
     {
-        // ✅ Check permission view
         $this->authorize('pembayaran.view');
 
         $pembayarans = Pembayaran::with(['penjualan.pelanggan'])
@@ -33,15 +33,13 @@ class PembayaranController extends Controller
     }
 
     /**
-     * (Opsional) Ekspor data ke CSV sederhana.
+     * Ekspor data ke CSV sederhana.
      */
     protected function export()
     {
-        // ✅ Check permission view (untuk export)
         $this->authorize('pembayaran.view');
 
         $fileName = 'pembayaran_' . now()->format('Ymd_His') . '.csv';
-
         $pembayarans = Pembayaran::with('penjualan')->get();
 
         $headers = [
@@ -73,34 +71,19 @@ class PembayaranController extends Controller
 
     /**
      * Tampilkan detail pembayaran.
-     * ✅ Semua user bisa lihat detail (untuk read-only mode)
      */
     public function show($id)
     {
-        // ✅ Tidak perlu authorize - user dengan permission view sudah bisa akses
-        // User tanpa permission update tetap bisa lihat (read-only)
-
         $pembayaran = Pembayaran::with(['penjualan'])->findOrFail($id);
         return view('auth.kasir.pembayaran.show', compact('pembayaran'));
     }
 
     /**
-     * Tampilkan form tambah pembayaran.
-     */
-    public function create()
-    {
-        // ✅ Check permission create
-        $this->authorize('pembayaran.create');
-
-        return view('auth.kasir.pembayaran.create');
-    }
-
-    /**
      * Simpan data pembayaran baru.
+     * ✅ DENGAN AUTO CREATE KAS KEUANGAN
      */
     public function store(Request $request)
     {
-        // ✅ Check permission create
         $this->authorize('pembayaran.create');
 
         $request->validate([
@@ -119,7 +102,7 @@ class PembayaranController extends Controller
             $isAdjustment = $request->boolean('is_adjustment', false);
             $adjustmentAmount = $request->input('adjustment_amount', 0);
 
-            // ✅ FIX: Hitung HANYA pembayaran positif (exclude pengembalian)
+            // Hitung HANYA pembayaran positif (exclude pengembalian)
             $totalPembayaranSebelumnya = Pembayaran::where('penjualan_id', $penjualan->id)
                 ->where('jumlah_bayar', '>', 0)
                 ->sum('jumlah_bayar');
@@ -136,6 +119,7 @@ class PembayaranController extends Controller
             if ($isAdjustment) {
                 // === ADJUSTMENT LOGIC ===
                 if ($adjustmentAmount > 0) {
+                    // Kekurangan → customer bayar tambahan
                     $jumlahBayar = $request->jumlah_bayar;
 
                     if ($jumlahBayar < $adjustmentAmount) {
@@ -161,11 +145,19 @@ class PembayaranController extends Controller
                         'updated_by' => Auth::id(),
                     ]);
 
+                    // ✅ AUTO CREATE KAS KEUANGAN - PEMASUKAN
+                    KasKeuangan::create([
+                        'user_id' => Auth::id(),
+                        'pembayarans_id' => $pembayaran->id,
+                        'penjualans_id' => $penjualan->id,
+                        'jenis' => 'masuk',
+                        'nominal' => $jumlahBayar, // nominal yang dibayar
+                        'keterangan' => "Pembayaran adjustment {$penjualan->no_faktur} - " . $this->getMethodLabel($request->method),
+                    ]);
+
                     Pembayaran::where('penjualan_id', $penjualan->id)->update(['sisa' => $sisa]);
 
-                    $penjualan->update([
-                        'status_bayar' => $isLunas ? 'paid' : 'unpaid',
-                    ]);
+                    $penjualan->update(['status_bayar' => $isLunas ? 'paid' : 'unpaid']);
 
                     if ($tagihan = TagihanPenjualan::where('penjualan_id', $penjualan->id)->first()) {
                         $tagihan->update([
@@ -173,7 +165,9 @@ class PembayaranController extends Controller
                             'sisa' => $sisa,
                         ]);
                     }
+
                 } elseif ($adjustmentAmount < 0) {
+                    // Kelebihan → pengembalian dana
                     $pengembalian = abs($adjustmentAmount);
 
                     $pembayaran = Pembayaran::create([
@@ -187,11 +181,19 @@ class PembayaranController extends Controller
                         'updated_by' => Auth::id(),
                     ]);
 
+                    // ✅ AUTO CREATE KAS KEUANGAN - PENGELUARAN
+                    KasKeuangan::create([
+                        'user_id' => Auth::id(),
+                        'pembayarans_id' => $pembayaran->id,
+                        'penjualans_id' => $penjualan->id,
+                        'jenis' => 'keluar',
+                        'nominal' => $pengembalian,
+                        'keterangan' => "Pengembalian dana {$penjualan->no_faktur} - Cash",
+                    ]);
+
                     Pembayaran::where('penjualan_id', $penjualan->id)->update(['sisa' => 0]);
 
-                    $penjualan->update([
-                        'status_bayar' => 'paid',
-                    ]);
+                    $penjualan->update(['status_bayar' => 'paid']);
 
                     if ($tagihan = TagihanPenjualan::where('penjualan_id', $penjualan->id)->first()) {
                         $tagihan->update([
@@ -199,6 +201,7 @@ class PembayaranController extends Controller
                             'sisa' => 0,
                         ]);
                     }
+
                 } else {
                     DB::rollBack();
                     return response()->json([
@@ -206,6 +209,7 @@ class PembayaranController extends Controller
                         'message' => 'Tidak ada perubahan total yang memerlukan adjustment.',
                     ], 400);
                 }
+
             } else {
                 // === PEMBAYARAN NORMAL ===
                 $jumlahBayar = min($request->jumlah_bayar, $penjualan->total - $totalPembayaranSebelumnya);
@@ -224,11 +228,20 @@ class PembayaranController extends Controller
                     'updated_by' => Auth::id(),
                 ]);
 
+                // ✅ AUTO CREATE KAS KEUANGAN - PEMASUKAN
+                // ⚠️ PENTING: Yang dicatat adalah jumlahBayar (sudah di-cap max ke total penjualan)
+                KasKeuangan::create([
+                    'user_id' => Auth::id(),
+                    'pembayarans_id' => $pembayaran->id,
+                    'penjualans_id' => $penjualan->id,
+                    'jenis' => 'masuk',
+                    'nominal' => $jumlahBayar, // ✅ ini sudah max ke total penjualan
+                    'keterangan' => "Pembayaran {$penjualan->no_faktur} - " . $this->getMethodLabel($request->method),
+                ]);
+
                 Pembayaran::where('penjualan_id', $penjualan->id)->update(['sisa' => $sisa]);
 
-                $penjualan->update([
-                    'status_bayar' => $isLunas ? 'paid' : 'unpaid',
-                ]);
+                $penjualan->update(['status_bayar' => $isLunas ? 'paid' : 'unpaid']);
 
                 if ($tagihan = TagihanPenjualan::where('penjualan_id', $penjualan->id)->first()) {
                     $tagihan->update([
@@ -239,11 +252,11 @@ class PembayaranController extends Controller
             }
 
             LogActivity::create([
-                'user_id'       => Auth::id(),
+                'user_id' => Auth::id(),
                 'activity_type' => 'create_pembayaran',
-                'description'   => ($isAdjustment ? 'Adjustment pembayaran' : 'Pembayaran baru') . ' untuk penjualan: ' . $penjualan->no_faktur,
-                'ip_address'    => $request->ip(),
-                'user_agent'    => $request->userAgent(),
+                'description' => ($isAdjustment ? 'Adjustment pembayaran' : 'Pembayaran baru') . ' untuk penjualan: ' . $penjualan->no_faktur,
+                'ip_address' => $request->ip(),
+                'user_agent' => $request->userAgent(),
             ]);
 
             DB::commit();
@@ -255,6 +268,7 @@ class PembayaranController extends Controller
                     'Pembayaran berhasil disimpan dan status disinkronkan.',
                 'data' => $pembayaran,
             ]);
+
         } catch (\Throwable $e) {
             DB::rollBack();
             Log::error('Store Pembayaran error: ' . $e->getMessage());
@@ -271,7 +285,6 @@ class PembayaranController extends Controller
      */
     public function update(Request $request, $id)
     {
-        // ✅ Check permission update
         $this->authorize('pembayaran.update');
 
         $pembayaran = Pembayaran::findOrFail($id);
@@ -290,6 +303,21 @@ class PembayaranController extends Controller
                 'updated_by' => Auth::id(),
             ]);
 
+            // ✅ UPDATE KAS KEUANGAN juga (keterangan method)
+            if ($kas = KasKeuangan::where('pembayarans_id', $pembayaran->id)->first()) {
+                $kas->update([
+                    'keterangan' => "Pembayaran {$pembayaran->penjualan->no_faktur} - " . $this->getMethodLabel($request->method),
+                ]);
+            }
+
+            LogActivity::create([
+                'user_id' => Auth::id(),
+                'activity_type' => 'update_pembayaran',
+                'description' => 'Updated pembayaran: ' . ($pembayaran->penjualan->no_faktur ?? '-'),
+                'ip_address' => $request->ip(),
+                'user_agent' => $request->userAgent(),
+            ]);
+
             if ($request->expectsJson()) {
                 return response()->json([
                     'success' => true,
@@ -297,16 +325,9 @@ class PembayaranController extends Controller
                 ]);
             }
 
-                LogActivity::create([
-                    'user_id'       => Auth::id(),
-                    'activity_type' => 'update_pembayaran',
-                    'description'   => 'Updated pembayaran: ' . $pembayaran->no_transaksi,
-                    'ip_address'    => $request->ip(),
-                    'user_agent'    => $request->userAgent(),
-                ]);
-
             return redirect()->route('pembayaran.index')
                 ->with('success', 'Pembayaran berhasil diperbarui.');
+
         } catch (\Exception $e) {
             Log::error('Update Pembayaran error: ' . $e->getMessage());
 
@@ -323,15 +344,25 @@ class PembayaranController extends Controller
 
     /**
      * Hapus data pembayaran.
+     * ✅ Kas Keuangan akan ikut terhapus (cascade)
      */
     public function destroy($id)
     {
-        // ✅ Check permission delete
         $this->authorize('pembayaran.delete');
 
         try {
             $pembayaran = Pembayaran::findOrFail($id);
+            
+            // ✅ Kas akan otomatis terhapus karena onDelete('cascade')
             $pembayaran->delete();
+
+            LogActivity::create([
+                'user_id' => Auth::id(),
+                'activity_type' => 'delete_pembayaran',
+                'description' => 'Deleted pembayaran: ' . ($pembayaran->penjualan->no_faktur ?? '-'),
+                'ip_address' => request()->ip(),
+                'user_agent' => request()->userAgent(),
+            ]);
 
             if (request()->expectsJson()) {
                 return response()->json([
@@ -340,16 +371,9 @@ class PembayaranController extends Controller
                 ]);
             }
 
-            LogActivity::create([
-                'user_id'       => Auth::id(),
-                'activity_type' => 'delete_pembayaran',
-                'description'   => 'Deleted pembayaran: ' . $pembayaran->no_transaksi,
-                'ip_address'    => request()->ip(),
-                'user_agent'    => request()->userAgent(),
-            ]);
-
             return redirect()->route('pembayaran.index')
                 ->with('success', 'Pembayaran berhasil dihapus.');
+
         } catch (\Exception $e) {
             Log::error('Delete Pembayaran error: ' . $e->getMessage());
 
@@ -362,5 +386,19 @@ class PembayaranController extends Controller
 
             return back()->withErrors(['error' => 'Gagal menghapus pembayaran.']);
         }
+    }
+
+    /**
+     * Helper: Get method label
+     */
+    private function getMethodLabel($method)
+    {
+        return match ($method) {
+            'cash' => 'Tunai',
+            'transfer' => 'Transfer Bank',
+            'qris' => 'QRIS',
+            'wallet' => 'Dompet Digital',
+            default => ucfirst($method),
+        };
     }
 }

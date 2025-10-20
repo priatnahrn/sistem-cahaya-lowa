@@ -51,7 +51,7 @@ class UserManagementController extends Controller
         $request->validate([
             'name' => 'required|string|max:255',
             'username' => 'required|string|min:6|max:255|unique:users,username',
-            'email' => 'nullable|email|unique:users,email', // ✅ Changed to nullable
+            'phone' => 'nullable|string|min:6|max:255', // ✅ Changed to nullable
             'password' => ['required', 'confirmed', Password::min(8)],
             'roles' => 'nullable|array',
             'roles.*' => 'exists:roles,id',
@@ -60,8 +60,7 @@ class UserManagementController extends Controller
             'username.required' => 'Username wajib diisi.',
             'username.min' => 'Username minimal 6 karakter.',
             'username.unique' => 'Username sudah digunakan.',
-            'email.email' => 'Format email tidak valid.',
-            'email.unique' => 'Email sudah digunakan.',
+            'phone.min' => 'Nomor telepon minimal 6 karakter.',
             'password.required' => 'Password wajib diisi.',
             'password.confirmed' => 'Konfirmasi password tidak cocok.',
             'password.min' => 'Password minimal 8 karakter.',
@@ -73,7 +72,7 @@ class UserManagementController extends Controller
             $user = User::create([
                 'name' => $request->name,
                 'username' => $request->username,
-                'email' => $request->email, // Will be null if not provided
+                'phone' => $request->phone, // Will be null if not provided
                 'password' => Hash::make($request->password),
             ]);
 
@@ -146,7 +145,7 @@ class UserManagementController extends Controller
         $rules = [
             'name' => 'required|string|max:255',
             'username' => 'required|string|min:6|max:255|unique:users,username,' . $id,
-            'email' => 'nullable|email|unique:users,email,' . $id,
+            'phone' => 'nullable|string|min:6|max:255|unique:users,phone,' . $id,
             'roles' => 'nullable|array',
             'roles.*' => 'exists:roles,id',
         ];
@@ -161,8 +160,7 @@ class UserManagementController extends Controller
             'username.required' => 'Username wajib diisi.',
             'username.min' => 'Username minimal 6 karakter.',
             'username.unique' => 'Username sudah digunakan.',
-            'email.email' => 'Format email tidak valid.',
-            'email.unique' => 'Email sudah digunakan.',
+            'phone.min' => 'Nomor telepon minimal 6 karakter.',
             'password.required' => 'Password wajib diisi.',
             'password.confirmed' => 'Konfirmasi password tidak cocok.',
             'password.min' => 'Password minimal 8 karakter.',
@@ -176,7 +174,7 @@ class UserManagementController extends Controller
             $data = [
                 'name' => $request->name,
                 'username' => $request->username,
-                'email' => $request->email,
+                'phone' => $request->phone,
             ];
 
             // Only update password if provided

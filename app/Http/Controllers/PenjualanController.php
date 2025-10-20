@@ -52,6 +52,53 @@ class PenjualanController extends Controller
         Log::info("📊 Total stok diupdate: item_id=$itemId, gudang_id=$gudangId, satuan_id=$satuanId → stok=$stok × konversi=$konversi = total_stok=$totalStokBaru");
     }
 
+    /**
+     * Cek apakah ada item kategori SPANDEK, jika ada buat data Produksi
+     */
+    private function createProduksiIfNeeded($penjualan)
+    {
+        // Cek apakah ada item dengan kategori SPANDEK
+        $hasSpandek = false;
+
+        foreach ($penjualan->items as $itemPenjualan) {
+            $item = Item::with('kategori')->find($itemPenjualan->item_id);
+
+            if ($item && $item->kategori && strtoupper($item->kategori->nama_kategori) === 'SPANDEK') {
+                $hasSpandek = true;
+                break; // Cukup ketemu 1 item SPANDEK sudah langsung buat produksi
+            }
+        }
+
+        // Jika ada SPANDEK, buat data Produksi
+        if ($hasSpandek) {
+            $noProduksi = $penjualan->no_faktur;
+
+            $produksi = Produksi::create([
+                'penjualan_id' => $penjualan->id,
+                'no_produksi' => $noProduksi,
+                'status' => 'pending',
+                'tanggal_mulai' => null,
+                'tanggal_selesai' => null,
+                'keterangan' => 'Produksi otomatis dari penjualan ' . $penjualan->no_faktur,
+                'created_by' => Auth::id(),
+            ]);
+
+            LogActivity::create([
+                'user_id' => Auth::id(),
+                'activity_type' => 'create_produksi',
+                'description' => 'Created produksi: ' . $noProduksi . ' from penjualan: ' . $penjualan->no_faktur,
+                'ip_address' => request()->ip(),
+                'user_agent' => request()->userAgent(),
+            ]);
+
+            Log::info("🏭 Produksi dibuat otomatis: no_produksi={$noProduksi}, penjualan_id={$penjualan->id}");
+
+            return $produksi;
+        }
+
+        return null;
+    }
+
     public function index()
     {
         // ✅ Check permission view
@@ -189,6 +236,15 @@ class PenjualanController extends Controller
                     'tanggal_pengiriman' => $penjualan->tanggal,
                     'status_pengiriman' => 'perlu_dikirim',
                     'supir' => null,
+                    'created_by' => Auth::id(),
+                ]);
+
+                LogActivity::create([
+                    'user_id'       => Auth::id(),
+                    'activity_type' => 'create_pengiriman',
+                    'description'   => 'Created pengiriman for penjualan: ' . $penjualan->no_faktur,
+                    'ip_address'    => $request->ip(),
+                    'user_agent'    => $request->userAgent(),
                 ]);
 
                 Log::info("🚚 Data pengiriman dibuat: no_pengiriman={$penjualan->no_faktur}, penjualan_id={$penjualan->id}");
@@ -211,6 +267,17 @@ class PenjualanController extends Controller
             }
 
             DB::commit();
+
+
+
+            // 🏭 Buat produksi jika ada item kategori SPANDEK (setelah commit berhasil)
+            if (!$isDraft) {
+                $penjualan->load('items'); // Load items dulu
+                $this->createProduksiIfNeeded($penjualan);
+            }
+
+
+
 
             $message = $isDraft
                 ? 'Draft penjualan berhasil disimpan (stok belum dikurangi).'
@@ -641,13 +708,43 @@ class PenjualanController extends Controller
                 ]);
                 Log::info("✅ Tagihan diupdate menjadi lunas");
             }
-            
+
 
             $penjualan->update([
                 'status_bayar' => $statusBayar,
                 'updated_by' => Auth::id(),
             ]);
             Log::info("✅ Penjualan diupdate: status_bayar=$statusBayar");
+
+
+            DB::commit();
+
+            // 🏭 Cek apakah perlu buat produksi
+            if (!$isDraftRequest) {
+                $penjualan->load('items'); // Load items dulu
+
+                // Cek apakah sudah ada produksi untuk penjualan ini
+                $existingProduksi = Produksi::where('penjualan_id', $penjualan->id)->first();
+
+                // Cek apakah masih ada item SPANDEK
+                $hasSpandek = false;
+                foreach ($penjualan->items as $itemPenjualan) {
+                    $item = Item::with('kategori')->find($itemPenjualan->item_id);
+                    if ($item && $item->kategori && strtoupper($item->kategori->nama_kategori) === 'SPANDEK') {
+                        $hasSpandek = true;
+                        break;
+                    }
+                }
+
+                if ($hasSpandek && !$existingProduksi) {
+                    // Buat produksi baru jika belum ada
+                    $this->createProduksiIfNeeded($penjualan);
+                } elseif (!$hasSpandek && $existingProduksi) {
+                    // Hapus produksi jika tidak ada lagi item SPANDEK
+                    $existingProduksi->delete();
+                    Log::info("🗑️ Produksi dihapus karena tidak ada lagi item SPANDEK");
+                }
+            }
 
             LogActivity::create([
                 'user_id'       => Auth::id(),
@@ -656,7 +753,6 @@ class PenjualanController extends Controller
                 'ip_address'    => request()->ip(),
                 'user_agent'    => request()->userAgent(),
             ]);
-            DB::commit();
 
             return response()->json(['message' => 'Penjualan berhasil diperbarui.'], 200);
         } catch (\Throwable $e) {
@@ -820,7 +916,7 @@ class PenjualanController extends Controller
             $penjualan->items()->delete();
             $penjualan->delete();
 
-              LogActivity::create([
+            LogActivity::create([
                 'user_id'       => Auth::id(),
                 'activity_type' => 'delete_penjualan',
                 'description'   => 'Menghapus penjualan ' . $penjualan->no_faktur,

@@ -109,6 +109,13 @@ class PengirimanController extends Controller
                 'supir' => $data['supir'] ?? $pengiriman->supir,
                 'updated_by' => Auth::id(),
             ]);
+            LogActivity::create([
+                'user_id'       => Auth::id(),
+                'activity_type' => 'update_pengiriman',
+                'description'   => 'Updated pengiriman: ' . $pengiriman->no_pengiriman . ' to status ' . $data['status'],
+                'ip_address'    => $request->ip(),
+                'user_agent'    => $request->userAgent(),
+            ]);
 
             if ($request->wantsJson() || $request->ajax()) {
                 return response()->json([
@@ -118,13 +125,6 @@ class PengirimanController extends Controller
                 ]);
             }
 
-            LogActivity::create([
-                'user_id'       => Auth::id(),
-                'activity_type' => 'update_pengiriman',
-                'description'   => 'Updated pengiriman: ' . $pengiriman->no_pengiriman . ' to status ' . $data['status'],
-                'ip_address'    => $request->ip(),
-                'user_agent'    => $request->userAgent(),
-            ]);
 
             return redirect()->back()->with('success', 'Pengiriman berhasil diperbarui');
         } catch (\Throwable $e) {

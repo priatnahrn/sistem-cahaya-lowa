@@ -25,8 +25,23 @@ class Produksi extends Model
         return $this->belongsTo(Penjualan::class);
     }
 
+    public function itemPenjualan()
+    {
+        return $this->hasMany(ItemPenjualan::class, 'penjualan_id', 'penjualan_id');
+    }
+
     public function items()
     {
         return $this->hasMany(ItemProduksi::class);
+    }
+
+    public function creator()
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
+
+    public function updater()
+    {
+        return $this->belongsTo(User::class, 'updated_by');
     }
 }

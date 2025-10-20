@@ -14,16 +14,22 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Picqer\Barcode\BarcodeGeneratorSVG;
 use Illuminate\Support\Str;
 
 class ItemController extends Controller
 {
+    use AuthorizesRequests;
+
     /**
      * Display a listing of items.
      */
     public function index(Request $request)
     {
+        // ✅ Check permission
+        $this->authorize('items.view');
+
         $items = Item::with(['kategori', 'satuans', 'primarySatuan', 'gudangItems'])
             ->orderBy('id', 'desc')
             ->get();
@@ -36,6 +42,9 @@ class ItemController extends Controller
      */
     public function create()
     {
+        // ✅ Check permission
+        $this->authorize('items.create');
+
         $kategori_items = KategoriItem::orderBy('nama_kategori')->get();
         $gudangs = Gudang::orderBy('nama_gudang')->get();
 
@@ -47,6 +56,9 @@ class ItemController extends Controller
      */
     public function store(Request $request)
     {
+        // ✅ Check permission
+        $this->authorize('items.create');
+
         $rules = [
             'kode_item'        => 'nullable|string|max:50|unique:items,kode_item',
             'nama_item'        => 'required|string|max:191',
@@ -113,9 +125,11 @@ class ItemController extends Controller
                 'barcode'          => $barcode,
                 'barcode_path'     => $barcodePath,
                 'nama_item'        => $validated['nama_item'],
-                'stok_minimal'     => $validated['stok_minimal'],
+                'stok_minimal'     => $validated['stok_minimal'] ?? 0,
                 'kategori_item_id' => $validated['kategori_item_id'],
                 'foto_path'        => $fotoPath,
+                'created_by'       => Auth::id(),
+                'updated_by'       => Auth::id(),
             ]);
 
             // Simpan satuans
@@ -197,6 +211,9 @@ class ItemController extends Controller
      */
     public function show($id)
     {
+        // ✅ User yang bisa view bisa lihat detail
+        $this->authorize('items.view');
+
         $item = Item::with(['kategori', 'satuans', 'primarySatuan'])->findOrFail($id);
         $kategori_items = KategoriItem::orderBy('nama_kategori')->get();
         $gudangs = Gudang::orderBy('nama_gudang')->get();
@@ -209,10 +226,14 @@ class ItemController extends Controller
      */
     public function update(Request $request, $id)
     {
+        // ✅ Check permission
+        $this->authorize('items.update');
+
         $rules = [
             'kode_item'        => 'required|string|max:50|unique:items,kode_item,' . $id,
             'nama_item'        => 'required|string|max:191',
             'kategori_item_id' => 'required|exists:kategori_items,id',
+            'stok_minimal'     => 'nullable|numeric|min:0',
             'foto'             => 'nullable|image|max:5120',
             'satuans'          => 'required|array|min:1',
             'satuans.*.id'           => 'nullable|exists:satuans,id',
@@ -246,7 +267,9 @@ class ItemController extends Controller
                 'kode_item'        => $validated['kode_item'],
                 'nama_item'        => $validated['nama_item'],
                 'kategori_item_id' => $validated['kategori_item_id'],
+                'stok_minimal'     => $validated['stok_minimal'] ?? 0,
                 'foto_path'        => $fotoPath,
+                'updated_by'       => Auth::id(),
             ]);
 
             // Kelola satuans (update existing, create new, delete removed)
@@ -329,16 +352,11 @@ class ItemController extends Controller
      */
     public function destroy($id)
     {
+        // ✅ Check permission
+        $this->authorize('items.delete');
+
         try {
             $item = Item::findOrFail($id);
-
-            // Optional: Check jika item masih digunakan di transaksi
-            // if ($item->itemPenjualans()->count() > 0) {
-            //     return response()->json([
-            //         'success' => false,
-            //         'message' => 'Item tidak dapat dihapus karena sudah digunakan dalam transaksi.'
-            //     ], 422);
-            // }
 
             // Hapus file foto & barcode
             if ($item->foto_path && Storage::disk('public')->exists($item->foto_path)) {
@@ -347,6 +365,9 @@ class ItemController extends Controller
             if ($item->barcode_path && Storage::disk('public')->exists($item->barcode_path)) {
                 Storage::disk('public')->delete($item->barcode_path);
             }
+
+            $itemName = $item->nama_item;
+            $itemCode = $item->kode_item;
 
             // Hapus relasi
             $item->satuans()->delete();
@@ -358,7 +379,7 @@ class ItemController extends Controller
             LogActivity::create([
                 'user_id'       => Auth::id(),
                 'activity_type' => 'delete_item',
-                'description'   => 'Deleted item: ' . $item->nama_item . ' (' . $item->kode_item . ')',
+                'description'   => 'Deleted item: ' . $itemName . ' (' . $itemCode . ')',
                 'ip_address'    => request()->ip(),
                 'user_agent'    => request()->userAgent(),
             ]);

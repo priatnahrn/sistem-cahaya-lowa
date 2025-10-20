@@ -325,10 +325,6 @@
                 class="w-full text-left px-4 py-2 text-sm hover:bg-slate-50 flex items-center gap-2 text-slate-700">
                 <i class="fa-solid fa-eye text-blue-500"></i> Detail
             </button>
-            <button @click="window.location = dropdownData.edit_url"
-                class="w-full text-left px-4 py-2 text-sm hover:bg-slate-50 flex items-center gap-2 text-slate-700">
-                <i class="fa-solid fa-edit text-green-500"></i> Edit
-            </button>
             <button @click="confirmDelete(dropdownData)"
                 class="w-full text-left px-4 py-2 text-sm hover:bg-red-50 flex items-center gap-2 text-red-600">
                 <i class="fa-solid fa-trash"></i> Hapus

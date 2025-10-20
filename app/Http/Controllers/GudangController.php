@@ -6,15 +6,21 @@ use App\Models\Gudang;
 use App\Models\LogActivity;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
+use Illuminate\Support\Facades\Log;
 
 class GudangController extends Controller
 {
+    use AuthorizesRequests;
+
     /**
      * Display a listing of gudang.
      */
     public function index()
     {
-        // Middleware sudah handle auth & permission, tidak perlu manual check lagi
+        // ✅ Check permission
+        $this->authorize('gudang.view');
+
         $gudangs = Gudang::orderBy('created_at', 'desc')->get();
 
         return view('auth.gudang.index', compact('gudangs'));
@@ -25,6 +31,9 @@ class GudangController extends Controller
      */
     public function create()
     {
+        // ✅ Check permission
+        $this->authorize('gudang.create');
+
         // Generate kode gudang otomatis
         $lastGudang = Gudang::orderBy('id', 'desc')->first();
 
@@ -43,8 +52,11 @@ class GudangController extends Controller
      */
     public function store(Request $request)
     {
+        // ✅ Check permission
+        $this->authorize('gudang.create');
+
         $validated = $request->validate([
-            'kode_gudang' => 'required|string|max:100|unique:gudangs,kode_gudang,',
+            'kode_gudang' => 'required|string|max:100|unique:gudangs,kode_gudang',
             'nama_gudang' => 'required|string|max:100',
             'lokasi' => 'nullable|string',
         ], [
@@ -53,9 +65,14 @@ class GudangController extends Controller
             'nama_gudang.required' => 'Nama gudang wajib diisi.',
         ]);
 
-
         try {
-            Gudang::create($validated);
+            Gudang::create([
+                'kode_gudang' => $validated['kode_gudang'],
+                'nama_gudang' => $validated['nama_gudang'],
+                'lokasi' => $validated['lokasi'] ?? null,
+                'created_by' => Auth::id(),
+                'updated_by' => Auth::id(),
+            ]);
 
             LogActivity::create([
                 'user_id'       => Auth::id(),
@@ -68,6 +85,8 @@ class GudangController extends Controller
             return redirect()->route('gudang.index')
                 ->with('success', 'Gudang berhasil ditambahkan.');
         } catch (\Exception $e) {
+            Log::error('Error store gudang: ' . $e->getMessage());
+            
             return back()
                 ->withErrors(['error' => 'Terjadi kesalahan saat menyimpan data: ' . $e->getMessage()])
                 ->withInput();
@@ -79,6 +98,9 @@ class GudangController extends Controller
      */
     public function show($id)
     {
+        // ✅ User yang bisa view bisa lihat detail
+        $this->authorize('gudang.view');
+
         $gudang = Gudang::findOrFail($id);
 
         return view('auth.gudang.show', compact('gudang'));
@@ -89,10 +111,13 @@ class GudangController extends Controller
      */
     public function update(Request $request, $id)
     {
+        // ✅ Check permission
+        $this->authorize('gudang.update');
+
         $gudang = Gudang::findOrFail($id);
 
         $validated = $request->validate([
-            'kode_gudang' => 'required|string|max:100|unique:gudang,kode_gudang,' . $id,
+            'kode_gudang' => 'required|string|max:100|unique:gudangs,kode_gudang,' . $id,
             'nama_gudang' => 'required|string|max:100',
             'lokasi' => 'nullable|string',
         ], [
@@ -102,7 +127,12 @@ class GudangController extends Controller
         ]);
 
         try {
-            $gudang->update($validated);
+            $gudang->update([
+                'kode_gudang' => $validated['kode_gudang'],
+                'nama_gudang' => $validated['nama_gudang'],
+                'lokasi' => $validated['lokasi'] ?? null,
+                'updated_by' => Auth::id(),
+            ]);
 
             LogActivity::create([
                 'user_id'       => Auth::id(),
@@ -115,6 +145,8 @@ class GudangController extends Controller
             return redirect()->route('gudang.index')
                 ->with('success', 'Gudang berhasil diperbarui.');
         } catch (\Exception $e) {
+            Log::error('Error update gudang: ' . $e->getMessage(), ['id' => $id]);
+            
             return back()
                 ->withErrors(['error' => 'Terjadi kesalahan saat memperbarui data: ' . $e->getMessage()])
                 ->withInput();
@@ -126,10 +158,13 @@ class GudangController extends Controller
      */
     public function destroy($id)
     {
+        // ✅ Check permission
+        $this->authorize('gudang.delete');
+
         try {
             $gudang = Gudang::findOrFail($id);
 
-            // Optional: Check jika gudang masih digunakan di transaksi
+            // Check jika gudang masih digunakan di transaksi
             if ($gudang->items()->count() > 0) {
                 return response()->json([
                     'success' => false,
@@ -137,12 +172,15 @@ class GudangController extends Controller
                 ], 422);
             }
 
+            $gudangName = $gudang->nama_gudang;
+            $gudangCode = $gudang->kode_gudang;
+
             $gudang->delete();
 
             LogActivity::create([
                 'user_id'       => Auth::id(),
                 'activity_type' => 'delete_gudang',
-                'description'   => 'Deleted gudang: ' . $gudang->nama_gudang . ' (' . $gudang->kode_gudang . ')',
+                'description'   => 'Deleted gudang: ' . $gudangName . ' (' . $gudangCode . ')',
                 'ip_address'    => request()->ip(),
                 'user_agent'    => request()->userAgent(),
             ]);
@@ -152,6 +190,8 @@ class GudangController extends Controller
                 'message' => 'Gudang berhasil dihapus.'
             ]);
         } catch (\Exception $e) {
+            Log::error('Error delete gudang: ' . $e->getMessage(), ['id' => $id]);
+            
             return response()->json([
                 'success' => false,
                 'message' => 'Terjadi kesalahan saat menghapus data: ' . $e->getMessage()

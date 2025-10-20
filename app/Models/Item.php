@@ -20,7 +20,10 @@ class Item extends Model
         'stok_minimal',
         'kategori_item_id',
         'foto_path',
+        'created_by',
+        'updated_by',
     ];
+
 
     /**
      * Relasi ke kategori item
