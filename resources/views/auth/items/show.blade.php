@@ -116,27 +116,35 @@
                                 class="cursor-pointer border-2 border-dashed border-slate-300 rounded-lg p-6 flex flex-col items-center justify-center hover:border-slate-500 transition">
                                 <i class="fa-solid fa-cloud-arrow-up text-3xl text-slate-400 mb-2"></i>
                                 <p class="text-sm text-slate-500">Klik atau drag foto di sini (PNG, JPG, JPEG) max 5MB</p>
+
+                                {{-- Kalau ada preview baru (dari upload) --}}
                                 <template x-if="form.fotoPreview">
                                     <img :src="form.fotoPreview" alt="Preview"
                                         class="mt-4 w-32 h-32 object-cover rounded-md border" />
                                 </template>
+
+                                {{-- Kalau belum ada preview, tapi sudah ada foto lama --}}
                                 <template x-if="!form.fotoPreview && form.fotoFileName">
-                                    <img src="{{ $item->foto_path ? asset('storage/' . $item->foto_path) : '' }}"
+                                    <img src="{{ $item->foto_path ? '/storage/app/public/' . $item->foto_path : '' }}"
+                                        alt="{{ $item->nama_item }}"
                                         class="mt-4 w-32 h-32 object-cover rounded-md border" />
                                 </template>
+
+                                {{-- Nama file --}}
                                 <template x-if="form.fotoFileName">
                                     <p class="mt-2 text-sm text-slate-600" x-text="form.fotoFileName"></p>
                                 </template>
                             </div>
+
                             <input type="file" x-ref="fileInput" name="foto" @change="onFileChange($event)"
                                 accept="image/png, image/jpeg, image/jpg" class="hidden" />
                         @else
-                            {{-- View Only Mode untuk Foto --}}
+                            {{-- View Only Mode --}}
                             <div
                                 class="border border-slate-200 rounded-lg p-6 flex flex-col items-center justify-center bg-slate-50">
                                 @if ($item->foto_path)
-                                    <img src={{ '/storage/app/public/' . $item->foto_path }} alt="{{ $item->nama_item }}"
-                                        class="w-32 h-32 object-cover rounded-md border" />
+                                    <img src="{{ '/storage/app/public/' . $item->foto_path }}"
+                                        alt="{{ $item->nama_item }}" class="w-32 h-32 object-cover rounded-md border" />
                                 @else
                                     <div class="text-center text-slate-400">
                                         <i class="fa-solid fa-image text-3xl mb-2"></i>
@@ -145,6 +153,7 @@
                                 @endif
                             </div>
                         @endif
+
                     </div>
                 </div>
             </div>
