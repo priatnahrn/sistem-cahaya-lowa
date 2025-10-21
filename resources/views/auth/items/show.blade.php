@@ -135,8 +135,8 @@
                             <div
                                 class="border border-slate-200 rounded-lg p-6 flex flex-col items-center justify-center bg-slate-50">
                                 @if ($item->foto_path)
-                                    <img src="{{ url('storage/app/public/' . $item->foto_path) }}"
-                                        alt="{{ $item->nama_item }}" class="w-32 h-32 object-cover rounded-md border" />
+                                    <img src="/storage/app/public/{{ $item->foto_path }}" alt="{{ $item->nama_item }}"
+                                        class="w-32 h-32 object-cover rounded-md border" />
                                 @else
                                     <div class="text-center text-slate-400">
                                         <i class="fa-solid fa-image text-3xl mb-2"></i>
