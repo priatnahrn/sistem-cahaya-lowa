@@ -211,7 +211,7 @@
                                 <td class="px-4 py-3">
                                     <div class="flex justify-center">
                                         <template x-if="r.foto_path">
-                                            <img :src="'/storage/' + r.foto_path" alt="Foto Item"
+                                            <img :src="'/storage/app/public/' + r.foto_path" alt="Foto Item"
                                                 class="h-12 w-12 object-cover rounded border border-slate-200">
                                         </template>
                                         <template x-if="!r.foto_path">
