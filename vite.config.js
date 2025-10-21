@@ -10,4 +10,10 @@ export default defineConfig({
         }),
         tailwindcss(),
     ],
+
+      // ⬇️ Tambahkan bagian ini
+    build: {
+        outDir: 'build', // hasil build langsung ke /build (bukan public/build)
+    },
+    base: '/', // penting, supaya URL asset tidak diawali /public/
 });
