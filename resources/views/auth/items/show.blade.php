@@ -9,7 +9,7 @@
 
     <div class="space-y-6 w-full" x-data="itemsEdit()" x-init="init()">
 
-         {{-- Breadcrumb --}}
+        {{-- Breadcrumb --}}
         <div>
             <a href="{{ route('items.index') }}"
                 class="inline-flex items-center gap-2 text-sm text-slate-600 hover:text-[#334976] font-medium transition-colors">
@@ -87,7 +87,8 @@
                         <label class="block text-sm text-slate-600 mb-1">
                             Stok Minimal <span class="text-rose-600">*</span>
                         </label>
-                        <input name="stok_minimal" x-model="form.stok_minimal" type="number" {{ $canUpdate ? '' : 'disabled readonly' }}
+                        <input name="stok_minimal" x-model="form.stok_minimal" type="number"
+                            {{ $canUpdate ? '' : 'disabled readonly' }}
                             class="w-full px-3 py-2 rounded-lg border border-slate-200 {{ $canUpdate ? 'focus:ring-1 focus:ring-[#344579] focus:border-[#344579]' : 'bg-slate-50 text-slate-600 cursor-not-allowed' }}" />
                     </div>
 
@@ -110,7 +111,7 @@
                     {{-- Foto Item --}}
                     <div>
                         <label class="block text-sm text-slate-600 mb-1">Foto Item</label>
-                        @if($canUpdate)
+                        @if ($canUpdate)
                             <div @click="$refs.fileInput.click()"
                                 class="cursor-pointer border-2 border-dashed border-slate-300 rounded-lg p-6 flex flex-col items-center justify-center hover:border-slate-500 transition">
                                 <i class="fa-solid fa-cloud-arrow-up text-3xl text-slate-400 mb-2"></i>
@@ -131,10 +132,11 @@
                                 accept="image/png, image/jpeg, image/jpg" class="hidden" />
                         @else
                             {{-- View Only Mode untuk Foto --}}
-                            <div class="border border-slate-200 rounded-lg p-6 flex flex-col items-center justify-center bg-slate-50">
-                                @if($item->foto_path)
-                                    <img src="{{ asset('storage/app/public/' . $item->foto_path) }}" alt="{{ $item->nama_item }}"
-                                        class="w-32 h-32 object-cover rounded-md border" />
+                            <div
+                                class="border border-slate-200 rounded-lg p-6 flex flex-col items-center justify-center bg-slate-50">
+                                @if ($item->foto_path)
+                                    <img src="{{ url('storage/app/public/' . $item->foto_path) }}"
+                                        alt="{{ $item->nama_item }}" class="w-32 h-32 object-cover rounded-md border" />
                                 @else
                                     <div class="text-center text-slate-400">
                                         <i class="fa-solid fa-image text-3xl mb-2"></i>
@@ -162,7 +164,7 @@
 
                             {{-- Nama satuan --}}
                             <div class="col-span-4">
-                                <input :name="`satuans[${idx}][nama_satuan]`" x-model="s.nama_satuan" 
+                                <input :name="`satuans[${idx}][nama_satuan]`" x-model="s.nama_satuan"
                                     {{ $canUpdate ? '' : 'disabled readonly' }}
                                     class="w-full px-3 py-2 rounded-lg border border-slate-200 {{ $canUpdate ? '' : 'bg-slate-50 text-slate-600 cursor-not-allowed' }}" />
                             </div>
@@ -175,16 +177,17 @@
                                         <input type="number" min="1" :name="`satuans[${idx}][jumlah]`"
                                             x-model.number="s.jumlah" {{ $canUpdate ? '' : 'disabled readonly' }}
                                             class="w-20 px-2 py-1 rounded-lg border border-slate-200 {{ $canUpdate ? '' : 'bg-slate-50 text-slate-600 cursor-not-allowed' }}" />
-                                        <span class="text-sm text-slate-600" x-text="satuans[0]?.nama_satuan || ''"></span>
+                                        <span class="text-sm text-slate-600"
+                                            x-text="satuans[0]?.nama_satuan || ''"></span>
                                     </div>
                                 </template>
                             </div>
 
                             {{-- Tombol hapus --}}
                             <div class="col-span-1 flex md:justify-end">
-                                @if($canUpdate)
-                                    <button type="button" @click="removeSatuan(idx)" class="text-rose-600 hover:text-rose-800"
-                                        x-show="idx > 0">
+                                @if ($canUpdate)
+                                    <button type="button" @click="removeSatuan(idx)"
+                                        class="text-rose-600 hover:text-rose-800" x-show="idx > 0">
                                         <i class="fa-solid fa-trash-can"></i>
                                     </button>
                                 @endif
@@ -192,7 +195,7 @@
                         </div>
                     </template>
 
-                    @if($canUpdate)
+                    @if ($canUpdate)
                         <div>
                             <button type="button" @click="addSatuan()"
                                 class="px-4 py-2 rounded-lg bg-[#344579] hover:bg-[#2e3e6a] text-white w-full sm:w-auto">
@@ -219,14 +222,16 @@
                                 <input type="hidden" :name="`satuans[${idx}][nama_satuan]`" :value="s.nama_satuan">
                             </div>
                             <div class="md:col-span-3">
-                                <label class="block text-sm text-slate-600 mb-1">Harga Retail <span class="text-rose-600">*</span></label>
+                                <label class="block text-sm text-slate-600 mb-1">Harga Retail <span
+                                        class="text-rose-600">*</span></label>
                                 <div class="relative">
                                     <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-sm">Rp</span>
                                     <input type="text" {{ $canUpdate ? '' : 'disabled readonly' }}
                                         class="pl-10 pr-3 w-full border border-slate-200 rounded-lg py-2 text-sm text-right {{ $canUpdate ? '' : 'bg-slate-50 cursor-not-allowed' }}"
                                         :value="formatRupiah(s.harga_retail)"
                                         @input="updateHarga(idx,'harga_retail',$event.target.value)">
-                                    <input type="hidden" :name="`satuans[${idx}][harga_retail]`" :value="s.harga_retail">
+                                    <input type="hidden" :name="`satuans[${idx}][harga_retail]`"
+                                        :value="s.harga_retail">
                                 </div>
                             </div>
                             <div class="md:col-span-3">
@@ -237,7 +242,8 @@
                                         class="pl-10 pr-3 w-full border border-slate-200 rounded-lg py-2 text-sm text-right {{ $canUpdate ? '' : 'bg-slate-50 cursor-not-allowed' }}"
                                         :value="formatRupiah(s.harga_grosir)"
                                         @input="updateHarga(idx,'harga_grosir',$event.target.value)">
-                                    <input type="hidden" :name="`satuans[${idx}][harga_grosir]`" :value="s.harga_grosir">
+                                    <input type="hidden" :name="`satuans[${idx}][harga_grosir]`"
+                                        :value="s.harga_grosir">
                                 </div>
                             </div>
                             <div class="md:col-span-3">
@@ -248,7 +254,8 @@
                                         class="pl-10 pr-3 w-full border border-slate-200 rounded-lg py-2 text-sm text-right {{ $canUpdate ? '' : 'bg-slate-50 cursor-not-allowed' }}"
                                         :value="formatRupiah(s.partai_kecil)"
                                         @input="updateHarga(idx,'partai_kecil',$event.target.value)">
-                                    <input type="hidden" :name="`satuans[${idx}][partai_kecil]`" :value="s.partai_kecil">
+                                    <input type="hidden" :name="`satuans[${idx}][partai_kecil]`"
+                                        :value="s.partai_kecil">
                                 </div>
                             </div>
                         </div>
@@ -262,11 +269,12 @@
                     class="px-4 py-2 rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50 text-center">
                     <i class="fa-solid fa-arrow-left mr-2"></i> Kembali
                 </a>
-                
+
                 {{-- ✅ Tombol Simpan - Hanya muncul jika punya permission update --}}
                 @can('items.update')
                     <button type="submit" :disabled="!canSubmit()"
-                        :class="canSubmit() ? 'bg-[#334579] hover:bg-[#2d3e6f] text-white px-4 py-2 rounded-lg w-full sm:w-auto cursor-pointer' :
+                        :class="canSubmit() ?
+                            'bg-[#334579] hover:bg-[#2d3e6f] text-white px-4 py-2 rounded-lg w-full sm:w-auto cursor-pointer' :
                             'bg-slate-300 cursor-not-allowed text-white px-4 py-2 rounded-lg w-full sm:w-auto'">
                         <i class="fa-solid fa-save mr-2"></i> Simpan Perubahan
                     </button>
@@ -279,10 +287,15 @@
     <script>
         function itemsEdit() {
             return {
-                steps: [
-                    { title: 'Info Item' },
-                    { title: 'Multi Satuan' },
-                    { title: 'Multi Harga' }
+                steps: [{
+                        title: 'Info Item'
+                    },
+                    {
+                        title: 'Multi Satuan'
+                    },
+                    {
+                        title: 'Multi Harga'
+                    }
                 ],
                 currentStep: 0,
                 form: {
@@ -334,7 +347,7 @@
                 },
 
                 updateHarga(idx, field, val) {
-                    @if($canUpdate)
+                    @if ($canUpdate)
                         let number = val.replace(/[^0-9]/g, '');
                         this.satuans[idx][field] = parseInt(number || 0);
                         event.target.value = this.formatRupiah(number);
@@ -342,7 +355,7 @@
                 },
 
                 addSatuan() {
-                    @if($canUpdate)
+                    @if ($canUpdate)
                         const base = this.satuans.find(s => s.is_base) || this.satuans[0];
                         this.satuans.push({
                             uid: Date.now() + Math.random(),
@@ -358,13 +371,13 @@
                 },
 
                 removeSatuan(i) {
-                    @if($canUpdate)
+                    @if ($canUpdate)
                         this.satuans.splice(i, 1);
                     @endif
                 },
 
                 onFileChange(e) {
-                    @if($canUpdate)
+                    @if ($canUpdate)
                         const file = e.target.files[0];
                         if (!file) {
                             this.form.fotoPreview = null;
@@ -379,15 +392,18 @@
                 },
 
                 isChanged() {
-                    const current = JSON.stringify({ form: this.form, satuans: this.satuans });
+                    const current = JSON.stringify({
+                        form: this.form,
+                        satuans: this.satuans
+                    });
                     return current !== JSON.stringify(this.initialData);
                 },
 
                 canSubmit() {
-                    @if(!$canUpdate)
+                    @if (!$canUpdate)
                         return false;
                     @endif
-                    
+
                     if (!this.form.kode_item || !this.form.nama_item || !this.form.kategori_item_id) return false;
                     if (!this.satuans.length) return false;
                     for (let s of this.satuans) {
