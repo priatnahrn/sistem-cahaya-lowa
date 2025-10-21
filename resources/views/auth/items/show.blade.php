@@ -133,7 +133,7 @@
                             {{-- View Only Mode untuk Foto --}}
                             <div class="border border-slate-200 rounded-lg p-6 flex flex-col items-center justify-center bg-slate-50">
                                 @if($item->foto_path)
-                                    <img src="{{ asset('storage/' . $item->foto_path) }}" alt="{{ $item->nama_item }}"
+                                    <img src="{{ asset('storage/app/public/' . $item->foto_path) }}" alt="{{ $item->nama_item }}"
                                         class="w-32 h-32 object-cover rounded-md border" />
                                 @else
                                     <div class="text-center text-slate-400">
