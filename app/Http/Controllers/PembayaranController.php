@@ -31,7 +31,7 @@ class PembayaranController extends Controller
         $user = Auth::user();
 
         // ✅ Filter berdasarkan role
-        if (!$user->hasRole(['super-admin', 'Kasir'])) { // atau cek role_id
+        if (!$user->hasRole(['super-admin'])) { // atau cek role_id
             $query->where('created_by', $user->id);
         }
 
