@@ -40,16 +40,16 @@
             <div @click.away="showModal = false" x-transition
                 class="bg-white rounded-xl shadow-2xl max-w-md w-full overflow-hidden">
                 {{-- Header --}}
-                <div class="px-6 py-4 bg-gradient-to-r from-blue-500 to-blue-600 text-white">
+                <div class="px-6 py-4 bg-gradient-to-r from-green-500 to-green-600 text-white">
                     <h3 class="text-lg font-semibold flex items-center gap-2">
                         <i class="fa-solid fa-circle-question"></i>
-                        <span>Konfirmasi Perubahan Status</span>
+                        <span>Konfirmasi Selesaikan Produksi</span>
                     </h3>
                 </div>
 
                 {{-- Body --}}
                 <div class="px-6 py-5">
-                    <p class="text-slate-700" x-text="modalMessage"></p>
+                    <p class="text-slate-700">Apakah Anda yakin ingin menandai produksi ini sebagai <strong>Selesai</strong>?</p>
                 </div>
 
                 {{-- Footer --}}
@@ -59,8 +59,8 @@
                         <i class="fa-solid fa-xmark mr-1"></i> Batal
                     </button>
                     <button @click="confirmUpdate()"
-                        class="px-4 py-2 rounded-lg bg-[#334976] text-white hover:bg-[#2d3f6d] transition font-medium">
-                        <i class="fa-solid fa-check mr-1"></i> Ya, Ubah Status
+                        class="px-4 py-2 rounded-lg bg-green-600 text-white hover:bg-green-700 transition font-medium">
+                        <i class="fa-solid fa-check mr-1"></i> Ya, Selesaikan
                     </button>
                 </div>
             </div>
@@ -104,26 +104,17 @@
                         <label class="block text-sm text-slate-500 mb-1">Status Produksi</label>
                         <div>
                             @if ($produksi->status === 'pending')
-                                <span
-                                    class="inline-flex items-center gap-2 text-sm font-semibold px-4 py-2 rounded-lg bg-gradient-to-r from-orange-50 to-orange-100 text-orange-700 border border-orange-300 shadow-sm">
+                                <span class="inline-flex items-center gap-2 text-sm font-semibold px-4 py-2 rounded-lg bg-gradient-to-r from-orange-50 to-orange-100 text-orange-700 border border-orange-300 shadow-sm">
                                     <i class="fa-solid fa-clock"></i>
                                     <span>Menunggu</span>
                                 </span>
-                            @elseif($produksi->status === 'in_progress')
-                                <span
-                                    class="inline-flex items-center gap-2 text-sm font-semibold px-4 py-2 rounded-lg bg-gradient-to-r from-blue-50 to-blue-100 text-blue-700 border border-blue-300 shadow-sm">
-                                    <i class="fa-solid fa-spinner fa-spin"></i>
-                                    <span>Sedang Diproduksi</span>
-                                </span>
                             @elseif($produksi->status === 'completed')
-                                <span
-                                    class="inline-flex items-center gap-2 text-sm font-semibold px-4 py-2 rounded-lg bg-gradient-to-r from-green-50 to-green-100 text-green-700 border border-green-300 shadow-sm">
+                                <span class="inline-flex items-center gap-2 text-sm font-semibold px-4 py-2 rounded-lg bg-gradient-to-r from-green-50 to-green-100 text-green-700 border border-green-300 shadow-sm">
                                     <i class="fa-solid fa-circle-check"></i>
                                     <span>Selesai</span>
                                 </span>
                             @else
-                                <span
-                                    class="inline-flex items-center gap-2 text-sm font-semibold px-4 py-2 rounded-lg bg-gradient-to-r from-slate-50 to-slate-100 text-slate-700 border border-slate-300">
+                                <span class="inline-flex items-center gap-2 text-sm font-semibold px-4 py-2 rounded-lg bg-gradient-to-r from-slate-50 to-slate-100 text-slate-700 border border-slate-300">
                                     <i class="fa-solid fa-question-circle"></i>
                                     <span>{{ ucfirst(str_replace('_', ' ', $produksi->status)) }}</span>
                                 </span>
@@ -157,9 +148,8 @@
                             // Filter hanya item dengan kategori spandek
                             $filteredItems = $produksi->itemPenjualan
                                 ->filter(function ($item) {
-                                    $kategori =
-                                        $item->item->kategori->nama_kategori ??
-                                        ($item->item->kategoriItem->nama_kategori ?? null);
+                                    $kategori = $item->item->kategori->nama_kategori ?? 
+                                                $item->item->kategoriItem->nama_kategori ?? null;
                                     return $kategori && strtolower($kategori) === 'spandek';
                                 })
                                 ->values();
@@ -171,8 +161,7 @@
                                 <td class="px-4 py-3 font-medium">{{ $item->item->nama_item ?? '-' }}</td>
                                 <td class="px-4 py-3 text-center">{{ number_format($item->jumlah) }}</td>
                                 <td class="px-4 py-3 text-center">{{ $item->satuan->nama_satuan }}</td>
-                                <td class="px-4 py-3 text-slate-600">Rp {{ number_format($item->total ?? 0, 0, ',', '.') }}
-                                </td>
+                                <td class="px-4 py-3 text-slate-600">Rp {{ number_format($item->total ?? 0, 0, ',', '.') }}</td>
                             </tr>
                         @empty
                             <tr>
@@ -185,19 +174,13 @@
                 </table>
             </div>
         </div>
+
         {{-- 🎯 Tombol Aksi --}}
         <div class="flex justify-end gap-3">
-
-
             @can('produksi.update')
                 @if ($produksi->status === 'pending')
-                    <button @click="showConfirmModal('{{ $produksi->id }}', 'in_progress')"
-                        class="px-5 py-2.5 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition font-medium">
-                        <i class="fa-solid fa-industry mr-1.5"></i> Tandai Sedang Diproduksi
-                    </button>
-                @elseif ($produksi->status === 'in_progress')
-                    <button @click="showConfirmModal('{{ $produksi->id }}', 'completed')"
-                        class="px-5 py-2.5 rounded-lg bg-[#334976] text-white hover:bg-[#2d3f6d] transition font-medium">
+                    <button @click="showConfirmModal('{{ $produksi->id }}')"
+                        class="px-5 py-2.5 rounded-lg bg-green-600 text-white hover:bg-green-700 transition font-medium shadow-sm">
                         <i class="fa-solid fa-circle-check mr-1.5"></i> Tandai Selesai
                     </button>
                 @endif
@@ -213,20 +196,10 @@
                 showNotif: false,
                 notifMessage: '',
                 notifType: '',
-                modalMessage: '',
                 pendingId: null,
-                pendingStatus: null,
 
-                statusLabels: {
-                    'in_progress': 'Sedang Diproduksi',
-                    'completed': 'Selesai'
-                },
-
-                showConfirmModal(id, status) {
+                showConfirmModal(id) {
                     this.pendingId = id;
-                    this.pendingStatus = status;
-                    this.modalMessage =
-                        `Apakah Anda yakin ingin mengubah status produksi menjadi "${this.statusLabels[status] || status}"?`;
                     this.showModal = true;
                 },
 
@@ -243,7 +216,7 @@
                                 'X-CSRF-TOKEN': token
                             },
                             body: JSON.stringify({
-                                status: this.pendingStatus
+                                status: 'completed'
                             })
                         });
 
@@ -254,7 +227,7 @@
                             return;
                         }
 
-                        this.notify(result.message || 'Status berhasil diperbarui', 'success');
+                        this.notify(result.message || 'Produksi berhasil diselesaikan', 'success');
 
                         setTimeout(() => {
                             window.location.reload();
