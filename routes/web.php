@@ -143,7 +143,6 @@ Route::middleware('auth')->group(function () {
         // View routes
         Route::get('/', [PenjualanController::class, 'index'])->name('index');
         Route::get('/{id}', [PenjualanController::class, 'show'])->whereNumber('id')->name('show');
-        Route::get('/search', [PenjualanController::class, 'searchPenjualan'])->name('search');
         Route::get('/{id}/print', [PenjualanController::class, 'print'])->name('print');
         Route::get('/{id}/last-price', [PenjualanController::class, 'getLastPrice'])->name('last_price');
 
@@ -167,6 +166,11 @@ Route::middleware('auth')->group(function () {
             ->middleware('permission:penjualan.delete')
             ->name('destroy');
     });
+
+    // ✅ Kasir bisa scan faktur (tanpa akses menu penjualan)
+    Route::get('/penjualan/search', [PenjualanController::class, 'searchPenjualan'])
+        ->name('penjualan.search')
+        ->middleware('permission:pembayaran.create|penjualan.view');
 
     // Helper routes untuk items (bisa diakses siapa saja yang login)
     Route::get('/items/barcode/{barcode}', [PenjualanController::class, 'getItemByBarcode']);
@@ -265,12 +269,12 @@ Route::middleware('auth')->group(function () {
     // ------------------------
     Route::prefix('pembayaran')->name('pembayaran.')->middleware('permission:pembayaran.view')->group(function () {
         Route::get('/', [PembayaranController::class, 'index'])->name('index');
-        Route::get('/{id}', [PembayaranController::class, 'show'])->whereNumber('id')->name('show');
 
         Route::middleware('permission:pembayaran.create')->group(function () {
             Route::get('/create', [PembayaranController::class, 'create'])->name('create');
             Route::post('/', [PembayaranController::class, 'store'])->name('store');
         });
+        Route::get('/{id}', [PembayaranController::class, 'show'])->whereNumber('id')->name('show');
 
         Route::delete('/{id}/delete', [PembayaranController::class, 'destroy'])
             ->middleware('permission:pembayaran.delete')
