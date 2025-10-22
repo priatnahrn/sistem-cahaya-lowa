@@ -124,9 +124,11 @@
 
 
         {{-- TABLE --}}
+        {{-- TABLE --}}
         <div class="bg-white border border-slate-200 rounded-xl overflow-hidden">
             <div class="overflow-x-auto">
                 <table class="min-w-full text-sm">
+                    {{-- TABLE HEADER --}}
                     <thead class="bg-slate-50 border-b border-slate-200">
                         <tr class="text-left text-slate-600">
                             <th class="px-4 py-3 w-[60px]">No.</th>
@@ -142,6 +144,15 @@
                                 Pelanggan
                                 <i class="fa-solid" :class="sortIcon('penjualan')"></i>
                             </th>
+
+                            {{-- ✅ Kolom Admin - HANYA untuk super-admin --}}
+                            @if (Auth::user()->hasRole('super-admin'))
+                                <th class="px-4 py-3 cursor-pointer" @click="toggleSort('admin')">
+                                    Admin/Kasir
+                                    <i class="fa-solid" :class="sortIcon('admin')"></i>
+                                </th>
+                            @endif
+
                             <th class="px-4 py-3 text-right cursor-pointer" @click="toggleSort('total_penjualan')">
                                 Total Penjualan
                                 <i class="fa-solid" :class="sortIcon('total_penjualan')"></i>
@@ -158,6 +169,7 @@
                         </tr>
                     </thead>
 
+                    {{-- TABLE BODY --}}
                     <tbody>
                         <template x-for="(r, idx) in pagedData()" :key="r.id">
                             <tr class="hover:bg-slate-50 text-slate-700 border-b border-slate-200">
@@ -169,13 +181,23 @@
                                     <a :href="r.url" class="hover:underline hover:text-[#2e3e6a] transition block"
                                         x-text="r.penjualan"></a>
                                 </td>
-                                
-                    
+
+                                {{-- ✅ Tampilkan nama Admin - HANYA untuk super-admin --}}
+                                @if (Auth::user()->hasRole('super-admin'))
+                                    <td class="px-4 py-3">
+                                        <div class="flex items-center gap-2">
+                                            <div
+                                                class="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-semibold text-xs">
+                                                <span x-text="r.admin_initial || '?'"></span>
+                                            </div>
+                                            <span class="text-sm" x-text="r.admin || '-'"></span>
+                                        </div>
+                                    </td>
+                                @endif
 
                                 <td class="px-4 py-3 text-right font-medium" x-text="formatRupiah(r.total_penjualan)">
                                 </td>
                                 <td class="px-4 py-3 text-right" x-text="formatRupiah(r.total_bayar)"></td>
-
                                 <td class="px-4 py-3">
                                     <span
                                         class="inline-flex items-center gap-2 text-xs font-medium px-2.5 py-1 rounded-full"
@@ -184,19 +206,20 @@
                                         <span x-text="statusLabel(r.status)"></span>
                                     </span>
                                 </td>
-
                                 <td class="px-2 py-3 text-right">
                                     <button type="button" @click="openDropdown(r, $event)"
                                         class="px-2 py-1 rounded hover:bg-slate-100">
                                         <i class="fa-solid fa-ellipsis-vertical"></i>
                                     </button>
                                 </td>
-
                             </tr>
                         </template>
 
                         <tr x-show="filteredTotal()===0" class="text-center text-slate-500">
-                            <td colspan="8" class="px-4 py-6">Tidak ada data pembayaran.</td>
+                            {{-- ✅ Colspan dinamis: 9 untuk super-admin, 8 untuk Kasir --}}
+                            <td colspan="{{ Auth::user()->hasRole('super-admin') ? '9' : '8' }}" class="px-4 py-6">
+                                Tidak ada data pembayaran.
+                            </td>
                         </tr>
                     </tbody>
                 </table>
@@ -502,19 +525,45 @@
 
     @php
         use Carbon\Carbon;
+
+        // ✅ Cek apakah user adalah super-admin (BUKAN admin, BUKAN Kasir)
+        $user = Auth::user();
+
+        // PILIH SALAH SATU sesuai sistem Anda:
+
+        // Opsi 1: Jika pakai Spatie Permission
+        $isSuperAdmin = $user->hasRole('super-admin');
+
+        // Opsi 2: Jika pakai kolom 'role' string di tabel users
+        // $isSuperAdmin = $user->role === 'super-admin';
+
+        // Opsi 3: Jika pakai relasi role() ke tabel roles
+        // $isSuperAdmin = $user->role && $user->role->name === 'super-admin';
+
+        // Mapping data pembayaran
         $pembayaransJson = $pembayarans
-            ->map(function ($p) {
+            ->map(function ($p) use ($isSuperAdmin) {
                 $tanggal = $p->tanggal ? Carbon::parse($p->tanggal)->format('Y-m-d H:i:s') : null;
-                return [
+
+                $data = [
                     'id' => $p->id,
                     'no_transaksi' => optional($p->penjualan)->no_faktur ?? '-',
                     'tanggal' => $tanggal,
                     'penjualan' => optional($p->penjualan->pelanggan)->nama_pelanggan ?? 'Customer',
-                    'total_penjualan' => (float) optional($p->penjualan)->total ?? 0, // ✅ tambahkan ini
+                    'total_penjualan' => (float) optional($p->penjualan)->total ?? 0,
                     'total_bayar' => (float) $p->jumlah_bayar ?? 0,
-                    'status' => $p->penjualan->status_bayar,
+                    'status' => optional($p->penjualan)->status_bayar ?? 'unpaid',
                     'url' => route('pembayaran.show', $p->id),
                 ];
+
+                // ✅ HANYA super-admin yang dapat data admin
+                if ($isSuperAdmin) {
+                    $creator = $p->createdBy;
+                    $data['admin'] = $creator ? $creator->name : 'Tidak diketahui';
+                    $data['admin_initial'] = $creator ? strtoupper(substr($creator->name, 0, 2)) : '?';
+                }
+
+                return $data;
             })
             ->values()
             ->toArray();
@@ -541,7 +590,7 @@
                 namaBank: '',
                 bankList: [{
                         name: 'BRI',
-                        logo: '{{'/storage/app/public/images/bri.png' }}'
+                        logo: '{{ '/storage/app/public/images/bri.png' }}'
                     },
                     {
                         name: 'BNI',

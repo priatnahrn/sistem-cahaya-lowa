@@ -25,9 +25,17 @@ class PembayaranController extends Controller
     {
         $this->authorize('pembayaran.view');
 
-        $pembayarans = Pembayaran::with(['penjualan.pelanggan'])
-            ->latest('tanggal')
-            ->get();
+        $query = Pembayaran::with(['penjualan.pelanggan', 'createdBy']) // ✅ Tambahkan 'creator'
+            ->latest('tanggal');
+
+        $user = Auth::user();
+
+        // ✅ Filter berdasarkan role
+        if (!$user->hasRole(['super-admin', 'Kasir'])) { // atau cek role_id
+            $query->where('created_by', $user->id);
+        }
+
+        $pembayarans = $query->get();
 
         return view('auth.kasir.pembayaran.index', compact('pembayarans'));
     }
@@ -165,7 +173,6 @@ class PembayaranController extends Controller
                             'sisa' => $sisa,
                         ]);
                     }
-
                 } elseif ($adjustmentAmount < 0) {
                     // Kelebihan → pengembalian dana
                     $pengembalian = abs($adjustmentAmount);
@@ -201,7 +208,6 @@ class PembayaranController extends Controller
                             'sisa' => 0,
                         ]);
                     }
-
                 } else {
                     DB::rollBack();
                     return response()->json([
@@ -209,7 +215,6 @@ class PembayaranController extends Controller
                         'message' => 'Tidak ada perubahan total yang memerlukan adjustment.',
                     ], 400);
                 }
-
             } else {
                 // === PEMBAYARAN NORMAL ===
                 $jumlahBayar = min($request->jumlah_bayar, $penjualan->total - $totalPembayaranSebelumnya);
@@ -268,7 +273,6 @@ class PembayaranController extends Controller
                     'Pembayaran berhasil disimpan dan status disinkronkan.',
                 'data' => $pembayaran,
             ]);
-
         } catch (\Throwable $e) {
             DB::rollBack();
             Log::error('Store Pembayaran error: ' . $e->getMessage());
@@ -327,7 +331,6 @@ class PembayaranController extends Controller
 
             return redirect()->route('pembayaran.index')
                 ->with('success', 'Pembayaran berhasil diperbarui.');
-
         } catch (\Exception $e) {
             Log::error('Update Pembayaran error: ' . $e->getMessage());
 
@@ -352,7 +355,7 @@ class PembayaranController extends Controller
 
         try {
             $pembayaran = Pembayaran::findOrFail($id);
-            
+
             // ✅ Kas akan otomatis terhapus karena onDelete('cascade')
             $pembayaran->delete();
 
@@ -373,7 +376,6 @@ class PembayaranController extends Controller
 
             return redirect()->route('pembayaran.index')
                 ->with('success', 'Pembayaran berhasil dihapus.');
-
         } catch (\Exception $e) {
             Log::error('Delete Pembayaran error: ' . $e->getMessage());
 
