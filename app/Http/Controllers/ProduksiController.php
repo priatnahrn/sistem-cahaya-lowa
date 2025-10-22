@@ -37,6 +37,7 @@ class ProduksiController extends Controller
 
         $produksi = Produksi::with([
             'penjualan.pelanggan',
+            'penjualan.itemPenjualans', // ✅ tambahkan relasi itemPenjualan untuk mengakses item
             'items.item',
             'items.satuan', // ✅ tambahkan satuan biar nama satuan bisa ditampilkan
         ])->findOrFail($id);

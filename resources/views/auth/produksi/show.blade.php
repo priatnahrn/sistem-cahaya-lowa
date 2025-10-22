@@ -154,15 +154,20 @@
 
                     <tbody>
                         @php
-                            $no = 1;
-                            $filteredItems = $produksi->items->filter(function ($item) {
-                                return isset($item->item->itemKategori) && $item->item->itemKategori->nama_kategori === 'spandek';
-                            });
+                            // Filter hanya item dengan kategori spandek
+                            $filteredItems = $produksi->itemPenjualan
+                                ->filter(function ($item) {
+                                    $kategori =
+                                        $item->item->kategori->nama_kategori ??
+                                        ($item->item->kategoriItem->nama_kategori ?? null);
+                                    return $kategori && strtolower($kategori) === 'spandek';
+                                })
+                                ->values();
                         @endphp
 
-                        @forelse ($filteredItems as $item)
+                        @forelse ($filteredItems as $idx => $item)
                             <tr class="hover:bg-slate-50 border-b border-slate-100 text-slate-700">
-                                <td class="text-center px-4 py-3">{{ $no++ }}</td>
+                                <td class="text-center px-4 py-3">{{ $idx + 1 }}</td>
                                 <td class="px-4 py-3 font-medium">{{ $item->item->nama_item ?? '-' }}</td>
                                 <td class="px-4 py-3 text-center">{{ number_format($item->jumlah) }}</td>
                                 <td class="px-4 py-3 text-center">{{ $item->satuan->nama_satuan }}</td>
@@ -180,7 +185,6 @@
                 </table>
             </div>
         </div>
-
         {{-- 🎯 Tombol Aksi --}}
         <div class="flex justify-end gap-3">
 
