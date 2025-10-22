@@ -7,7 +7,7 @@
     <style>
         /* Ubah ukuran halaman ke 9.5 x 11 inch */
         @page {
-            size: 9.5in 11in; /* lebar 9.5 inch, tinggi 11 inch */
+            size: 9.5in 11in landscape; /* lebar 9.5 inch, tinggi 11 inch */
             margin: 8mm;
         }
 
