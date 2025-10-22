@@ -329,6 +329,11 @@
 
     @php
         $tagihansJson = $tagihans
+            ->filter(function ($t) {
+                // Filter hanya yang belum lunas (sisa > 0)
+                $sisa = (float) ($t->sisa ?? 0);
+                return $sisa > 0;
+            })
             ->map(function ($t) {
                 $tanggal =
                     $t->tanggal_tagihan instanceof \Carbon\Carbon
@@ -350,7 +355,7 @@
                     'jumlah_bayar' => $jumlahBayar,
                     'sisa' => $sisa,
                     'status' => $status,
-                    'has_payments' => $jumlahBayar > 0, // Sudah ada pembayaran atau belum
+                    'has_payments' => $jumlahBayar > 0,
                     'url' => route('tagihan-penjualan.show', $t->id),
                 ];
             })
@@ -524,7 +529,7 @@
 
                 hasActiveFilters() {
                     return (this.filters.no_faktur || this.filters.pelanggan || this.filters.tanggal || this.filters
-                    .status);
+                        .status);
                 },
 
                 activeFiltersCount() {
