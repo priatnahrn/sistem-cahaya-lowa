@@ -205,7 +205,7 @@
                                 <td class="px-4 py-3 text-right text-slate-700">
                                     {{ number_format($item->jumlah, 0, ',', '.') }}</td>
                                 <td class="px-4 py-3 text-right text-slate-700">Rp
-                                    {{ number_format($item->harga_jual, 0, ',', '.') }}</td>
+                                    {{ number_format($item->harga, 0, ',', '.') }}</td>
                                 <td class="px-4 py-3 text-right font-semibold text-slate-800">Rp
                                     {{ number_format($item->total, 0, ',', '.') }}</td>
                             </tr>
@@ -281,7 +281,7 @@
             @endcan
         </div>
 
-        {{-- MODAL PEMBAYARAN --}}
+        {{-- MODAL PEMBAYARAN (Update bagian ini saja) --}}
         <div x-cloak x-show="showBayarModal" x-transition.opacity
             class="fixed inset-0 z-[9999] flex items-center justify-center p-4 min-h-screen">
             <div class="absolute inset-0 bg-black/40" @click="closeBayarModal()"></div>
@@ -345,7 +345,7 @@
                                 <input type="text" x-model="nominalBayarDisplay" @input="handleNominalInput($event)"
                                     placeholder="0" inputmode="numeric"
                                     class="w-full pl-9 pr-3 py-2.5 rounded-lg border border-slate-300 text-slate-700 text-right
-                                   focus:ring-2 focus:ring-[#344579]/20 focus:border-[#344579] focus:outline-none">
+                           focus:ring-2 focus:ring-[#344579]/20 focus:border-[#344579] focus:outline-none">
                             </div>
                             <p class="text-xs text-slate-500 mt-1">Maksimal: Rp
                                 {{ number_format($tagihan->sisa, 0, ',', '.') }}</p>
@@ -394,13 +394,8 @@
                             </div>
                         </div>
 
-                        {{-- CATATAN --}}
-                        <div>
-                            <label class="block text-sm font-medium text-slate-700 mb-2">Catatan (Opsional)</label>
-                            <textarea x-model="catatan" rows="3" placeholder="Tambahkan catatan pembayaran..."
-                                class="w-full px-3 py-2 rounded-lg border border-slate-200 text-slate-700 text-sm
-                               focus:ring-2 focus:ring-[#344579]/20 focus:border-[#344579] focus:outline-none resize-none"></textarea>
-                        </div>
+                        {{-- ❌ HAPUS BAGIAN CATATAN INI --}}
+                        {{-- TIDAK ADA TEXTAREA CATATAN LAGI --}}
 
                     </div>
                 </div>
@@ -418,6 +413,8 @@
                 </div>
             </div>
         </div>
+
+
 
         {{-- MODAL SUKSES --}}
         <div x-cloak x-show="showSuccessModal" x-transition.opacity
@@ -457,6 +454,7 @@
 
     </div>
 
+    {{-- UPDATE SCRIPT JUGA --}}
     <script>
         function bayarTagihanPage() {
             return {
@@ -466,21 +464,21 @@
                 nominalBayarDisplay: '',
                 metodeBayar: 'cash',
                 namaBank: '',
-                catatan: '',
+                // ❌ HAPUS: catatan: '',
                 sisaTagihan: {{ $tagihan->sisa }},
                 successMessage: '',
 
                 bankList: [{
                         name: 'BRI',
-                        logo: '{{ asset('storage/images/bri.png') }}'
+                        logo: '{{ 'storage/app/public/images/bri.png' }}'
                     },
                     {
                         name: 'BNI',
-                        logo: '{{ asset('storage/images/bni.png') }}'
+                        logo: '{{ 'storage/app/public/images/bni.png' }}'
                     },
                     {
                         name: 'Mandiri',
-                        logo: '{{ asset('storage/images/mandiri.png') }}'
+                        logo: '{{ 'storage/app/public/images/mandiri.png'}}'
                     },
                 ],
 
@@ -494,7 +492,7 @@
                     this.nominalBayarDisplay = '';
                     this.metodeBayar = 'cash';
                     this.namaBank = '';
-                    this.catatan = '';
+                    // ❌ HAPUS: this.catatan = '';
                 },
 
                 closeBayarModal() {
@@ -543,21 +541,14 @@
                         return;
                     }
 
-                    // Generate catatan otomatis jika kosong
-                    let catatanFinal = this.catatan;
-                    if (!catatanFinal) {
-                        catatanFinal = `Pembayaran ${this.metodeBayar === 'cash' ? 'tunai' : 'transfer'}`;
-                        if (this.metodeBayar === 'transfer' && this.namaBank) {
-                            catatanFinal += ` via ${this.namaBank}`;
-                        }
-                        catatanFinal += ` sebesar ${this.formatRupiah(this.nominalBayar)}`;
-                    }
+                    // ✅ TIDAK ADA GENERATE CATATAN DI SINI
+                    // Backend yang handle generate catatan otomatis
 
                     const payload = {
                         jumlah_bayar_tambahan: this.nominalBayar,
                         metode: this.metodeBayar,
                         bank: this.namaBank || null,
-                        catatan: catatanFinal
+                        // ❌ HAPUS: catatan: catatanFinal
                     };
 
                     try {
