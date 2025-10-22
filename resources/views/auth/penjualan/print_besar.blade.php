@@ -5,8 +5,9 @@
     <meta charset="UTF-8">
     <title>Nota Besar</title>
     <style>
+        /* Ubah ukuran halaman ke 9.5 x 11 inch */
         @page {
-            size: A5 landscape;
+            size: 9.5in 11in; /* lebar 9.5 inch, tinggi 11 inch */
             margin: 8mm;
         }
 
