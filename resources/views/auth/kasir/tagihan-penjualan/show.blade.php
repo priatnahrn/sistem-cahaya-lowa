@@ -470,7 +470,7 @@
 
                 bankList: [{
                         name: 'BRI',
-                        logo: '{{ 'storage/app/public/images/bri.png' }}'
+                        logo: '{{ url('storage/app/public/images/bri.png') }}'
                     },
                     {
                         name: 'BNI',
