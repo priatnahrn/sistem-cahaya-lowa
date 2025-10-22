@@ -541,15 +541,15 @@
                 namaBank: '',
                 bankList: [{
                         name: 'BRI',
-                        logo: '{{ asset('storage/images/bri.png') }}'
+                        logo: '{{'/storage/app/public/images/bri.png' }}'
                     },
                     {
                         name: 'BNI',
-                        logo: '{{ asset('storage/images/bni.png') }}'
+                        logo: '{{ '/storage/app/public/images/bni.png' }}'
                     },
                     {
                         name: 'Mandiri',
-                        logo: '{{ asset('storage/images/mandiri.png') }}'
+                        logo: '{{ '/storage/app/public/images/mandiri.png' }}'
                     },
                 ],
                 nominalBayarDisplay: '',
