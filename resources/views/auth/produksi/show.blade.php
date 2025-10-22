@@ -137,6 +137,7 @@
                         <tr class="text-slate-600">
                             <th class="px-4 py-3 text-center w-12">No.</th>
                             <th class="px-4 py-3 text-left">Item</th>
+                            <th class="px-4 py-3 text-left">Keterangan</th>
                             <th class="px-4 py-3 text-center w-36">Jumlah Dibutuhkan</th>
                             <th class="px-4 py-3 text-center w-36">Satuan</th>
                             <th class="px-4 py-3 text-left">Total</th>
@@ -159,13 +160,16 @@
                             <tr class="hover:bg-slate-50 border-b border-slate-100 text-slate-700">
                                 <td class="text-center px-4 py-3">{{ $idx + 1 }}</td>
                                 <td class="px-4 py-3 font-medium">{{ $item->item->nama_item ?? '-' }}</td>
+                                <td class="px-4 py-3 text-slate-600">
+                                    {{ $item->keterangan ?? '-' }}
+                                </td>
                                 <td class="px-4 py-3 text-center">{{ number_format($item->jumlah) }}</td>
                                 <td class="px-4 py-3 text-center">{{ $item->satuan->nama_satuan }}</td>
                                 <td class="px-4 py-3 text-slate-600">Rp {{ number_format($item->total ?? 0, 0, ',', '.') }}</td>
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="5" class="text-center py-5 text-slate-500 italic">
+                                <td colspan="6" class="text-center py-5 text-slate-500 italic">
                                     Belum ada item produksi spandek.
                                 </td>
                             </tr>
