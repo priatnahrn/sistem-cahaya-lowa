@@ -474,11 +474,11 @@
                     },
                     {
                         name: 'BNI',
-                        logo: '{{ 'storage/app/public/images/bni.png' }}'
+                        logo: '{{ url('storage/app/public/images/bni.png') }}'
                     },
                     {
                         name: 'Mandiri',
-                        logo: '{{ 'storage/app/public/images/mandiri.png'}}'
+                        logo: '{{ url('storage/app/public/images/mandiri.png')}}'
                     },
                 ],
 
