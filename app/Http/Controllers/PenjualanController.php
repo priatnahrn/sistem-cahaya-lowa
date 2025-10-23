@@ -517,7 +517,7 @@ class PenjualanController extends Controller
     public function print(Request $request, $id)
     {
         $type = $request->get('type', 'kecil');
-        $penjualan = Penjualan::with(['items.item', 'items.satuan', 'createdBy'])->findOrFail($id);
+        $penjualan = Penjualan::with(['items.item', 'items.satuan', 'createdBy', 'pembayarans'])->findOrFail($id);
 
         $generator = new BarcodeGeneratorSVG();
         $barcode = $generator->getBarcode($penjualan->no_faktur, $generator::TYPE_CODE_128);

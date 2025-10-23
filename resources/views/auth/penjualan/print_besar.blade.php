@@ -5,9 +5,8 @@
     <meta charset="UTF-8">
     <title>Nota Besar</title>
     <style>
-        /* Ubah ukuran halaman ke 9.5 x 11 inch */
         @page {
-            size: 9.5in 11in landscape; /* lebar 9.5 inch, tinggi 11 inch */
+            size: 9.5in 11in landscape;
             margin: 8mm;
         }
 
@@ -93,9 +92,7 @@
     <table style="width:100%; font-size:10px; margin-top:5px;">
         <tr>
             <td style="width:80px;">NPWP</td>
-            <td style="width:150px;">:
-                {{ $penjualan->pelanggan->npwp ?? '0' }}
-            </td>
+            <td style="width:150px;">: {{ $penjualan->pelanggan->npwp ?? '0' }}</td>
             <td style="width:80px;">Nota #</td>
             <td>: {{ $penjualan->no_faktur }}</td>
         </tr>
@@ -170,11 +167,27 @@
                 <div>3. Periksa kembali barang sebelum meninggalkan toko.</div>
             </td>
             <td class="footer-right">
+                @php
+                    $grandTotal = $penjualan->total ?? $total + ($penjualan->biaya_transport ?? 0);
+
+                    // Hitung total pembayaran langsung dari tabel pembayarans
+                    $totalBayar = 0;
+                    if (isset($penjualan->pembayarans)) {
+                        $totalBayar = $penjualan->pembayarans->where('jumlah_bayar', '>', 0)->sum('jumlah_bayar');
+                    }
+
+                    $sisaTagihan = $grandTotal - $totalBayar;
+                @endphp
+
                 <div>Subtotal : Rp {{ number_format($penjualan->sub_total ?? $total, 0, ',', '.') }}</div>
                 <div>Biaya Kirim : Rp {{ number_format($penjualan->biaya_transport ?? 0, 0, ',', '.') }}</div>
-                <div class="bold">
-                    TOTAL : Rp {{ number_format($penjualan->total ?? $total + ($penjualan->biaya_transport ?? 0), 0, ',', '.') }}
-                </div>
+                <div class="bold">TOTAL : Rp {{ number_format($grandTotal, 0, ',', '.') }}</div>
+
+                @if ($totalBayar > 0 && $sisaTagihan > 0)
+                    <div style="margin-top: 3px;">Jumlah Bayar : Rp {{ number_format($totalBayar, 0, ',', '.') }}</div>
+                    <div class="bold" style="color: #cc0000;">SISA : Rp
+                        {{ number_format($sisaTagihan, 0, ',', '.') }}</div>
+                @endif
             </td>
         </tr>
     </table>
