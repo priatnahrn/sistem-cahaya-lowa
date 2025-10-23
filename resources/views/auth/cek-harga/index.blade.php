@@ -9,9 +9,8 @@
         }
     </style>
 
-    {{-- 🎯 Root Alpine Component with Container --}}
-    <div class="container mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl">
-        <div x-data="cekHargaPage()" x-init="init()" class="space-y-6">
+    {{-- 🎯 Root Alpine Component --}}
+    <div x-data="cekHargaPage()" x-init="init()" class="space-y-6">
 
         {{-- 🔔 Toast Notification --}}
         <div x-show="showNotif" x-transition class="fixed top-5 right-5 z-50">
@@ -39,8 +38,8 @@
             class="absolute opacity-0 pointer-events-none" autocomplete="off">
 
         {{-- 📦 Card Pencarian --}}
-        <div class="bg-white border border-slate-200 rounded-xl px-6 py-5">
-            <div class="max-w-3xl mx-auto space-y-4">
+        <div class="bg-white border border-slate-200 rounded-xl px-6 py-4">
+            <div class="space-y-4">
                 {{-- Label --}}
                 <div>
                     <label class="block text-sm font-medium text-slate-700 mb-2">
@@ -48,11 +47,8 @@
                     </label>
                     <div class="relative" @click.away="dropdownOpen = false">
                         {{-- Input Search --}}
-                        <input 
-                            type="text" 
-                            x-model="searchQuery" 
-                            @input.debounce.300ms="searchItems"
-                            @focus="if(searchQuery.length >= 2) dropdownOpen = true" 
+                        <input type="text" x-model="searchQuery" @input.debounce.300ms="searchItems"
+                            @focus="if(searchQuery.length >= 2) dropdownOpen = true"
                             placeholder="Cari item (nama, kode, atau barcode)"
                             class="w-full pl-4 pr-10 py-2.5 rounded-lg border border-slate-300
                                    focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition">
@@ -84,12 +80,13 @@
                                             <div class="flex items-center gap-3">
                                                 {{-- Foto Thumbnail --}}
                                                 <template x-if="item.foto_path">
-                                                    <img :src="'/storage/app/public/' + item.foto_path" 
-                                                         :alt="item.nama_item"
-                                                         class="w-10 h-10 object-cover rounded border border-slate-200">
+                                                    <img :src="'/storage/app/public/' + item.foto_path"
+                                                        :alt="item.nama_item"
+                                                        class="w-10 h-10 object-cover rounded border border-slate-200">
                                                 </template>
                                                 <template x-if="!item.foto_path">
-                                                    <div class="w-10 h-10 bg-slate-100 flex items-center justify-center 
+                                                    <div
+                                                        class="w-10 h-10 bg-slate-100 flex items-center justify-center 
                                                                 text-slate-400 text-xs rounded border border-slate-200">
                                                         <i class="fa-solid fa-image"></i>
                                                     </div>
@@ -122,7 +119,7 @@
                 </div>
 
                 {{-- Info Scanner --}}
-                <div class="flex items-center justify-center gap-2 text-xs text-slate-500">
+                <div class="flex items-center gap-2 text-xs text-slate-500">
                     <i class="fa-solid fa-lightbulb"></i>
                     <span>Gunakan barcode scanner untuk pencarian lebih cepat</span>
                 </div>
@@ -130,22 +127,21 @@
         </div>
 
         {{-- 📦 Detail Item --}}
-        <div x-show="selectedItem" x-cloak x-transition 
-             class="bg-white border border-slate-200 rounded-xl overflow-hidden">
-            
+        <div x-show="selectedItem" x-cloak x-transition class="bg-white border border-slate-200 rounded-xl overflow-hidden">
+
             {{-- Header Item --}}
             <div class="px-6 py-4 bg-slate-50 border-b border-slate-200 flex justify-between items-start gap-4">
                 {{-- Foto Item --}}
                 <div class="flex-shrink-0">
                     <template x-if="selectedItem?.foto_path">
-                        <img :src="'/storage/app/public/' + selectedItem.foto_path" 
-                             :alt="selectedItem.nama_item"
-                             @click="openImagePreview('/storage/app/public/' + selectedItem.foto_path, selectedItem.nama_item)"
-                             class="w-20 h-20 object-cover rounded-lg border border-slate-200 cursor-pointer 
+                        <img :src="'/storage/app/public/' + selectedItem.foto_path" :alt="selectedItem.nama_item"
+                            @click="openImagePreview('/storage/app/public/' + selectedItem.foto_path, selectedItem.nama_item)"
+                            class="w-20 h-20 object-cover rounded-lg border border-slate-200 cursor-pointer 
                                     hover:ring-2 hover:ring-blue-500 hover:scale-105 transition-all shadow-sm">
                     </template>
                     <template x-if="!selectedItem?.foto_path">
-                        <div class="w-20 h-20 bg-slate-100 flex items-center justify-center text-slate-400 
+                        <div
+                            class="w-20 h-20 bg-slate-100 flex items-center justify-center text-slate-400 
                                     text-xs rounded-lg border border-slate-200">
                             <i class="fa-solid fa-image text-2xl"></i>
                         </div>
@@ -178,8 +174,8 @@
             </div>
 
             {{-- Deskripsi (jika ada) --}}
-            <div x-show="selectedItem?.deskripsi" 
-                 class="px-6 py-3 bg-blue-50 border-b border-slate-200 text-sm text-slate-700">
+            <div x-show="selectedItem?.deskripsi"
+                class="px-6 py-3 bg-blue-50 border-b border-slate-200 text-sm text-slate-700">
                 <i class="fa-solid fa-info-circle mr-2 text-blue-600"></i>
                 <span x-text="selectedItem?.deskripsi"></span>
             </div>
@@ -212,7 +208,8 @@
 
                                     {{-- Satuan --}}
                                     <td class="px-4 py-4 align-middle">
-                                        <span class="inline-flex items-center px-2.5 py-1 rounded 
+                                        <span
+                                            class="inline-flex items-center px-2.5 py-1 rounded 
                                                      bg-blue-100 text-blue-700 font-medium text-xs">
                                             <span x-text="gi.nama_satuan"></span>
                                         </span>
@@ -229,8 +226,7 @@
                                     <td class="px-4 py-4 text-center align-middle">
                                         <div>
                                             <div class="font-bold text-slate-800"
-                                                :class="gi.stok === 0 ? 'text-red-600' : ''" 
-                                                x-text="formatStok(gi.stok)">
+                                                :class="gi.stok === 0 ? 'text-red-600' : ''" x-text="formatStok(gi.stok)">
                                             </div>
                                             <div class="text-xs text-slate-500 mt-0.5">
                                                 Total: <span x-text="formatStok(gi.total_stok)"></span>
@@ -263,7 +259,8 @@
                         </template>
 
                         {{-- No Data --}}
-                        <template x-if="selectedItem && (!selectedItem.gudang_items || selectedItem.gudang_items.length === 0)">
+                        <template
+                            x-if="selectedItem && (!selectedItem.gudang_items || selectedItem.gudang_items.length === 0)">
                             <tr>
                                 <td colspan="7" class="px-4 py-8 text-center text-slate-500">
                                     <i class="fa-solid fa-inbox text-3xl mb-2 block"></i>
@@ -277,8 +274,7 @@
         </div>
 
         {{-- 📝 Empty State --}}
-        <div x-show="!selectedItem" x-cloak
-            class="bg-white border border-slate-200 rounded-xl p-12 text-center">
+        <div x-show="!selectedItem" x-cloak class="bg-white border border-slate-200 rounded-xl px-12 py-20 text-center">
             <i class="fa-solid fa-search text-5xl text-slate-300 mb-4"></i>
             <h3 class="text-lg font-semibold text-slate-700 mb-2">Pilih Item untuk Melihat Detail Harga</h3>
             <p class="text-sm text-slate-500">Gunakan kolom pencarian atau scan barcode untuk memulai</p>
@@ -286,7 +282,7 @@
 
         {{-- 🖼️ Image Preview Modal --}}
         <div x-show="showImagePreview" x-cloak @click="closeImagePreview()" @keydown.escape.window="closeImagePreview()"
-            class="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 min-h-screen">
+            class="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4 min-h-screen">
 
             <div x-show="showImagePreview" x-transition:enter="transition ease-out duration-300"
                 x-transition:enter-start="opacity-0 scale-90" x-transition:enter-end="opacity-100 scale-100"
@@ -312,171 +308,170 @@
                     </div>
                 </div>
             </div>
-            </div>
-            </div>
         </div>
 
-        {{-- Alpine Component --}}
-        <script>
-            function cekHargaPage() {
-                return {
-                    searchQuery: '',
-                    results: [],
-                    isLoading: false,
-                    dropdownOpen: false,
-                    selectedItem: null,
+    </div>
 
-                    // Notification
-                    notifMessage: '',
-                    notifType: '',
-                    showNotif: false,
+    {{-- Alpine Component --}}
+    <script>
+        function cekHargaPage() {
+            return {
+                searchQuery: '',
+                results: [],
+                isLoading: false,
+                dropdownOpen: false,
+                selectedItem: null,
 
-                    // Image Preview
-                    showImagePreview: false,
-                    previewImage: '',
-                    previewAlt: '',
+                // Notification
+                notifMessage: '',
+                notifType: '',
+                showNotif: false,
 
-                    init() {
-                        this.setupBarcodeScanner();
-                    },
+                // Image Preview
+                showImagePreview: false,
+                previewImage: '',
+                previewAlt: '',
 
-                    setupBarcodeScanner() {
-                        const barcodeInput = this.$refs.barcodeInput;
-                        if (!barcodeInput) return;
+                init() {
+                    this.setupBarcodeScanner();
+                },
 
-                        this.focusScanner();
+                setupBarcodeScanner() {
+                    const barcodeInput = this.$refs.barcodeInput;
+                    if (!barcodeInput) return;
 
-                        window.addEventListener('click', (e) => {
-                            const tag = e.target.tagName?.toLowerCase();
-                            if (!['input', 'textarea', 'select', 'button'].includes(tag)) {
+                    this.focusScanner();
+
+                    window.addEventListener('click', (e) => {
+                        const tag = e.target.tagName?.toLowerCase();
+                        if (!['input', 'textarea', 'select', 'button'].includes(tag)) {
+                            this.focusScanner();
+                        }
+                    });
+
+                    document.addEventListener('focusout', () => {
+                        setTimeout(() => {
+                            const active = document.activeElement;
+                            if (!active || !active.tagName) return;
+                            const tag = active.tagName.toLowerCase();
+                            if (!['input', 'textarea', 'select'].includes(tag)) {
                                 this.focusScanner();
                             }
-                        });
+                        }, 150);
+                    });
+                },
 
-                        document.addEventListener('focusout', () => {
-                            setTimeout(() => {
-                                const active = document.activeElement;
-                                if (!active || !active.tagName) return;
-                                const tag = active.tagName.toLowerCase();
-                                if (!['input', 'textarea', 'select'].includes(tag)) {
-                                    this.focusScanner();
-                                }
-                            }, 150);
-                        });
-                    },
+                focusScanner() {
+                    setTimeout(() => this.$refs.barcodeInput?.focus(), 100);
+                },
 
-                    focusScanner() {
-                        setTimeout(() => this.$refs.barcodeInput?.focus(), 100);
-                    },
+                async handleBarcode(e) {
+                    const code = e.target.value.trim();
+                    if (!code) return;
 
-                    async handleBarcode(e) {
-                        const code = e.target.value.trim();
-                        if (!code) return;
-
-                        try {
-                            const res = await fetch(`/cek-harga/barcode/${encodeURIComponent(code)}`);
-                            if (!res.ok) {
-                                this.notify(`Item dengan barcode "${code}" tidak ditemukan`, 'error');
-                                e.target.value = '';
-                                return;
-                            }
-
-                            const result = await res.json();
-                            if (result.success) {
-                                this.selectedItem = result.data;
-                                this.searchQuery = result.data.nama_item;
-                                this.notify(`Item "${result.data.nama_item}" ditemukan`, 'success');
-                            }
-                        } catch (err) {
-                            console.error('Error handleBarcode:', err);
-                            this.notify('Terjadi kesalahan saat memproses barcode', 'error');
-                        } finally {
+                    try {
+                        const res = await fetch(`/cek-harga/barcode/${encodeURIComponent(code)}`);
+                        if (!res.ok) {
+                            this.notify(`Item dengan barcode "${code}" tidak ditemukan`, 'error');
                             e.target.value = '';
-                            setTimeout(() => this.focusScanner(), 100);
-                        }
-                    },
-
-                    async searchItems() {
-                        if (this.searchQuery.length < 2) {
-                            this.results = [];
-                            this.dropdownOpen = false;
                             return;
                         }
 
-                        this.isLoading = true;
-                        this.dropdownOpen = true;
-
-                        try {
-                            const res = await fetch(`/cek-harga/search?q=${encodeURIComponent(this.searchQuery)}`);
-                            this.results = await res.json();
-                        } catch (err) {
-                            console.error('Error searchItems:', err);
-                            this.results = [];
-                            this.notify('Gagal mencari item', 'error');
-                        } finally {
-                            this.isLoading = false;
+                        const result = await res.json();
+                        if (result.success) {
+                            this.selectedItem = result.data;
+                            this.searchQuery = result.data.nama_item;
+                            this.notify(`Item "${result.data.nama_item}" ditemukan`, 'success');
                         }
-                    },
-
-                    async selectItem(item) {
-                        try {
-                            const res = await fetch(`/cek-harga/item/${item.id}`);
-                            const result = await res.json();
-
-                            if (result.success) {
-                                this.selectedItem = result.data;
-                                this.searchQuery = result.data.nama_item;
-                            } else {
-                                this.notify('Gagal memuat detail item', 'error');
-                            }
-                        } catch (err) {
-                            console.error('Error selectItem:', err);
-                            this.notify('Terjadi kesalahan saat memuat detail', 'error');
-                        }
-                    },
-
-                    notify(msg, type = 'info') {
-                        this.notifMessage = msg;
-                        this.notifType = type;
-                        this.showNotif = true;
-                        setTimeout(() => (this.showNotif = false), 3000);
-                    },
-
-                    openImagePreview(imageSrc, altText) {
-                        this.previewImage = imageSrc;
-                        this.previewAlt = altText;
-                        this.showImagePreview = true;
-                        document.body.style.overflow = 'hidden';
-                    },
-
-                    closeImagePreview() {
-                        this.showImagePreview = false;
-                        this.previewImage = '';
-                        this.previewAlt = '';
-                        document.body.style.overflow = '';
-                    },
-
-                    formatRupiah(val) {
-                        const num = parseFloat(val) || 0;
-                        return new Intl.NumberFormat('id-ID').format(num);
-                    },
-
-                    formatStok(val) {
-                        if (val == null || val === '') return '0';
-                        const num = parseFloat(val);
-                        return Number.isInteger(num) ?
-                            num.toString() :
-                            num.toLocaleString('id-ID', {
-                                maximumFractionDigits: 2
-                            }).replace('.', ',');
-                    },
-
-                    formatNumber(val) {
-                        const num = parseFloat(val) || 1;
-                        return num.toString();
+                    } catch (err) {
+                        console.error('Error handleBarcode:', err);
+                        this.notify('Terjadi kesalahan saat memproses barcode', 'error');
+                    } finally {
+                        e.target.value = '';
+                        setTimeout(() => this.focusScanner(), 100);
                     }
+                },
+
+                async searchItems() {
+                    if (this.searchQuery.length < 2) {
+                        this.results = [];
+                        this.dropdownOpen = false;
+                        return;
+                    }
+
+                    this.isLoading = true;
+                    this.dropdownOpen = true;
+
+                    try {
+                        const res = await fetch(`/cek-harga/search?q=${encodeURIComponent(this.searchQuery)}`);
+                        this.results = await res.json();
+                    } catch (err) {
+                        console.error('Error searchItems:', err);
+                        this.results = [];
+                        this.notify('Gagal mencari item', 'error');
+                    } finally {
+                        this.isLoading = false;
+                    }
+                },
+
+                async selectItem(item) {
+                    try {
+                        const res = await fetch(`/cek-harga/item/${item.id}`);
+                        const result = await res.json();
+
+                        if (result.success) {
+                            this.selectedItem = result.data;
+                            this.searchQuery = result.data.nama_item;
+                        } else {
+                            this.notify('Gagal memuat detail item', 'error');
+                        }
+                    } catch (err) {
+                        console.error('Error selectItem:', err);
+                        this.notify('Terjadi kesalahan saat memuat detail', 'error');
+                    }
+                },
+
+                notify(msg, type = 'info') {
+                    this.notifMessage = msg;
+                    this.notifType = type;
+                    this.showNotif = true;
+                    setTimeout(() => (this.showNotif = false), 3000);
+                },
+
+                openImagePreview(imageSrc, altText) {
+                    this.previewImage = imageSrc;
+                    this.previewAlt = altText;
+                    this.showImagePreview = true;
+                    document.body.style.overflow = 'hidden';
+                },
+
+                closeImagePreview() {
+                    this.showImagePreview = false;
+                    this.previewImage = '';
+                    this.previewAlt = '';
+                    document.body.style.overflow = '';
+                },
+
+                formatRupiah(val) {
+                    const num = parseFloat(val) || 0;
+                    return new Intl.NumberFormat('id-ID').format(num);
+                },
+
+                formatStok(val) {
+                    if (val == null || val === '') return '0';
+                    const num = parseFloat(val);
+                    return Number.isInteger(num) ?
+                        num.toString() :
+                        num.toLocaleString('id-ID', {
+                            maximumFractionDigits: 2
+                        }).replace('.', ',');
+                },
+
+                formatNumber(val) {
+                    const num = parseFloat(val) || 1;
+                    return num.toString();
                 }
             }
-        </script>
-    </div>
+        }
+    </script>
 @endsection
