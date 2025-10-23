@@ -74,7 +74,7 @@
 
         /* ======= GARIS PEMBATAS ======= */
         .line {
-            border-top: 1px dashed #000;
+            border-top: 2px dashed #000;
             margin: 4px 0;
         }
 
