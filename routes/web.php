@@ -143,12 +143,11 @@ Route::middleware('auth')->group(function () {
         // View routes
         Route::get('/', [PenjualanController::class, 'index'])->name('index');
         Route::get('/{id}', [PenjualanController::class, 'show'])->whereNumber('id')->name('show');
-        Route::get('/{id}/print', [PenjualanController::class, 'print'])->name('print');
         Route::get('/{id}/last-price', [PenjualanController::class, 'getLastPrice'])->name('last_price');
-
+        
         // Helper routes (tidak perlu permission khusus, cukup view)
         Route::get('/items/search', [PenjualanController::class, 'searchItems'])->name('items.search');
-
+        
         // Create routes
         Route::middleware('permission:penjualan.create')->group(function () {
             Route::get('/create', [PenjualanController::class, 'create'])->name('create');
@@ -166,12 +165,13 @@ Route::middleware('auth')->group(function () {
             ->middleware('permission:penjualan.delete')
             ->name('destroy');
     });
-
+    
     // ✅ Kasir bisa scan faktur (tanpa akses menu penjualan)
     Route::get('/penjualan/search', [PenjualanController::class, 'searchPenjualan'])
-        ->name('penjualan.search')
-        ->middleware('permission:pembayaran.create|penjualan.view');
-
+    ->name('penjualan.search')
+    ->middleware('permission:pembayaran.create|penjualan.view');
+    Route::get('/penjualan/{id}/print', [PenjualanController::class, 'print'])->name('penjualan.print')->middleware('permission:penjualan.view|pembayaran.create');
+    
     // Helper routes untuk items (bisa diakses siapa saja yang login)
     Route::get('/items/barcode/{barcode}', [PenjualanController::class, 'getItemByBarcode']);
     Route::get('/items/stock', [PenjualanController::class, 'getStock']);
