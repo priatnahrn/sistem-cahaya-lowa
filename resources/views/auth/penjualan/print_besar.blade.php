@@ -21,23 +21,19 @@
         }
 
         body {
-            font-size: 18px;
+            font-size: 16px;
             margin: 0;
             padding: 0;
             color: #000;
-            display: flex;
-            flex-direction: column;
-            height: 100%;
         }
 
         .nota {
             display: flex;
             flex-direction: column;
             justify-content: space-between;
-            height: auto;
             min-height: 5in;
+            page-break-after: always;
             padding-bottom: 6px;
-            page-break-after: auto;
         }
 
         .company-name {
@@ -53,12 +49,12 @@
         table {
             width: 100%;
             border-collapse: collapse;
-            font-size: 18px;
+            font-size: 16px;
         }
 
         th,
         td {
-            padding: 0px;
+            padding: 0;
             vertical-align: top;
         }
 
@@ -73,6 +69,30 @@
             text-align: right;
         }
 
+        /* --- Header tabel selalu muncul di tiap halaman --- */
+        .content-table {
+            width: 100%;
+            border-collapse: collapse;
+            page-break-inside: auto;
+        }
+
+        .content-table thead {
+            display: table-header-group;
+        }
+
+        .content-table tbody {
+            display: table-row-group;
+        }
+
+        .content-table tfoot {
+            display: table-footer-group;
+        }
+
+        .content-table tbody tr {
+            page-break-inside: avoid;
+        }
+
+        /* --- FOOTER --- */
         .footer-grid {
             width: 100%;
             margin-top: 12px;
@@ -80,13 +100,13 @@
         }
 
         .footer-left {
-            font-size: 18px;
+            font-size: 16px;
             vertical-align: top;
         }
 
         .footer-right {
             text-align: right;
-            font-size: 18px;
+            font-size: 16px;
             vertical-align: top;
         }
 
@@ -99,7 +119,7 @@
         }
 
         .item-note {
-            font-size: 18px;
+            font-size: 16px;
             color: #333;
             margin-top: -2px;
             margin-left: 40px;
@@ -128,19 +148,12 @@
             margin-left: 12px;
         }
 
-        /* --- Konten table agar bisa multi halaman --- */
-        .content-table {
-            max-height: 5in;
-            overflow: visible;
-            page-break-inside: auto;
-        }
-
-        .content-table thead {
-            display: table-header-group;
-        }
-
-        .content-table tbody tr {
-            page-break-inside: avoid;
+        /* --- Pisahkan halaman setiap 5 inch --- */
+        .page-break {
+            page-break-after: always;
+            height: 0;
+            margin: 0;
+            padding: 0;
         }
 
         @media print {
@@ -152,32 +165,22 @@
                 margin: 0;
             }
 
-            header,
-            footer {
-                display: none !important;
-            }
-
             .nota {
-                page-break-after: auto;
+                page-break-after: always;
             }
-        }
-
-        .page-divider {
-            border-top: 1px dashed #888;
-            margin: 2px 0;
         }
     </style>
 </head>
 
 <body>
     <div class="nota">
-        {{-- HEADER (Hanya sekali muncul di atas) --}}
+        {{-- HEADER --}}
         <div>
             <div class="header-section">
                 <img src="{{ url('storage/app/public/images/logo-cahaya-lowa-hitam.png') }}" alt="Logo CV Cahaya Lowa">
                 <div class="header-text">
                     <div class="company-name">CV CAHAYA LOWA</div>
-                    <div style="font-size: 13px;">Anabanua, Kab. Wajo</div>
+                    <div style="font-size: 14px;">Anabanua, Kab. Wajo</div>
                 </div>
                 <div class="header-right">
                     <div class="barcode">
@@ -187,7 +190,7 @@
             </div>
 
             {{-- INFO TABLE --}}
-            <table style="width:100%; font-size:18px; margin-top:6px;">
+            <table style="width:100%; font-size:16px; margin-top:6px;">
                 <tr>
                     <td style="width:90px;">NPWP</td>
                     <td style="width:180px;">: {{ $penjualan->pelanggan->npwp ?? '0' }}</td>
@@ -256,7 +259,7 @@
             <div class="line"></div>
         </div>
 
-        {{-- FOOTER (Hanya sekali di bawah terakhir) --}}
+        {{-- FOOTER --}}
         <table class="footer-grid">
             <tr>
                 <td class="footer-left" style="width:60%;">
@@ -274,7 +277,7 @@
 
                     <div>Subtotal : Rp {{ number_format($penjualan->sub_total ?? $total, 0, ',', '.') }}</div>
                     <div>Biaya Kirim : Rp {{ number_format($penjualan->biaya_transport ?? 0, 0, ',', '.') }}</div>
-                    <div class="bold" style="font-size:15px;">TOTAL : Rp
+                    <div class="bold" style="font-size:16px;">TOTAL : Rp
                         {{ number_format($grandTotal, 0, ',', '.') }}</div>
 
                     @if ($totalBayar > 0 && $sisaTagihan > 0)
@@ -297,7 +300,6 @@
             }, 2000);
         };
     </script>
-
 </body>
 
 </html>
