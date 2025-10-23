@@ -214,7 +214,7 @@
             </div>
 
             {{-- INFO TABLE --}}
-            <table style="width:100%; font-size:16px; margin-top:6px;">
+            {{-- <table style="width:100%; font-size:16px; margin-top:6px;">
                 <tr>
                     <td style="width:90px;">NPWP</td>
                     <td style="width:180px;">: {{ $penjualan->pelanggan->npwp ?? '0' }}</td>
@@ -239,84 +239,11 @@
                     <td>Alamat</td>
                     <td>: {{ $penjualan->pelanggan->alamat ?? '-' }}</td>
                 </tr>
-            </table>
+            </table> --}}
 
-            <div class="line"></div>
+            
 
-            {{-- TABEL ITEM --}}
-            <table class="content-table">
-                <thead>
-                    <tr>
-                        <th style="width:40px;">GD</th>
-                        <th>NAMA BARANG</th>
-                        <th style="width:100px;">BANYAK</th>
-                        <th class="right" style="width:110px;">HARGA</th>
-                        <th class="right" style="width:120px;">SUBTOTAL</th>
-                    </tr>
-                </thead>
-                 <thead>
-                    <tr>
-                        <th style="width:40px;">GD</th>
-                        <th>NAMA BARANG</th>
-                        <th style="width:100px;">BANYAK</th>
-                        <th class="right" style="width:110px;">HARGA</th>
-                        <th class="right" style="width:120px;">SUBTOTAL</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @php $total = 0; @endphp
-                    @foreach ($penjualan->items as $i => $it)
-                        @php
-                            $subtotal = $it->jumlah * $it->harga;
-                            $total += $subtotal;
-                        @endphp
-                        <tr>
-                            <td>{{ $it->gudang->kode_gudang ?? '-' }}</td>
-                            <td>
-                                {{ strtoupper($it->item->nama_item ?? '-') }}
-                                @if (!empty($it->keterangan))
-                                    <div class="item-note">- {{ $it->keterangan }}</div>
-                                @endif
-                            </td>
-                            <td>{{ number_format($it->jumlah, fmod($it->jumlah, 1) ? 2 : 0, ',', '.') }}
-                                {{ $it->satuan->nama_satuan ?? 'PCS' }}</td>
-                            <td class="right">{{ number_format($it->harga, 0, ',', '.') }}</td>
-                            <td class="right">{{ number_format($subtotal, 0, ',', '.') }}</td>
-                        </tr>
-                    @endforeach
-                </tbody>
-            </table>
-
-            <div class="line"></div>
-        </div>
-
-        {{-- INFO TABLE --}}
-        <table style="width:100%; font-size:16px; margin-top:6px;">
-            <tr>
-                <td style="width:90px;">NPWP</td>
-                <td style="width:180px;">: {{ $penjualan->pelanggan->npwp ?? '0' }}</td>
-                <td style="width:90px;">Nota #</td>
-                <td>: {{ $penjualan->no_faktur }}</td>
-            </tr>
-            <tr>
-                <td>Telp</td>
-                <td>: 0811 4284 995</td>
-                <td>Pelanggan</td>
-                <td>: {{ $penjualan->pelanggan->nama_pelanggan ?? 'CUSTOMER' }}</td>
-            </tr>
-            <tr>
-                <td>Tanggal</td>
-                <td>: {{ \Carbon\Carbon::parse($penjualan->tanggal)->format('d/m/Y') }}</td>
-                <td>Telepon</td>
-                <td>: {{ $penjualan->pelanggan->kontak ?? '-' }}</td>
-            </tr>
-            <tr>
-                <td>Admin</td>
-                <td>: {{ $penjualan->createdBy->name ?? '-' }}</td>
-                <td>Alamat</td>
-                <td>: {{ $penjualan->pelanggan->alamat ?? '-' }}</td>
-            </tr>
-        </table>
+           
 
         {{-- FOOTER --}}
         <table class="footer-grid">
