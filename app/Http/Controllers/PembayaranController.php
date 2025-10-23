@@ -90,6 +90,10 @@ class PembayaranController extends Controller
      * Simpan data pembayaran baru.
      * ✅ DENGAN AUTO CREATE KAS KEUANGAN
      */
+    /**
+     * Simpan data pembayaran baru.
+     * ✅ DENGAN AUTO UPDATE TAGIHAN PENJUALAN
+     */
     public function store(Request $request)
     {
         $this->authorize('pembayaran.create');
@@ -153,26 +157,24 @@ class PembayaranController extends Controller
                         'updated_by' => Auth::id(),
                     ]);
 
-                    // ✅ AUTO CREATE KAS KEUANGAN - PEMASUKAN
+                    // ✅ AUTO CREATE KAS KEUANGAN
                     KasKeuangan::create([
                         'user_id' => Auth::id(),
                         'pembayarans_id' => $pembayaran->id,
                         'penjualans_id' => $penjualan->id,
                         'jenis' => 'masuk',
-                        'nominal' => $jumlahBayar, // nominal yang dibayar
+                        'nominal' => $jumlahBayar,
                         'keterangan' => "Pembayaran adjustment {$penjualan->no_faktur} - " . $this->getMethodLabel($request->method),
                     ]);
 
+                    // ✅ Update sisa untuk pembayaran lain
                     Pembayaran::where('penjualan_id', $penjualan->id)->update(['sisa' => $sisa]);
 
+                    // ✅ Update status penjualan
                     $penjualan->update(['status_bayar' => $isLunas ? 'paid' : 'unpaid']);
 
-                    if ($tagihan = TagihanPenjualan::where('penjualan_id', $penjualan->id)->first()) {
-                        $tagihan->update([
-                            'status_tagihan' => $isLunas ? 'lunas' : 'belum_lunas',
-                            'sisa' => $sisa,
-                        ]);
-                    }
+                    // ✅ TagihanPenjualan akan auto-update via model boot()
+
                 } elseif ($adjustmentAmount < 0) {
                     // Kelebihan → pengembalian dana
                     $pengembalian = abs($adjustmentAmount);
@@ -199,15 +201,10 @@ class PembayaranController extends Controller
                     ]);
 
                     Pembayaran::where('penjualan_id', $penjualan->id)->update(['sisa' => 0]);
-
                     $penjualan->update(['status_bayar' => 'paid']);
 
-                    if ($tagihan = TagihanPenjualan::where('penjualan_id', $penjualan->id)->first()) {
-                        $tagihan->update([
-                            'status_tagihan' => 'lunas',
-                            'sisa' => 0,
-                        ]);
-                    }
+                    // ✅ TagihanPenjualan akan auto-update via model boot()
+
                 } else {
                     DB::rollBack();
                     return response()->json([
@@ -233,27 +230,20 @@ class PembayaranController extends Controller
                     'updated_by' => Auth::id(),
                 ]);
 
-                // ✅ AUTO CREATE KAS KEUANGAN - PEMASUKAN
-                // ⚠️ PENTING: Yang dicatat adalah jumlahBayar (sudah di-cap max ke total penjualan)
+                // ✅ AUTO CREATE KAS KEUANGAN
                 KasKeuangan::create([
                     'user_id' => Auth::id(),
                     'pembayarans_id' => $pembayaran->id,
                     'penjualans_id' => $penjualan->id,
                     'jenis' => 'masuk',
-                    'nominal' => $jumlahBayar, // ✅ ini sudah max ke total penjualan
+                    'nominal' => $jumlahBayar,
                     'keterangan' => "Pembayaran {$penjualan->no_faktur} - " . $this->getMethodLabel($request->method),
                 ]);
 
                 Pembayaran::where('penjualan_id', $penjualan->id)->update(['sisa' => $sisa]);
-
                 $penjualan->update(['status_bayar' => $isLunas ? 'paid' : 'unpaid']);
 
-                if ($tagihan = TagihanPenjualan::where('penjualan_id', $penjualan->id)->first()) {
-                    $tagihan->update([
-                        'status_tagihan' => $isLunas ? 'lunas' : 'belum_lunas',
-                        'sisa' => $sisa,
-                    ]);
-                }
+                // ✅ TagihanPenjualan akan auto-update via model boot()
             }
 
             LogActivity::create([
@@ -269,8 +259,8 @@ class PembayaranController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => $isAdjustment ?
-                    'Pembayaran adjustment berhasil disimpan.' :
-                    'Pembayaran berhasil disimpan dan status disinkronkan.',
+                    'Pembayaran adjustment berhasil disimpan dan tagihan diperbarui.' :
+                    'Pembayaran berhasil disimpan dan tagihan diperbarui.',
                 'data' => $pembayaran,
             ]);
         } catch (\Throwable $e) {
@@ -283,7 +273,6 @@ class PembayaranController extends Controller
             ], 500);
         }
     }
-
     /**
      * Update pembayaran (jika ada fitur edit)
      */

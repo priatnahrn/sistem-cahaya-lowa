@@ -7,6 +7,42 @@
         [x-cloak] {
             display: none !important;
         }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .animate-fadeIn {
+            animation: fadeIn 0.3s ease-out;
+        }
+
+        @keyframes drawCircle {
+            to {
+                stroke-dashoffset: 0;
+            }
+        }
+
+        @keyframes drawCheck {
+            to {
+                stroke-dashoffset: 0;
+            }
+        }
+
+        .success-circle {
+            animation: drawCircle 0.8s ease-out forwards;
+        }
+
+        .success-check {
+            animation: drawCheck 0.5s ease-out 0.8s forwards;
+        }
     </style>
 
     <meta name="csrf-token" content="{{ csrf_token() }}">
@@ -32,14 +68,13 @@
         {{-- ACTION BAR --}}
         <div
             class="bg-white border border-slate-200 rounded-xl px-6 py-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-
             {{-- LEFT: Input Kode Faktur --}}
             <div class="flex items-center gap-2 order-first">
                 <div class="relative">
                     <input type="text" x-model="kodeNota" @keydown.enter.prevent="cariPenjualan()"
                         placeholder="Masukkan Kode Faktur"
                         class="w-56 pl-3 pr-10 py-2 rounded-lg border border-slate-200 text-slate-600 placeholder-slate-400
-               focus:outline-none focus:ring-2 focus:ring-[#344579]/20 focus:border-[#344579]">
+                               focus:outline-none focus:ring-2 focus:ring-[#344579]/20 focus:border-[#344579]">
                     <i
                         class="fa-solid fa-barcode absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"></i>
                 </div>
@@ -50,7 +85,7 @@
                 <div class="relative">
                     <input type="text" placeholder="Cari No Transaksi, Penjualan, Kasir..." x-model="q"
                         class="w-72 pl-3 pr-10 py-2 rounded-lg border border-slate-200 text-slate-600 placeholder-slate-400
-                focus:outline-none focus:ring-2 focus:ring-[#344579]/20 focus:border-[#344579]">
+                               focus:outline-none focus:ring-2 focus:ring-[#344579]/20 focus:border-[#344579]">
                     <i
                         class="fa-solid fa-magnifying-glass absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"></i>
                 </div>
@@ -69,36 +104,32 @@
         {{-- FILTER PANEL --}}
         <div x-show="showFilter" x-collapse x-transition class="bg-white border border-slate-200 rounded-xl px-6 py-4 mt-2">
             <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-                {{-- Filter No Transaksi --}}
                 <div>
                     <label class="block text-sm font-medium text-slate-700 mb-2">No Transaksi</label>
                     <input type="text" placeholder="Cari No Transaksi" x-model="filters.no_transaksi"
                         class="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm text-slate-700 
-                focus:outline-none focus:ring-2 focus:ring-[#344579]/20 focus:border-[#344579]">
+                               focus:outline-none focus:ring-2 focus:ring-[#344579]/20 focus:border-[#344579]">
                 </div>
 
-                {{-- Filter Penjualan --}}
                 <div>
                     <label class="block text-sm font-medium text-slate-700 mb-2">Penjualan</label>
                     <input type="text" placeholder="Cari Penjualan" x-model="filters.penjualan"
                         class="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm text-slate-700 
-                focus:outline-none focus:ring-2 focus:ring-[#344579]/20 focus:border-[#344579]">
+                               focus:outline-none focus:ring-2 focus:ring-[#344579]/20 focus:border-[#344579]">
                 </div>
 
-                {{-- Filter Tanggal --}}
                 <div>
                     <label class="block text-sm font-medium text-slate-700 mb-2">Tanggal</label>
                     <input type="date" x-model="filters.tanggal"
                         class="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm text-slate-700 
-                focus:outline-none focus:ring-2 focus:ring-[#344579]/20 focus:border-[#344579]">
+                               focus:outline-none focus:ring-2 focus:ring-[#344579]/20 focus:border-[#344579]">
                 </div>
 
-                {{-- Filter Status --}}
                 <div>
                     <label class="block text-sm font-medium text-slate-700 mb-2">Status Pembayaran</label>
                     <select x-model="filters.status"
                         class="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm text-slate-700 
-                focus:outline-none focus:ring-2 focus:ring-[#344579]/20 focus:border-[#344579]">
+                               focus:outline-none focus:ring-2 focus:ring-[#344579]/20 focus:border-[#344579]">
                         <option value="">Semua</option>
                         <option value="lunas">Lunas</option>
                         <option value="belum_lunas">Belum Lunas</option>
@@ -107,7 +138,6 @@
                 </div>
             </div>
 
-            {{-- Filter Actions --}}
             <div class="flex items-center justify-between mt-4 pt-4 border-t border-slate-200">
                 <div class="text-sm text-slate-600">
                     <span x-text="filteredTotal()"></span> dari <span x-text="data.length"></span> pembayaran
@@ -121,14 +151,10 @@
             </div>
         </div>
 
-
-
-        {{-- TABLE --}}
         {{-- TABLE --}}
         <div class="bg-white border border-slate-200 rounded-xl overflow-hidden">
             <div class="overflow-x-auto">
                 <table class="min-w-full text-sm">
-                    {{-- TABLE HEADER --}}
                     <thead class="bg-slate-50 border-b border-slate-200">
                         <tr class="text-left text-slate-600">
                             <th class="px-4 py-3 w-[60px]">No.</th>
@@ -145,7 +171,6 @@
                                 <i class="fa-solid" :class="sortIcon('penjualan')"></i>
                             </th>
 
-                            {{-- ✅ Kolom Admin - HANYA untuk super-admin --}}
                             @if (Auth::user()->hasRole('super-admin'))
                                 <th class="px-4 py-3 cursor-pointer" @click="toggleSort('admin')">
                                     Admin/Kasir
@@ -169,7 +194,6 @@
                         </tr>
                     </thead>
 
-                    {{-- TABLE BODY --}}
                     <tbody>
                         <template x-for="(r, idx) in pagedData()" :key="r.id">
                             <tr class="hover:bg-slate-50 text-slate-700 border-b border-slate-200">
@@ -182,7 +206,6 @@
                                         x-text="r.penjualan"></a>
                                 </td>
 
-                                {{-- ✅ Tampilkan nama Admin - HANYA untuk super-admin --}}
                                 @if (Auth::user()->hasRole('super-admin'))
                                     <td class="px-4 py-3">
                                         <div class="flex items-center gap-2">
@@ -216,7 +239,6 @@
                         </template>
 
                         <tr x-show="filteredTotal()===0" class="text-center text-slate-500">
-                            {{-- ✅ Colspan dinamis: 9 untuk super-admin, 8 untuk Kasir --}}
                             <td colspan="{{ Auth::user()->hasRole('super-admin') ? '9' : '8' }}" class="px-4 py-6">
                                 Tidak ada data pembayaran.
                             </td>
@@ -224,6 +246,7 @@
                     </tbody>
                 </table>
             </div>
+
             {{-- PAGINATION --}}
             <div class="px-6 py-4">
                 <nav class="flex items-center justify-center gap-2" aria-label="Pagination">
@@ -255,22 +278,28 @@
                     </button>
                 </nav>
             </div>
-
         </div>
 
-
-        {{-- ✅ Floating dropdown - PERBAIKI INI --}}
+        {{-- ✅ FLOATING DROPDOWN dengan tombol Print --}}
         <div x-cloak x-show="dropdownVisible" x-transition.origin.top.right id="floating-dropdown"
             class="fixed w-44 bg-white border border-slate-200 rounded-lg shadow-lg z-[9999]"
             :style="`top:${dropdownPos.top}; left:${dropdownPos.left}`">
 
-            {{-- ✅ Detail selalu tampil (tidak perlu @can) --}}
             <button @click="window.location = dropdownData.url"
                 class="w-full text-left px-4 py-2 text-sm hover:bg-slate-50 flex items-center gap-2 text-slate-700 rounded-t-lg transition">
                 <i class="fa-solid fa-eye text-blue-500"></i> Detail
             </button>
 
-            {{-- ✅ Hapus hanya muncul jika punya permission --}}
+            {{-- ✅ Tombol Print --}}
+            <button
+                @click="dropdownData.penjualan_id ? openPrintModal(dropdownData) : showToast('Data penjualan tidak ditemukan', 'error')"
+                :disabled="!dropdownData.penjualan_id"
+                class="w-full text-left px-4 py-2 text-sm hover:bg-slate-50 flex items-center gap-2 transition border-t border-slate-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                :class="dropdownData.penjualan_id ? 'text-slate-700' : 'text-slate-400'">
+                <i class="fa-solid fa-print" :class="dropdownData.penjualan_id ? 'text-green-500' : 'text-slate-400'"></i>
+                Print Nota
+            </button>
+
             @can('pembayaran.delete')
                 <button @click="confirmDelete(dropdownData)"
                     class="w-full text-left px-4 py-2 text-sm hover:bg-red-50 flex items-center gap-2 text-red-600 rounded-b-lg transition border-t border-slate-100">
@@ -284,10 +313,9 @@
         {{-- ========================= --}}
         <div x-cloak x-show="showTambahModal" x-transition.opacity
             class="fixed inset-0 z-[9999] flex items-center justify-center min-h-screen">
-            <div class="absolute inset-0 bg-black/40 " @click="closeTambahModal()"></div>
+            <div class="absolute inset-0 bg-black/40" @click="closeTambahModal()"></div>
 
             <div class="bg-white rounded-2xl shadow-xl w-11/12 md:w-[420px] z-50 overflow-hidden animate-fadeIn">
-                {{-- HEADER --}}
                 <div class="px-6 py-4 border-b border-slate-200 flex justify-between items-center">
                     <h3 class="text-lg font-semibold text-[#344579]">Tambah Pembayaran</h3>
                     <button @click="closeTambahModal()" class="text-slate-400 hover:text-slate-600 transition">
@@ -295,10 +323,7 @@
                     </button>
                 </div>
 
-                {{-- KONTEN --}}
                 <div class="px-6 py-5 space-y-5">
-
-                    {{-- INFO TRANSAKSI --}}
                     <div class="bg-slate-50 rounded-xl p-4 border border-slate-200 space-y-1">
                         <p class="text-sm text-slate-600"><span class="font-medium">No Nota:</span>
                             <span class="text-slate-800" x-text="penjualanData?.no_faktur || '-'"></span>
@@ -311,7 +336,6 @@
                         </p>
                     </div>
 
-                    {{-- TOTAL --}}
                     <div class="bg-white rounded-xl border border-slate-200 p-4 space-y-2">
                         <div class="flex justify-between text-sm">
                             <span class="text-slate-600">Total Tagihan:</span>
@@ -329,7 +353,6 @@
                         </div>
                     </div>
 
-                    {{-- NOMINAL PEMBAYARAN --}}
                     <div>
                         <label class="block text-sm font-medium text-slate-700 mb-2">Nominal Pembayaran</label>
                         <div class="relative">
@@ -338,46 +361,36 @@
                             <input type="text" x-model="nominalBayarDisplay" @input="handleNominalInput($event)"
                                 placeholder="0" inputmode="numeric"
                                 class="w-full pl-9 pr-3 py-2.5 rounded-lg border border-slate-300 text-slate-700 text-right
-                   focus:ring-2 focus:ring-[#344579]/20 focus:border-[#344579] focus:outline-none">
+                                       focus:ring-2 focus:ring-[#344579]/20 focus:border-[#344579] focus:outline-none">
                         </div>
                     </div>
 
-                    {{-- METODE PEMBAYARAN --}}
                     <div class="space-y-3">
                         <label class="block text-sm font-medium text-slate-700 mb-1">Metode Pembayaran</label>
 
-                        {{-- PILIH METODE --}}
                         <div class="flex gap-2">
-                            {{-- TUNAI --}}
                             <button type="button" @click="pilihMetode('cash')"
-                                :class="metodePembayaran === 'cash'
-                                    ?
-                                    'bg-green-600 text-white border-green-600' :
+                                :class="metodePembayaran === 'cash' ? 'bg-green-600 text-white border-green-600' :
                                     'bg-white text-slate-700 border-slate-300 hover:bg-slate-50'"
                                 class="flex-1 px-4 py-2.5 rounded-lg border font-medium transition">
                                 <i class="fa-solid fa-money-bill-wave mr-2"></i> Tunai
                             </button>
 
-                            {{-- TRANSFER BANK --}}
                             <button type="button" @click="pilihMetode('transfer')"
-                                :class="metodePembayaran === 'transfer'
-                                    ?
-                                    'bg-[#344579] text-white border-[#344579]' :
+                                :class="metodePembayaran === 'transfer' ? 'bg-[#344579] text-white border-[#344579]' :
                                     'bg-white text-slate-700 border-slate-300 hover:bg-slate-50'"
                                 class="flex-1 px-4 py-2.5 rounded-lg border font-medium transition">
                                 <i class="fa-solid fa-building-columns mr-2"></i> Transfer Bank
                             </button>
                         </div>
 
-                        {{-- PILIH BANK (GAMBAR) --}}
                         <div x-show="metodePembayaran === 'transfer'" x-transition class="flex gap-3 mt-3 justify-center">
                             <template x-for="bank in bankList" :key="bank.name">
                                 <button type="button" @click="namaBank = bank.name"
-                                    :class="namaBank === bank.name ?
-                                        'ring-2 ring-[#344579] border-[#344579]' :
+                                    :class="namaBank === bank.name ? 'ring-2 ring-[#344579] border-[#344579]' :
                                         'hover:ring-1 hover:ring-slate-300'"
                                     class="h-14 bg-white border border-slate-300 w-full rounded-md
-                                     flex items-center justify-center transition relative overflow-hidden ">
+                                           flex items-center justify-center transition relative overflow-hidden">
                                     <img :src="bank.logo" :alt="bank.name" class="w-1/2 object-contain">
                                     <div x-show="namaBank === bank.name" x-transition
                                         class="absolute inset-0 bg-[#344579]/10 rounded-xl"></div>
@@ -385,10 +398,8 @@
                             </template>
                         </div>
                     </div>
-
                 </div>
 
-                {{-- FOOTER --}}
                 <div class="px-6 py-4 border-t border-slate-200 flex justify-end gap-3 bg-slate-50">
                     <button @click="closeTambahModal()"
                         class="w-[30%] px-4 py-2 rounded-lg border border-slate-300 text-slate-700 hover:bg-white transition">
@@ -402,20 +413,15 @@
             </div>
         </div>
 
-
-
-
         {{-- ========================= --}}
         {{-- MODAL BERHASIL PEMBAYARAN --}}
         {{-- ========================= --}}
         <div x-cloak x-show="showSuccessModal" x-transition.opacity
             class="fixed inset-0 z-[99999] flex items-center justify-center min-h-screen">
-            <div class="absolute inset-0 bg-black/50 " @click="closeSuccessModal()"></div>
+            <div class="absolute inset-0 bg-black/50" @click="closeSuccessModal()"></div>
 
             <div
                 class="bg-white rounded-2xl shadow-xl w-11/12 md:w-[420px] z-50 overflow-hidden animate-fadeIn text-center p-6">
-
-                {{-- ✅ ANIMASI SUKSES --}}
                 <div class="flex justify-center mb-4">
                     <svg viewBox="0 0 120 120" class="w-24 h-24">
                         <circle cx="60" cy="60" r="50" fill="none" stroke="#34D399" stroke-width="10"
@@ -428,17 +434,19 @@
 
                 <h3 class="text-2xl font-semibold text-green-700 mb-2">Pembayaran Berhasil!</h3>
 
-                {{-- 💰 BAGIAN KEMBALIAN --}}
                 <div class="bg-green-50 border border-green-200 rounded-lg p-3 mt-3 text-green-700">
                     <p class="text-sm font-medium">Kembalian:</p>
                     <p class="text-xl font-bold transition-all duration-300" x-text="formatRupiah(kembalian ?? 0)"></p>
                 </div>
 
                 <div class="mt-6 flex flex-col gap-3">
-                    <a :href="printUrl" target="_blank"
-                        class="px-4 py-2 rounded-lg bg-[#344579] text-white hover:bg-[#2e3e6a] transition font-medium flex items-center justify-center gap-2">
+                    {{-- ✅ Tombol Print buka modal --}}
+                    <button
+                        @click="if(printItem && printItem.penjualan_id) { showSuccessModal = false; $nextTick(() => openPrintModal(printItem)); } else { showToast('Data pembayaran tidak tersedia', 'error'); }"
+                        :disabled="!printItem || !printItem.penjualan_id"
+                        class="px-4 py-2 rounded-lg bg-[#344579] text-white hover:bg-[#2e3e6a] transition font-medium flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
                         <i class="fa-solid fa-print"></i> Cetak Nota
-                    </a>
+                    </button>
                     <button @click="closeSuccessModal()"
                         class="px-4 py-2 rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-100 transition font-medium flex items-center justify-center gap-2">
                         <i class="fa-solid fa-arrow-left"></i> Kembali
@@ -452,11 +460,10 @@
         {{-- ========================= --}}
         <div x-cloak x-show="showLunasModal" x-transition.opacity
             class="fixed inset-0 z-[99999] flex items-center justify-center min-h-screen">
-            <div class="absolute inset-0 bg-black/50 " @click="closeLunasModal()"></div>
+            <div class="absolute inset-0 bg-black/50" @click="closeLunasModal()"></div>
 
             <div
                 class="bg-white rounded-2xl shadow-xl w-11/12 md:w-[420px] z-50 overflow-hidden animate-fadeIn text-center p-6">
-                {{-- ✅ ANIMASI LUNAS --}}
                 <div class="flex justify-center mb-4">
                     <svg viewBox="0 0 120 120" class="w-24 h-24">
                         <circle cx="60" cy="60" r="50" fill="none" stroke="#34D399" stroke-width="10"
@@ -482,71 +489,78 @@
             </div>
         </div>
 
+        {{-- ========================= --}}
+        {{-- 🧾 MODAL PRINT NOTA --}}
+        {{-- ========================= --}}
+        <div x-cloak x-show="showPrintModal" aria-modal="true" role="dialog"
+            class="fixed inset-0 z-[99999] flex items-center justify-center min-h-screen">
 
-        <style>
-            @keyframes fadeIn {
-                from {
-                    opacity: 0;
-                    transform: translateY(10px);
-                }
+            <div x-show="showPrintModal" x-transition.opacity.duration.400ms
+                class="absolute inset-0 bg-black/40 backdrop-blur-[2px] transition-all" @click="closePrint()"></div>
 
-                to {
-                    opacity: 1;
-                    transform: translateY(0);
-                }
-            }
+            <div x-show="showPrintModal" x-transition:enter="transition ease-out duration-300"
+                x-transition:enter-start="opacity-0 scale-95 translate-y-3"
+                x-transition:enter-end="opacity-100 scale-100 translate-y-0"
+                x-transition:leave="transition ease-in duration-200" x-transition:leave-start="opacity-100 scale-100"
+                x-transition:leave-end="opacity-0 scale-95 translate-y-3"
+                class="relative bg-white/95 backdrop-blur-sm w-[420px]
+                       rounded-2xl shadow-[0_10px_35px_-5px_rgba(51,73,118,0.25)]
+                       border border-slate-200 transform transition-all overflow-hidden"
+                @click.away="closePrint()">
 
-            .animate-fadeIn {
-                animation: fadeIn 0.3s ease-out;
-            }
+                <div
+                    class="bg-gradient-to-r from-[#f8fafc] to-[#f1f5f9] 
+                            border-b border-slate-200 px-5 py-3 flex justify-between items-center rounded-t-2xl">
+                    <h3 class="text-base font-semibold text-[#334976] flex items-center gap-2">
+                        <i class="fa-solid fa-print text-[#334976]"></i>
+                        Pilih Jenis Nota
+                    </h3>
+                    <button @click="closePrint()" class="text-slate-400 hover:text-slate-600 transition">
+                        <i class="fa-solid fa-xmark text-lg"></i>
+                    </button>
+                </div>
 
-            @keyframes drawCircle {
-                to {
-                    stroke-dashoffset: 0;
-                }
-            }
+                <div class="p-6 space-y-3 bg-white">
+                    <p class="text-slate-600 mb-4">Pilih format cetak nota:</p>
 
-            @keyframes drawCheck {
-                to {
-                    stroke-dashoffset: 0;
-                }
-            }
+                    <button @click="printNota('kecil')" type="button"
+                        class="w-full px-4 py-2.5 rounded-lg text-white bg-blue-600 hover:bg-blue-700
+                               font-medium text-center shadow-sm hover:shadow-md transition">
+                        <i class="fa-solid fa-receipt mr-2"></i> Print Nota Kecil
+                    </button>
 
-            .success-circle {
-                animation: drawCircle 0.8s ease-out forwards;
-            }
+                    <button @click="printNota('besar')" type="button"
+                        class="w-full px-4 py-2.5 rounded-lg text-white bg-green-600 hover:bg-green-700
+                               font-medium text-center shadow-sm hover:shadow-md transition">
+                        <i class="fa-solid fa-file-invoice mr-2"></i> Print Nota Besar
+                    </button>
+                </div>
 
-            .success-check {
-                animation: drawCheck 0.5s ease-out 0.8s forwards;
-            }
-        </style>
+                <div class="flex justify-end px-6 py-4 bg-slate-50 border-t border-slate-200 rounded-b-2xl">
+                    <button type="button" @click="closePrint()"
+                        class="px-5 py-2.5 rounded-lg border border-slate-300 text-slate-600 
+                               hover:bg-slate-100 transition font-medium">
+                        Batal
+                    </button>
+                </div>
+            </div>
+        </div>
 
     </div>
 
     @php
         use Carbon\Carbon;
 
-        // ✅ Cek apakah user adalah super-admin (BUKAN admin, BUKAN Kasir)
         $user = Auth::user();
-
-        // PILIH SALAH SATU sesuai sistem Anda:
-
-        // Opsi 1: Jika pakai Spatie Permission
         $isSuperAdmin = $user->hasRole('super-admin');
 
-        // Opsi 2: Jika pakai kolom 'role' string di tabel users
-        // $isSuperAdmin = $user->role === 'super-admin';
-
-        // Opsi 3: Jika pakai relasi role() ke tabel roles
-        // $isSuperAdmin = $user->role && $user->role->name === 'super-admin';
-
-        // Mapping data pembayaran
         $pembayaransJson = $pembayarans
             ->map(function ($p) use ($isSuperAdmin) {
                 $tanggal = $p->tanggal ? Carbon::parse($p->tanggal)->format('Y-m-d H:i:s') : null;
 
                 $data = [
                     'id' => $p->id,
+                    'penjualan_id' => $p->penjualan_id, // ✅ Pastikan ada
                     'no_transaksi' => optional($p->penjualan)->no_faktur ?? '-',
                     'tanggal' => $tanggal,
                     'penjualan' => optional($p->penjualan->pelanggan)->nama_pelanggan ?? 'Customer',
@@ -556,7 +570,6 @@
                     'url' => route('pembayaran.show', $p->id),
                 ];
 
-                // ✅ HANYA super-admin yang dapat data admin
                 if ($isSuperAdmin) {
                     $creator = $p->createdBy;
                     $data['admin'] = $creator ? $creator->name : 'Tidak diketahui';
@@ -572,7 +585,6 @@
     <script>
         function pembayaranPage() {
             return {
-                // ========== STATE ==========
                 q: '',
                 filters: {
                     no_transaksi: '',
@@ -590,26 +602,21 @@
                 namaBank: '',
                 bankList: [{
                         name: 'BRI',
-                        logo: '{{ '/storage/app/public/images/bri.png' }}'
+                        logo: '{{ url('storage/app/public/images/bri.png') }}'
                     },
                     {
                         name: 'BNI',
-                        logo: '{{ '/storage/app/public/images/bni.png' }}'
+                        logo: '{{ url('storage/app/public/images/bni.png') }}'
                     },
                     {
                         name: 'Mandiri',
-                        logo: '{{ '/storage/app/public/images/mandiri.png' }}'
+                        logo: '{{ url('storage/app/public/images/mandiri.png') }}'
                     },
                 ],
                 nominalBayarDisplay: '',
 
-
-
-
-                // ========== DATA ==========
                 data: @json($pembayaransJson),
 
-                // ========== TAMBAH PEMBAYARAN (MODAL) ==========
                 showTambahModal: false,
                 scanning: false,
                 kodeNota: '',
@@ -617,10 +624,14 @@
                 nominalBayar: 0,
 
                 showSuccessModal: false,
-                printUrl: '',
                 kembalian: 0,
 
                 showLunasModal: false,
+
+                // ✅ Modal Print
+                showPrintModal: false,
+                printItem: null,
+
                 dropdownVisible: false,
                 dropdownData: {},
                 dropdownPos: {
@@ -631,20 +642,22 @@
                 _scrollHandler: null,
                 _resizeHandler: null,
 
-
-
-
                 init() {
-                    let buffer = ''; // menampung hasil scan sementara
+                    const urlParams = new URLSearchParams(window.location.search);
+                    const penjualanParam = urlParams.get('penjualan');
+
+                    if (penjualanParam) {
+                        this.kodeNota = penjualanParam;
+                        this.cariPenjualan();
+                    }
+
+                    let buffer = '';
                     let lastTime = Date.now();
 
                     window.addEventListener('keydown', (e) => {
                         const now = Date.now();
-
-                        // jika jeda antar input terlalu lama, reset buffer
                         if (now - lastTime > 100) buffer = '';
 
-                        // Enter → eksekusi cari
                         if (e.key === 'Enter' && buffer.length > 5) {
                             this.handleBarcodeScan(buffer.trim());
                             buffer = '';
@@ -655,8 +668,13 @@
                         lastTime = now;
                     });
 
-                    console.log('📦 Data Pembayaran:', @json($pembayaransJson));
+                    // ✅ Pastikan modal tertutup saat load
+                    this.showPrintModal = false;
+                    this.showSuccessModal = false;
+                    this.showLunasModal = false;
+                    this.printItem = null;
 
+                    console.log('📦 Data Pembayaran:', this.data);
                 },
 
                 pilihMetode(metode) {
@@ -664,22 +682,7 @@
                     this.namaBank = '';
                 },
 
-                metodePembayaranLabel() {
-                    switch (this.metodePembayaran) {
-                        case 'cash':
-                            return 'Tunai';
-                        case 'transfer':
-                            return 'Transfer Bank';
-                        case 'qris':
-                            return 'QRIS';
-                        case 'wallet':
-                            return 'E-Wallet';
-                        default:
-                            return '-';
-                    }
-                },
                 handleNominalInput(e) {
-                    // Ambil hanya angka (hapus titik, huruf, spasi)
                     let value = e.target.value.replace(/\D/g, '');
                     if (!value) {
                         this.nominalBayarDisplay = '';
@@ -687,10 +690,7 @@
                         return;
                     }
 
-                    // Simpan nilai asli (tanpa format)
                     this.nominalBayar = parseInt(value);
-
-                    // Format tampilan jadi "10.000"
                     this.nominalBayarDisplay = new Intl.NumberFormat('id-ID').format(this.nominalBayar);
                 },
 
@@ -704,6 +704,13 @@
 
                     this.openActionId = row.id;
                     this.dropdownData = row;
+
+                    // ✅ Debug log
+                    console.log('📂 Dropdown opened:', {
+                        id: row.id,
+                        penjualan_id: row.penjualan_id,
+                        no_transaksi: row.no_transaksi
+                    });
 
                     const rect = event.currentTarget.getBoundingClientRect();
                     const dropdownHeight = 100;
@@ -723,7 +730,6 @@
 
                     this.dropdownVisible = true;
 
-                    // event listener global
                     this._outsideClickHandler = this.handleOutsideClick.bind(this);
                     this._scrollHandler = this.closeDropdown.bind(this);
                     this._resizeHandler = this.closeDropdown.bind(this);
@@ -735,11 +741,7 @@
 
                 handleOutsideClick(e) {
                     const dropdown = document.getElementById('floating-dropdown');
-                    if (
-                        dropdown &&
-                        !dropdown.contains(e.target) &&
-                        !e.target.closest('[x-on\\:click^="openDropdown"]')
-                    ) {
+                    if (dropdown && !dropdown.contains(e.target) && !e.target.closest('[x-on\\:click^="openDropdown"]')) {
                         this.closeDropdown();
                     }
                 },
@@ -763,8 +765,6 @@
                     }
                 },
 
-
-
                 async handleBarcodeScan(kode) {
                     try {
                         console.log('🔍 Deteksi hasil scan:', kode);
@@ -775,18 +775,13 @@
                         console.log('📦 Data hasil scan:', data);
                         this.penjualanData = data;
 
-                        // ⚙️ Cek status bayar langsung dari data
-                        if (
-                            data.status_bayar && ['paid', 'lunas'].includes(data.status_bayar.toLowerCase())
-                        ) {
-                            // ✅ Jika sudah lunas → tampilkan modal lunas
+                        if (data.status_bayar && ['paid', 'lunas'].includes(data.status_bayar.toLowerCase())) {
                             this.showTambahModal = false;
                             this.showSuccessModal = false;
                             this.showLunasModal = true;
                             this.kodeNota = '';
                             console.log('✅ Faktur hasil scan sudah lunas, tampilkan modal info.');
                         } else {
-                            // 💳 Jika belum lunas → tampilkan modal tambah pembayaran
                             this.showTambahModal = true;
                             console.log('🟡 Faktur hasil scan belum lunas, buka modal pembayaran.');
                         }
@@ -797,9 +792,6 @@
                     }
                 },
 
-
-
-                // ========== FORMATTERS ==========
                 formatRupiah(n) {
                     return new Intl.NumberFormat('id-ID', {
                         style: 'currency',
@@ -811,8 +803,6 @@
                 fmtTanggal(iso) {
                     if (!iso) return '-';
                     const d = new Date(iso);
-
-                    // Jika data dari server masih UTC, tambahkan offset +8 jam (Makassar)
                     d.setHours(d.getHours() + 8);
 
                     const tanggal =
@@ -821,8 +811,6 @@
                     return `${tanggal} ${waktu}`;
                 },
 
-
-                // ========== SORTING & FILTERING ==========
                 sortIcon(field) {
                     if (this.sortBy !== field) return 'fa-sort ml-2';
                     return this.sortDir === 'asc' ? 'fa-arrow-up ml-2' : 'fa-arrow-down ml-2';
@@ -840,31 +828,17 @@
                 filteredList() {
                     const q = this.q.toLowerCase();
                     let list = this.data.filter(r => {
-                        // 🔍 Pencarian umum
                         if (q && !(`${r.no_transaksi} ${r.penjualan}`.toLowerCase().includes(q))) return false;
-
-                        // 🔹 Filter No Transaksi
                         if (this.filters.no_transaksi && !r.no_transaksi.toLowerCase().includes(this.filters
-                                .no_transaksi.toLowerCase()))
-                            return false;
-
-                        // 🔹 Filter Nama Pelanggan / Penjualan
+                                .no_transaksi.toLowerCase())) return false;
                         if (this.filters.penjualan && !r.penjualan.toLowerCase().includes(this.filters.penjualan
-                                .toLowerCase()))
-                            return false;
-
-                        // 🔹 Filter Status
-                        if (this.filters.status && r.status !== this.filters.status)
-                            return false;
-
-                        // 🔹 Filter Tanggal (gunakan prefix cocok, contoh: "2025-10-08" cocok dengan "2025-10-08 13:45")
+                                .toLowerCase())) return false;
+                        if (this.filters.status && r.status !== this.filters.status) return false;
                         if (this.filters.tanggal && r.tanggal && !r.tanggal.startsWith(this.filters.tanggal))
-                            return false;
-
+                        return false;
                         return true;
                     });
 
-                    // 🔹 Sorting (tetap sama)
                     const dir = this.sortDir === 'asc' ? 1 : -1;
                     list.sort((a, b) => {
                         if (a[this.sortBy] > b[this.sortBy]) return dir;
@@ -875,7 +849,6 @@
                     return list;
                 },
 
-
                 filteredTotal() {
                     return this.filteredList().length;
                 },
@@ -885,21 +858,24 @@
                     return this.filteredList().slice(start, start + this.pageSize);
                 },
 
-                // ========== PAGINATION ==========
                 totalPages() {
                     return Math.max(1, Math.ceil(this.filteredTotal() / this.pageSize));
                 },
+
                 goToPage(n) {
                     n = Math.max(1, Math.min(n, this.totalPages()));
                     this.currentPage = n;
                     this.openActionId = null;
                 },
+
                 prev() {
                     if (this.currentPage > 1) this.currentPage--;
                 },
+
                 next() {
                     if (this.currentPage < this.totalPages()) this.currentPage++;
                 },
+
                 pagesToShow() {
                     const total = this.totalPages();
                     const max = 7;
@@ -919,34 +895,35 @@
                     return pages;
                 },
 
-                // ========== STATUS BADGES ==========
                 badgeClass(st) {
                     if (st === 'paid') return 'bg-green-50 text-green-700 border border-green-200';
                     if (st === 'unpaid') return 'bg-amber-50 text-amber-700 border border-amber-200';
                     if (st === 'batal') return 'bg-rose-50 text-rose-700 border border-rose-200';
                     return 'bg-slate-50 text-slate-700 border border-slate-200';
                 },
+
                 dotClass(st) {
                     if (st === 'paid') return 'bg-green-500';
                     if (st === 'unpaid') return 'bg-amber-500';
                     if (st === 'batal') return 'bg-rose-500';
                     return 'bg-slate-500';
                 },
+
                 statusLabel(st) {
                     if (st === 'paid') return 'Lunas';
                     if (st === 'unpaid') return 'Belum Lunas';
                     return '-';
                 },
 
-
-                // ========== FILTERS ==========
                 hasActiveFilters() {
                     return this.filters.no_transaksi || this.filters.penjualan || this.filters.tanggal || this.filters
                         .status;
                 },
+
                 activeFiltersCount() {
                     return Object.values(this.filters).filter(v => v).length;
                 },
+
                 resetFilters() {
                     this.filters = {
                         no_transaksi: '',
@@ -958,18 +935,17 @@
                     this.currentPage = 1;
                 },
 
-                // ========== ACTION MENU ==========
                 toggleActions(id) {
                     this.openActionId = (this.openActionId === id) ? null : id;
                 },
 
-                // ========== TAMBAH PEMBAYARAN (MODAL) ==========
                 openTambahModal() {
                     this.showTambahModal = true;
                     this.penjualanData = null;
                     this.kodeNota = '';
                     this.nominalBayar = 0;
                 },
+
                 closeTambahModal() {
                     this.showTambahModal = false;
                     this.scanning = false;
@@ -982,16 +958,6 @@
                     this.kodeNota = '';
                 },
 
-
-                startScan() {
-                    this.scanning = true;
-                    // simulasi hasil barcode (nanti diganti hasil kamera)
-                    setTimeout(() => {
-                        this.kodeNota = 'PJ-20251008-0001';
-                        this.cariPenjualan();
-                    }, 1500);
-                },
-
                 async cariPenjualan() {
                     if (!this.kodeNota) {
                         this.showToast('Masukkan kode faktur terlebih dahulu!', 'error');
@@ -1001,7 +967,7 @@
                     try {
                         const routePenjualanSearch = "{{ route('penjualan.search') }}";
                         console.log('🔍 Mencari:', this.kodeNota, '->',
-                            `${routePenjualanSearch}?kode=${this.kodeNota}`);
+                        `${routePenjualanSearch}?kode=${this.kodeNota}`);
                         const res = await fetch(`${routePenjualanSearch}?kode=${this.kodeNota}`);
 
                         if (!res.ok) throw new Error('Penjualan tidak ditemukan.');
@@ -1010,9 +976,7 @@
                         console.log('✅ Penjualan ditemukan:', data);
                         this.penjualanData = data;
 
-                        if (
-                            data.status_bayar && ['paid', 'lunas'].includes(data.status_bayar.toLowerCase())
-                        ) {
+                        if (data.status_bayar && ['paid', 'lunas'].includes(data.status_bayar.toLowerCase())) {
                             this.showTambahModal = false;
                             this.showSuccessModal = false;
                             this.showLunasModal = true;
@@ -1023,8 +987,6 @@
                             console.log('🟡 Faktur belum lunas, buka modal pembayaran.');
                         }
 
-
-
                         this.scanning = false;
                     } catch (e) {
                         this.showToast(e.message || 'Gagal mencari penjualan.', 'error');
@@ -1034,8 +996,7 @@
 
                 async simpanPembayaran() {
                     if (!this.penjualanData || this.nominalBayar <= 0) {
-                        this.showToast('Masukkan kode faktur terlebih dahulu!', 'error');
-
+                        this.showToast('Masukkan nominal pembayaran yang valid!', 'error');
                         return;
                     }
 
@@ -1065,66 +1026,150 @@
                         const result = await res.json();
                         if (!result.success) throw new Error('Pembayaran gagal disimpan.');
 
-                        // ✅ Hitung kembalian
                         const totalTagihan = this.penjualanData.sisa || this.penjualanData.total;
-                        this.kembalian =
-                            this.metodePembayaran === 'cash' ?
-                            Math.max(0, this.nominalBayar - totalTagihan) :
-                            0;
+                        this.kembalian = this.metodePembayaran === 'cash' ? Math.max(0, this.nominalBayar -
+                            totalTagihan) : 0;
 
-                        this.printUrl = `/pembayaran/${result.data.id}`; // link nota
+                        // ✅ Simpan data untuk print (pastikan tidak null)
+                        this.printItem = {
+                            id: result.data.id,
+                            penjualan_id: this.penjualanData.id
+                        };
+
+                        console.log('✅ Pembayaran berhasil, printItem:', this.printItem);
+
                         this.closeTambahModal();
                         this.showSuccessModal = true;
+
                     } catch (e) {
                         this.showToast(e.message || 'Terjadi kesalahan saat menyimpan pembayaran.', 'error');
                     }
-
                 },
 
                 closeSuccessModal() {
                     this.showSuccessModal = false;
-                    setTimeout(() => window.location.reload(), 1000);
+                    this.printItem = null; // ✅ Reset printItem
+                    setTimeout(() => window.location.reload(), 500);
                 },
 
+                // ✅ PRINT FUNCTIONS
+                openPrintModal(item) {
+                    if (!item || !item.penjualan_id) {
+                        console.warn('⚠️ openPrintModal: item tidak valid', item);
+                        this.showToast('Data pembayaran tidak ditemukan', 'error');
+                        return;
+                    }
 
+                    this.closeDropdown();
+                    this.printItem = {
+                        ...item
+                    };
+                    this.showPrintModal = true;
 
-                // ========== TOAST ========== 
+                    console.log('🖨️ Modal print dibuka:', this.printItem);
+                },
+
+                closePrint() {
+                    this.showPrintModal = false;
+                    this.printItem = null;
+                },
+
+                async printNota(type) {
+                    if (!this.printItem || !this.printItem.penjualan_id) {
+                        console.warn('⚠️ printNota: printItem tidak valid', this.printItem);
+                        this.showToast('Data pembayaran tidak ditemukan', 'error');
+                        return;
+                    }
+
+                    try {
+                        // ✅ Print dari penjualan (pakai view print yang sudah ada)
+                        const url = `/penjualan/${this.printItem.penjualan_id}/print?type=${type}`;
+                        console.log('🖨️ Print URL:', url);
+
+                        const res = await fetch(url);
+
+                        if (!res.ok) {
+                            throw new Error(`HTTP ${res.status}: Gagal memuat nota`);
+                        }
+
+                        const html = await res.text();
+
+                        // ✅ Validasi response HTML
+                        if (!html || html.trim().length < 100) {
+                            throw new Error('Response HTML kosong atau tidak valid');
+                        }
+
+                        const printWindow = window.open('', '_blank', 'width=800,height=600');
+
+                        if (!printWindow) {
+                            this.showToast("Popup diblokir, izinkan popup untuk melanjutkan.", 'error');
+                            return;
+                        }
+
+                        printWindow.document.write(html);
+                        printWindow.document.close();
+
+                        printWindow.onload = () => {
+                            setTimeout(() => {
+                                printWindow.focus();
+                                printWindow.print();
+
+                                printWindow.onafterprint = () => {
+                                    printWindow.close();
+                                };
+
+                                setTimeout(() => {
+                                    if (!printWindow.closed) {
+                                        printWindow.close();
+                                    }
+                                }, 2000);
+
+                            }, 500);
+                        };
+
+                        this.closePrint();
+
+                    } catch (err) {
+                        console.error('❌ Print error:', err);
+                        this.showToast(`Gagal mencetak nota: ${err.message}`, 'error');
+                    }
+                },
+
                 showToast(message = '', type = 'success') {
                     const el = document.createElement('div');
                     el.className =
                         'flex items-start gap-3 rounded-md border px-4 py-3 shadow text-sm fixed top-6 right-6 z-[10000] w-80 animate-fadeIn';
 
-                    // Warna berdasarkan tipe
                     if (type === 'success') {
                         el.style.backgroundColor = '#ECFDF5';
                         el.style.borderColor = '#A7F3D0';
                         el.style.color = '#065F46';
                         el.innerHTML = `
-            <i class="fa-solid fa-circle-check text-lg mt-0.5"></i>
-            <div>
-                <div class="font-semibold">Berhasil</div>
-                <div>${message}</div>
-            </div>`;
+                            <i class="fa-solid fa-circle-check text-lg mt-0.5"></i>
+                            <div>
+                                <div class="font-semibold">Berhasil</div>
+                                <div>${message}</div>
+                            </div>`;
                     } else if (type === 'error') {
                         el.style.backgroundColor = '#FEF2F2';
                         el.style.borderColor = '#FECACA';
                         el.style.color = '#991B1B';
                         el.innerHTML = `
-            <i class="fa-solid fa-circle-xmark text-lg mt-0.5"></i>
-            <div>
-                <div class="font-semibold">Gagal</div>
-                <div>${message}</div>
-            </div>`;
+                            <i class="fa-solid fa-circle-xmark text-lg mt-0.5"></i>
+                            <div>
+                                <div class="font-semibold">Gagal</div>
+                                <div>${message}</div>
+                            </div>`;
                     } else {
                         el.style.backgroundColor = '#EFF6FF';
                         el.style.borderColor = '#BFDBFE';
                         el.style.color = '#1E3A8A';
                         el.innerHTML = `
-            <i class="fa-solid fa-info-circle text-lg mt-0.5"></i>
-            <div>
-                <div class="font-semibold">Info</div>
-                <div>${message}</div>
-            </div>`;
+                            <i class="fa-solid fa-info-circle text-lg mt-0.5"></i>
+                            <div>
+                                <div class="font-semibold">Info</div>
+                                <div>${message}</div>
+                            </div>`;
                     }
 
                     document.body.appendChild(el);
@@ -1133,7 +1178,6 @@
                         setTimeout(() => el.remove(), 300);
                     }, 4000);
                 },
-
             }
         }
     </script>
