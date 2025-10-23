@@ -126,6 +126,12 @@
                 -webkit-print-color-adjust: exact !important;
             }
         }
+
+        img {
+            width: 50px;
+            height: 50px;
+            object-fit: contain;
+        }
     </style>
 </head>
 
@@ -133,6 +139,7 @@
     <div class="wrapper">
         {{-- HEADER --}}
         <header>
+            <img src="{{ url('storage/app/public/images/logo-cahaya-lowa-hitam.png') }}" alt="Logo CV Cahaya Lowa">
             <div class="title">CV CAHAYA LOWA</div>
             <div class="sub">Anabanua, Kab. Wajo</div>
             <div class="sub">Telp: 082391497127</div>
@@ -148,7 +155,8 @@
         {{-- DETAIL INFO --}}
         <div style="text-align:left">
             No Faktur : {{ $penjualan->no_faktur }}<br>
-            Tanggal : {{ \Carbon\Carbon::parse($penjualan->tanggal)->setTimezone('Asia/Makassar')->format('d/m/Y H:i') }}<br>
+            Tanggal :
+            {{ \Carbon\Carbon::parse($penjualan->tanggal)->setTimezone('Asia/Makassar')->format('d/m/Y H:i') }}<br>
             Admin : {{ $penjualan->createdBy->name ?? '-' }}
         </div>
 

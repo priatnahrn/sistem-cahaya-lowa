@@ -358,12 +358,6 @@
                 font-medium text-center shadow-sm hover:shadow-md transition">
                         <i class="fa-solid fa-receipt mr-2"></i> Print Nota Kecil
                     </button>
-
-                    <button @click="printNota('besar')" type="button"
-                        class="w-full px-4 py-2.5 rounded-lg text-white bg-green-600 hover:bg-green-700
-                font-medium text-center shadow-sm hover:shadow-md transition">
-                        <i class="fa-solid fa-file-invoice mr-2"></i> Print Nota Besar
-                    </button>
                 </div>
 
                 <!-- Footer -->

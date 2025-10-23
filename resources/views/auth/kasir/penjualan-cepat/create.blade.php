@@ -1,6 +1,5 @@
 <!DOCTYPE html>
 <html lang="id">
-
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -16,7 +15,6 @@
             display: none !important;
         }
 
-        /* Hapus spinner number */
         .no-spinner::-webkit-outer-spin-button,
         .no-spinner::-webkit-inner-spin-button {
             -webkit-appearance: none;
@@ -27,13 +25,11 @@
             -moz-appearance: textfield;
         }
 
-
         @keyframes fadeIn {
             from {
                 opacity: 0;
                 transform: translateY(10px);
             }
-
             to {
                 opacity: 1;
                 transform: translateY(0);
@@ -63,24 +59,6 @@
         .success-check {
             animation: drawCheck 0.5s ease-out 0.8s forwards;
         }
-
-        /* Hilangkan spinner di Chrome, Safari, Edge (WebKit/Blink) */
-        .no-spinner::-webkit-outer-spin-button,
-        .no-spinner::-webkit-inner-spin-button {
-            -webkit-appearance: none;
-            margin: 0;
-        }
-
-        /* Hilangkan spinner di Firefox */
-        .no-spinner {
-            -moz-appearance: textfield;
-        }
-
-        /* Hilangkan tombol di IE / old Edge */
-        .no-spinner::-ms-clear,
-        .no-spinner::-ms-expand {
-            display: none;
-        }
     </style>
 </head>
 
@@ -105,7 +83,6 @@
 
         <input type="text" x-ref="barcodeInput" @keydown.enter.prevent="handleBarcode($event)"
             class="absolute opacity-0 pointer-events-none" autocomplete="off">
-
 
         <!-- MAIN -->
         <main class="max-w-[95%] mx-auto mt-6 grid grid-cols-1 lg:grid-cols-3 gap-6 pb-8">
@@ -133,14 +110,11 @@
                         <tbody class="align-middle">
                             <template x-for="(item, idx) in form.items" :key="idx">
                                 <tr class="hover:bg-slate-50 text-slate-700 border-b border-slate-100 transition">
-                                    <!-- Nomor urut -->
                                     <td class="px-5 py-4 text-center font-medium align-middle" x-text="idx + 1"></td>
 
-                                    <!-- Item dengan Keterangan -->
                                     <td class="px-5 py-4 align-middle">
                                         <div class="relative">
                                             <div class="flex items-center gap-2">
-                                                <!-- Tombol Keterangan -->
                                                 <button type="button" @click.prevent="toggleItemNote(idx)"
                                                     :title="item.showNote ? 'Sembunyikan keterangan' : 'Tambah keterangan'"
                                                     :class="{
@@ -151,7 +125,6 @@
                                                     <i class="fa-solid fa-note-sticky text-[15px]"></i>
                                                 </button>
 
-                                                <!-- Input cari item -->
                                                 <div class="relative flex-1">
                                                     <input type="text" x-model="item.query"
                                                         @input.debounce.300ms="searchItem(idx)"
@@ -161,14 +134,12 @@
                                                         placeholder="Cari item"
                                                         class="w-full pl-4 pr-10 py-2.5 rounded-lg border border-slate-300 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition" />
 
-                                                    <!-- Icon pencarian -->
                                                     <span x-show="!item.item_id" x-cloak
                                                         x-transition.opacity.duration.150ms
                                                         class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 p-1 rounded-full pointer-events-none">
                                                         <i class="fa-solid fa-magnifying-glass"></i>
                                                     </span>
 
-                                                    <!-- Dropdown hasil pencarian -->
                                                     <div x-show="item._dropdownOpen && item.query.length >= 2 && item.results && item.results.length > 0"
                                                         x-cloak x-transition
                                                         class="absolute z-50 left-0 right-0 mt-1 bg-white border border-slate-200 rounded-lg shadow-lg max-h-60 overflow-y-auto text-sm">
@@ -185,14 +156,12 @@
                                                 </div>
                                             </div>
 
-                                            <!-- Form Keterangan -->
                                             <template x-if="item.showNote">
                                                 <div class="mt-3 space-y-3"
                                                     x-transition:enter="transition ease-out duration-300"
                                                     x-transition:enter-start="opacity-0"
                                                     x-transition:enter-end="opacity-100">
 
-                                                    <!-- Form untuk Item Spandek -->
                                                     <template x-if="item.is_spandek === true">
                                                         <div class="space-y-3">
                                                             <div>
@@ -224,7 +193,6 @@
                                                         </div>
                                                     </template>
 
-                                                    <!-- Form untuk Item Biasa -->
                                                     <template x-if="item.is_spandek === false">
                                                         <div>
                                                             <label
@@ -237,7 +205,6 @@
                                                         </div>
                                                     </template>
 
-                                                    <!-- Fallback: Item belum dipilih -->
                                                     <template
                                                         x-if="item.is_spandek === undefined || item.is_spandek === null">
                                                         <div
@@ -252,20 +219,17 @@
                                         </div>
                                     </td>
 
-                                    <!-- Gudang -->
                                     <td class="px-5 py-4 align-middle">
                                         <div class="relative w-full">
                                             <div
                                                 class="border border-slate-300 rounded-lg px-3 pr-8 py-[6px] text-sm text-slate-700 
                                         focus-within:ring-2 focus-within:ring-[#344579]/20 focus-within:border-[#344579] transition">
                                                 <div class="flex flex-col leading-tight">
-                                                    <!-- Nama gudang -->
                                                     <div class="text-[13px] text-slate-700">
                                                         <span
                                                             x-text="(getDistinctGudangs(item).find(g => g.gudang_id == item.gudang_id) || getDistinctGudangs(item)[0] || {}).nama_gudang || '-'">
                                                         </span>
 
-                                                        <!-- Select transparan -->
                                                         <select x-model="item.gudang_id"
                                                             @change="updateSatuanOptions(idx)"
                                                             class="absolute inset-0 opacity-0 cursor-pointer">
@@ -277,7 +241,6 @@
                                                         </select>
                                                     </div>
 
-                                                    <!-- Stok -->
                                                     <div
                                                         :class="(item.gudang_id && (parseFloat(item.stok) === 0)) ?
                                                         'text-rose-600 font-semibold text-[11px] mt-[1px]' :
@@ -288,13 +251,11 @@
                                                 </div>
                                             </div>
 
-                                            <!-- Ikon dropdown -->
                                             <i
                                                 class="fa-solid fa-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none text-[12px]"></i>
                                         </div>
                                     </td>
 
-                                    <!-- Jumlah -->
                                     <td class="px-5 py-4 text-center align-middle">
                                         <input type="text" :value="item.qty ? formatJumlah(item.qty) : ''"
                                             @input="updateQtyFormatted(idx, $event.target.value)"
@@ -303,7 +264,6 @@
                                             inputmode="numeric" pattern="[0-9]*" />
                                     </td>
 
-                                    <!-- Satuan -->
                                     <td class="px-5 py-4 align-middle">
                                         <div class="relative">
                                             <select x-model="item.satuan_id" @change="updateHarga(idx)"
@@ -319,7 +279,6 @@
                                         </div>
                                     </td>
 
-                                    <!-- Harga -->
                                     <td class="px-5 py-4 text-right align-middle">
                                         <div class="relative">
                                             <span
@@ -336,13 +295,11 @@
                                         </div>
                                     </td>
 
-                                    <!-- Total -->
                                     <td
                                         class="px-5 py-4 text-right font-semibold text-slate-800 align-middle whitespace-nowrap">
                                         Rp <span x-text="formatRupiah((item.qty||0) * (item.harga||0))"></span>
                                     </td>
 
-                                    <!-- Hapus -->
                                     <td class="px-3 py-4 text-center align-middle">
                                         <button type="button" @click="removeItem(idx)"
                                             class="text-rose-600 hover:text-rose-800 transition">
@@ -354,7 +311,6 @@
                         </tbody>
                     </table>
 
-                    <!-- Button Tambah Item Manual -->
                     <div class="m-4">
                         <button type="button" @click="addItem"
                             class="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded border-2 border-dashed border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100 transition">
@@ -397,6 +353,7 @@
                 </div>
             </div>
         </main>
+
         <!-- 💳 MODAL PEMBAYARAN -->
         <div x-cloak x-show="showPaymentModal" x-transition.opacity
             class="fixed inset-0 z-[9999] flex items-center justify-center">
@@ -514,10 +471,11 @@
                 </div>
 
                 <div class="mt-6 flex flex-col gap-3">
-                    <button @click="openPrint()" target="_blank"
+                    <!-- ✅ LANGSUNG PRINT NOTA KECIL -->
+                    <button @click="printNotaKecil()" 
                         class="px-4 py-2 rounded-lg bg-[#344579] text-white hover:bg-[#2e3e6a] transition font-medium flex items-center justify-center gap-2"
                         type="button">
-                        <i class="fa-solid fa-print"></i> Cetak Nota
+                        <i class="fa-solid fa-print"></i> Cetak Nota Kecil
                     </button>
                     <button @click="closeSuccessModal()"
                         class="px-4 py-2 rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-100 transition font-medium flex items-center justify-center gap-2">
@@ -549,22 +507,21 @@
                 namaBank: '',
                 bankList: [{
                         name: 'BRI',
-                        logo: '{{ asset('storage/images/bri.png') }}'
+                        logo: '{{ url('storage/app/public/images/bri.png') }}'
                     },
                     {
                         name: 'BNI',
-                        logo: '{{ asset('storage/images/bni.png') }}'
+                        logo: '{{ url('storage/app/public/images/bni.png') }}'
                     },
                     {
                         name: 'Mandiri',
-                        logo: '{{ asset('storage/images/mandiri.png') }}'
+                        logo: '{{ url('storage/app/public/images/mandiri.png') }}'
                     },
                 ],
                 nominalBayarDisplay: '',
                 nominalBayar: 0,
                 kembalian: 0,
                 showSuccessModal: false,
-                printUrl: '',
                 isNavigating: false,
 
                 init() {
@@ -581,18 +538,12 @@
                     this.form.tanggal = @json(now()->format('Y-m-d'));
                     this.allItems = @json($itemsJson ?? []);
 
-                    const spandekItems = this.allItems.filter(i =>
-                        (i.kategori || '').toLowerCase().includes('spandek') ||
-                        (i.kategori || '').toLowerCase().includes('spandex')
-                    );
-
                     this.focusScanner();
                     document.addEventListener('click', (e) => {
                         const tag = e.target.tagName?.toLowerCase();
                         if (!['input', 'textarea', 'select'].includes(tag)) this.focusScanner();
                     });
                 },
-
 
                 focusScanner() {
                     setTimeout(() => this.$refs.barcodeInput?.focus(), 100);
@@ -611,7 +562,6 @@
                     this.kembalian = Math.max(0, (this.nominalBayar || 0) - (this.total || 0));
                 },
 
-                // === FORMAT JUMLAH ===
                 formatJumlah(val) {
                     if (val == null || val === '') return '';
                     const s = val.toString();
@@ -643,50 +593,29 @@
                     this.recalc();
                 },
 
-                // === TOGGLE KETERANGAN ===
                 toggleItemNote(idx) {
-                    console.log('🔍 toggleItemNote called with idx:', idx);
-
                     const item = this.form.items[idx];
-                    if (!item) {
-                        console.error('❌ Item not found at index:', idx);
-                        return;
-                    }
+                    if (!item) return;
 
-                    // ✅ Toggle dengan explicit value
                     const currentValue = item.showNote || false;
                     item.showNote = !currentValue;
 
-                    // Debug log
-                    console.log('✅ Toggle Note:', {
-                        idx: idx,
-                        showNote: item.showNote,
-                        is_spandek: item.is_spandek,
-                        item_id: item.item_id,
-                        query: item.query,
-                        kategori: item.kategori
-                    });
-
-                    // ✅ Force reactivity dengan $nextTick
                     this.$nextTick(() => {
                         this.form.items = [...this.form.items];
-                        console.log('🔄 Form items updated, total:', this.form.items.length);
                     });
 
-                    // ✅ Notif jika spandek belum lengkap
                     if (item.showNote && item.is_spandek && (!item.keterangan || !item.catatan_produksi)) {
                         this.notify('Untuk item spandek, isi KEDUA field: keterangan dan jenis spandek', 'info');
                     }
                 },
 
-                // === TAMBAH ITEM MANUAL ===
                 addItem() {
                     this.form.items.push({
                         item_id: null,
                         query: '',
                         kategori: '',
-                        is_spandek: false, // ✅ WAJIB ada dari awal
-                        showNote: false, // ✅ WAJIB ada dari awal
+                        is_spandek: false,
+                        showNote: false,
                         keterangan: '',
                         catatan_produksi: '',
                         results: [],
@@ -694,7 +623,7 @@
                         gudangs: [],
                         satuan_id: '',
                         filteredSatuans: [],
-                        qty: 1, // Note: di penjualan-cepat pakai 'qty'
+                        qty: 1,
                         harga: 0,
                         stok: 0,
                         harga_manual: false,
@@ -702,17 +631,11 @@
                     });
                 },
 
-                openPrint() {
-                    if (this.printUrl) {
-                        window.open(this.printUrl, '_blank');
-                    }
-                },
                 removeItem(i) {
                     this.form.items.splice(i, 1);
                     this.recalc();
                 },
 
-                // === SEARCH ITEM ===
                 searchItem(idx) {
                     const q = this.form.items[idx].query.toLowerCase();
                     if (!q || q.length < 2) {
@@ -728,7 +651,6 @@
                         .slice(0, 20);
                 },
 
-                // === PILIH ITEM ===
                 selectItem(idx, item) {
                     const row = this.form.items[idx];
                     row.item_id = item.id;
@@ -737,18 +659,15 @@
                     row.gudangs = item.gudangs || [];
                     row.harga_manual = false;
 
-                    // ✅ PENTING: JANGAN RESET showNote - PERTAHANKAN NILAI LAMA
                     if (row.showNote === undefined) {
                         row.showNote = false;
                     }
 
-                    // ✅ Set kategori dan is_spandek
                     row.kategori = item.kategori || '';
                     row.is_spandek = row.kategori &&
                         (row.kategori.toLowerCase().includes('spandek') ||
                             row.kategori.toLowerCase().includes('spandex'));
 
-                    // ✅ Reset keterangan hanya jika kosong
                     if (!row.keterangan) {
                         row.keterangan = '';
                         row.catatan_produksi = '';
@@ -768,7 +687,6 @@
                     this.recalc();
                 },
 
-                // === FILTER GUDANG ===
                 getDistinctGudangs(item) {
                     if (!item.gudangs || item.gudangs.length === 0) return [];
                     const seen = new Set();
@@ -779,7 +697,6 @@
                     });
                 },
 
-                // === UPDATE SATUAN ===
                 updateSatuanOptions(idx) {
                     const item = this.form.items[idx];
                     if (!item.gudangs || item.gudangs.length === 0) {
@@ -806,7 +723,6 @@
                     this.recalc();
                 },
 
-                // === HARGA BY LEVEL ===
                 getHargaByLevel(g) {
                     if (!g) return 0;
                     const level = (this.selectedPelangganLevel || 'retail').toLowerCase();
@@ -817,7 +733,6 @@
                     return parseFloat(g.harga_retail || 0);
                 },
 
-                // === UPDATE STOK & HARGA ===
                 updateStockAndPrice(idx) {
                     const item = this.form.items[idx];
                     const selected = item.gudangs.find(
@@ -835,7 +750,6 @@
                     this.recalc();
                 },
 
-                // === FORMAT UTIL ===
                 formatRupiah(val) {
                     const num = parseFloat(val) || 0;
                     return new Intl.NumberFormat('id-ID').format(num);
@@ -850,20 +764,19 @@
                             maximumFractionDigits: 2
                         }).replace('.', ',');
                 },
+
                 fmtDate(dateStr) {
                     if (!dateStr) return '-';
 
                     try {
                         const date = new Date(dateStr);
-
-                        // Cek apakah tanggal valid
                         if (isNaN(date.getTime())) return '-';
 
                         const options = {
-                            weekday: 'long', // Senin, Selasa, dst
-                            day: 'numeric', // 1, 2, 3, dst
-                            month: 'long', // Januari, Februari, dst
-                            year: 'numeric' // 2025
+                            weekday: 'long',
+                            day: 'numeric',
+                            month: 'long',
+                            year: 'numeric'
                         };
 
                         return date.toLocaleDateString('id-ID', options);
@@ -873,7 +786,6 @@
                     }
                 },
 
-                // === BARCODE ===
                 async handleBarcode(e) {
                     const code = e.target.value.trim();
                     if (!code) return;
@@ -897,7 +809,6 @@
                             return;
                         }
 
-                        // ✅ TAMBAHKAN inisialisasi lengkap untuk item baru
                         const kategori = data.kategori || '';
                         const isSpandek = kategori &&
                             (kategori.toLowerCase().includes('spandek') ||
@@ -908,7 +819,7 @@
                             query: data.nama_item,
                             kategori: kategori,
                             is_spandek: isSpandek,
-                            showNote: false, // ✅ WAJIB
+                            showNote: false,
                             keterangan: '',
                             catatan_produksi: '',
                             gudang_id: data.gudangs?.[0]?.gudang_id || '',
@@ -936,7 +847,6 @@
                     }
                 },
 
-                // === VALIDASI ===
                 isItemNoteComplete(item) {
                     if (!item.is_spandek) {
                         return true;
@@ -953,7 +863,6 @@
                         return false;
                     }
 
-                    // Validasi khusus spandek
                     for (const item of this.form.items) {
                         if (item.is_spandek === true) {
                             if (!item.keterangan || item.keterangan.trim() === '') {
@@ -967,7 +876,6 @@
                         }
                     }
 
-                    // Validasi stok
                     for (const item of this.form.items) {
                         if (item.qty > item.stok) {
                             this.notify(`Stok tidak cukup untuk item: ${item.query}`, 'error');
@@ -975,7 +883,6 @@
                         }
                     }
 
-                    // Validasi umum
                     const allValid = this.form.items.every(i =>
                         i.item_id && i.gudang_id && i.satuan_id && i.qty > 0 && i.harga >= 0
                     );
@@ -988,7 +895,6 @@
                     return true;
                 },
 
-                // === SAVE ===
                 async save() {
                     if (!this.validateBeforeSave()) return;
 
@@ -1004,7 +910,6 @@
                                 tanggal: this.form.tanggal,
                                 total: this.total,
                                 items: this.form.items.map(it => {
-                                    // Gabungkan keterangan dan catatan_produksi
                                     let keteranganFinal = it.keterangan || '';
 
                                     if (it.is_spandek && it.catatan_produksi) {
@@ -1100,7 +1005,6 @@
                     }
                 },
 
-                // === PEMBAYARAN ===
                 handleNominalInput(e) {
                     let value = e.target.value.replace(/\D/g, '');
                     if (!value) {
@@ -1156,7 +1060,6 @@
 
                         if (!result.success) throw new Error('Pembayaran gagal disimpan.');
 
-                        this.printUrl = `/pembayaran/${result.data.id}`;
                         this.showPaymentModal = false;
                         this.showSuccessModal = true;
                     } catch (e) {
@@ -1164,21 +1067,73 @@
                     }
                 },
 
+                // ✅ FUNGSI PRINT NOTA KECIL OTOMATIS (seperti di pembayaran)
+                async printNotaKecil() {
+                    if (!this.penjualanId) {
+                        this.notify('Data penjualan tidak ditemukan', 'error');
+                        return;
+                    }
 
+                    try {
+                        const url = `/penjualan/${this.penjualanId}/print?type=kecil`;
+                        console.log('🖨️ Print URL:', url);
 
-                // Update closeSuccessModal():
+                        const res = await fetch(url);
+
+                        if (!res.ok) {
+                            throw new Error(`HTTP ${res.status}: Gagal memuat nota`);
+                        }
+
+                        const html = await res.text();
+
+                        if (!html || html.trim().length < 100) {
+                            throw new Error('Response HTML kosong atau tidak valid');
+                        }
+
+                        const printWindow = window.open('', '_blank', 'width=800,height=600');
+
+                        if (!printWindow) {
+                            this.notify("Popup diblokir, izinkan popup untuk melanjutkan.", 'error');
+                            return;
+                        }
+
+                        printWindow.document.write(html);
+                        printWindow.document.close();
+
+                        printWindow.onload = () => {
+                            setTimeout(() => {
+                                printWindow.focus();
+                                printWindow.print();
+
+                                printWindow.onafterprint = () => {
+                                    printWindow.close();
+                                };
+
+                                setTimeout(() => {
+                                    if (!printWindow.closed) {
+                                        printWindow.close();
+                                    }
+                                }, 2000);
+
+                            }, 500);
+                        };
+
+                    } catch (err) {
+                        console.error('❌ Print error:', err);
+                        this.notify(`Gagal mencetak nota: ${err.message}`, 'error');
+                    }
+                },
+
                 closeSuccessModal() {
-                    if (this.isNavigating) return; // Prevent double action
+                    if (this.isNavigating) return;
 
                     this.isNavigating = true;
                     this.showSuccessModal = false;
 
-                    // Redirect dengan delay minimal
                     setTimeout(() => {
                         window.location.href = '/penjualan-cepat';
                     }, 300);
                 },
-
 
                 notify(message, type = 'info') {
                     console.log(`[${type.toUpperCase()}] ${message}`);

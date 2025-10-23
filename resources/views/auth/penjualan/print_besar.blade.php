@@ -80,13 +80,35 @@
             margin-top: -2px;
             margin-left: 35px;
         }
+
+        .header-section {
+            display: flex;
+            align-items: center;
+            margin-bottom: 5px;
+        }
+
+        .header-section img {
+            width: 30px;
+            height: 30px;
+            margin-right: 10px;
+            object-fit: contain;
+        }
+
+        .header-text {
+            flex: 1;
+        }
     </style>
 </head>
 
 <body>
     {{-- HEADER --}}
-    <div class="company-name">CV CAHAYA LOWA</div>
-    <div>Anabanua, Kab. Wajo</div>
+    <div class="header-section">
+        <img src="{{ url('storage/app/public/images/logo-cahaya-lowa-hitam.png') }}" alt="Logo CV Cahaya Lowa">
+        <div class="header-text">
+            <div class="company-name">CV CAHAYA LOWA</div>
+            <div>Anabanua, Kab. Wajo</div>
+        </div>
+    </div>
 
     {{-- INFO TABLE --}}
     <table style="width:100%; font-size:10px; margin-top:5px;">
