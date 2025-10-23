@@ -274,11 +274,6 @@
         </div>
 
         {{-- 📝 Empty State --}}
-        <div x-show="!selectedItem" x-cloak class="bg-white border border-slate-200 rounded-xl px-12 py-20 text-center">
-            <i class="fa-solid fa-search text-5xl text-slate-300 mb-4"></i>
-            <h3 class="text-lg font-semibold text-slate-700 mb-2">Pilih Item untuk Melihat Detail Harga</h3>
-            <p class="text-sm text-slate-500">Gunakan kolom pencarian atau scan barcode untuk memulai</p>
-        </div>
 
         {{-- 🖼️ Image Preview Modal --}}
         <div x-show="showImagePreview" x-cloak @click="closeImagePreview()" @keydown.escape.window="closeImagePreview()"
