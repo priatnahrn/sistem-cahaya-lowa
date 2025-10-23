@@ -200,12 +200,7 @@
                 page-break-inside: avoid;
             }
 
-            /* ✅ Force stop setelah konten */
-            body::after {
-                content: "";
-                display: block;
-                page-break-after: always;
-            }
+          
         }
     </style>
 
