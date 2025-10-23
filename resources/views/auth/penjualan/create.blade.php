@@ -375,7 +375,7 @@
                                                 </div>
 
                                                 <!-- Stok: selalu tampil label. Angka hanya kalau gudang dipilih.
-                                                                                                                                                                                                                                                                             Warna berubah merah kalau gudang dipilih dan stok === 0 -->
+                                                                                                                                                                                                                                                                                 Warna berubah merah kalau gudang dipilih dan stok === 0 -->
                                                 <div
                                                     :class="(item.gudang_id && (parseFloat(item.stok) === 0)) ?
                                                     'text-rose-600 font-semibold text-[11px] mt-[1px]' :
@@ -1265,46 +1265,30 @@
 
                 async printNota(type) {
                     try {
-                        const res = await fetch(`/penjualan/${this.savedPenjualanId}/print?type=${type}`);
-                        if (!res.ok) throw new Error("Gagal memuat nota");
+                        // ✅ Buka halaman print langsung dari route Laravel (tanpa about:blank)
+                        const url = `/penjualan/${this.savedPenjualanId}/print?type=${type}`;
+                        const printWindow = window.open(url, '_blank', 'width=900,height=650');
 
-                        const html = await res.text();
-                        const printWindow = window.open('', '_blank', 'width=800,height=600');
-
+                        // Cek apakah popup diblokir
                         if (!printWindow) {
-                            this.notify("Popup diblokir, izinkan popup untuk melanjutkan.", "error");
+                            this.notify("Popup diblokir oleh browser. Izinkan popup untuk melanjutkan.", "error");
                             return;
                         }
 
-                        printWindow.document.write(html);
-                        printWindow.document.close();
+                        // ✅ Fokuskan jendela baru begitu terbuka
+                        printWindow.focus();
 
-                        // ✅ Tunggu dokumen siap
-                        printWindow.onload = () => {
-                            setTimeout(() => {
-                                printWindow.focus();
-                                printWindow.print();
-
-                                // ✅ Langsung close setelah print dialog muncul
-                                printWindow.onafterprint = () => {
-                                    printWindow.close();
-                                    window.location.href = '/penjualan';
-                                };
-
-                                // ✅ KUNCI: Auto-close cepat (2 detik) - baik user print atau cancel
-                                setTimeout(() => {
-                                    if (!printWindow.closed) {
-                                        printWindow.close();
-                                    }
-                                    window.location.href = '/penjualan';
-                                }, 2000); // ⏱️ 2 detik = cukup untuk print dialog muncul
-
-                            }, 500);
-                        };
+                        // ✅ Listener: jika tab print ditutup manual, arahkan balik ke halaman penjualan
+                        const checkClosed = setInterval(() => {
+                            if (printWindow.closed) {
+                                clearInterval(checkClosed);
+                                window.location.href = '/penjualan';
+                            }
+                        }, 500);
 
                     } catch (err) {
                         console.error(err);
-                        this.notify("Gagal mencetak nota, coba lagi.", "error");
+                        this.notify("Gagal membuka nota, coba lagi.", "error");
                     }
                 },
 

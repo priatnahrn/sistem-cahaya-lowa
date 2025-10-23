@@ -6,7 +6,7 @@
     <title>Nota Besar</title>
     <style>
         @page {
-            size: 9.5in 11in landscape;
+            size: 9.5in auto landscape;
             margin: 12mm;
         }
 
@@ -15,6 +15,22 @@
             font-family: Calibri, Arial, sans-serif;
             box-sizing: border-box;
         }
+
+        @media print {
+            @page {
+                margin: 8mm;
+            }
+
+            body {
+                margin: 0;
+            }
+
+            header,
+            footer {
+                display: none !important;
+            }
+        }
+
 
         body {
             font-size: 14px;
@@ -30,7 +46,8 @@
             display: flex;
             flex-direction: column;
             justify-content: space-between;
-            height: 5in; /* setengah dari 11 inch */
+            height: 5in;
+            /* setengah dari 11 inch */
             padding-bottom: 6px;
         }
 
@@ -73,7 +90,7 @@
         }
 
         .footer-left {
-            font-size: 12px;
+            font-size: 14px;
             vertical-align: top;
         }
 
@@ -92,7 +109,7 @@
         }
 
         .item-note {
-            font-size: 13px;
+            font-size: 14px;
             color: #333;
             margin-top: -2px;
             margin-left: 40px;
@@ -152,7 +169,7 @@
                     <td>Tanggal</td>
                     <td>: {{ \Carbon\Carbon::parse($penjualan->tanggal)->format('d/m/Y') }}</td>
                     <td>Telepon</td>
-                    <td>: {{ $penjualan->pelanggan->telepon ?? '-' }}</td>
+                    <td>: {{ $penjualan->pelanggan->kontak ?? '-' }}</td>
                 </tr>
                 <tr>
                     <td>Admin</td>
@@ -222,11 +239,14 @@
 
                     <div>Subtotal : Rp {{ number_format($penjualan->sub_total ?? $total, 0, ',', '.') }}</div>
                     <div>Biaya Kirim : Rp {{ number_format($penjualan->biaya_transport ?? 0, 0, ',', '.') }}</div>
-                    <div class="bold" style="font-size:15px;">TOTAL : Rp {{ number_format($grandTotal, 0, ',', '.') }}</div>
+                    <div class="bold" style="font-size:15px;">TOTAL : Rp
+                        {{ number_format($grandTotal, 0, ',', '.') }}</div>
 
                     @if ($totalBayar > 0 && $sisaTagihan > 0)
-                        <div style="margin-top: 4px;">Jumlah Bayar : Rp {{ number_format($totalBayar, 0, ',', '.') }}</div>
-                        <div class="bold" style="color: #cc0000;">SISA : Rp {{ number_format($sisaTagihan, 0, ',', '.') }}</div>
+                        <div style="margin-top: 4px;">Jumlah Bayar : Rp {{ number_format($totalBayar, 0, ',', '.') }}
+                        </div>
+                        <div class="bold" style="color: #cc0000;">SISA : Rp
+                            {{ number_format($sisaTagihan, 0, ',', '.') }}</div>
                     @endif
                 </td>
             </tr>
@@ -236,6 +256,20 @@
     <div class="page-divider"></div>
 
     {{-- Jika ingin dua nota dalam satu halaman, copy ulang blok .nota di sini --}}
+
+    <script>
+        window.onload = function() {
+            window.print();
+            // Auto-close setelah print dialog (baik print atau cancel)
+            window.onafterprint = () => window.close();
+
+            // Fallback: auto-close paksa setelah 2 detik
+            setTimeout(() => {
+                if (!window.closed) window.close();
+            }, 2000);
+        };
+    </script>
+
 </body>
 
 </html>

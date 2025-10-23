@@ -271,9 +271,16 @@
     <script>
         window.onload = function() {
             window.print();
-            if (window.opener) setTimeout(() => window.close(), 1000);
+            // Auto-close setelah print dialog (baik print atau cancel)
+            window.onafterprint = () => window.close();
+
+            // Fallback: auto-close paksa setelah 2 detik
+            setTimeout(() => {
+                if (!window.closed) window.close();
+            }, 2000);
         };
     </script>
+
 </body>
 
 </html>
