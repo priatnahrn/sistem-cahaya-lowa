@@ -41,7 +41,7 @@
 
         .line {
             border-top: 1px solid #000;
-            margin: 8px 0;
+            margin: 4px 0;
         }
 
         table {
@@ -52,7 +52,7 @@
 
         th,
         td {
-            padding: 2px 4px;
+            padding: 0px;
             vertical-align: top;
         }
 
@@ -117,7 +117,7 @@
 
         .page-divider {
             border-top: 1px dashed #888;
-            margin: 5px 0;
+            margin: 2px 0;
         }
     </style>
 </head>
