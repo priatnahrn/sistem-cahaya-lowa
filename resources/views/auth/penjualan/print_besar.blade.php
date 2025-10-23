@@ -5,22 +5,17 @@
     <meta charset="UTF-8">
     <title>Nota Besar</title>
 
-    <!-- ✅ Gunakan Google Font: Doto -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Doto:wght@100..900&display=swap" rel="stylesheet">
-
     <style>
-        /* ======= SETTING KERTAS CF K2 PRS ======= */
+        /* ======= SETTING KERTAS CF K2 W PRS (5.5 inch per nota) ======= */
         @page {
             size: 9.5in 5.5in landscape;
-            margin: 8mm;
+            margin: 6mm 8mm;
         }
 
         html,
         body,
         * {
-            font-family: 'Doto', sans-serif !important;
+            font-family: 'Courier New', 'Consolas', 'Monaco', monospace !important;
             box-sizing: border-box;
             color: #000;
             -webkit-print-color-adjust: exact !important;
@@ -28,14 +23,19 @@
         }
 
         body {
-            font-size: 16px;
+            font-size: 15px;
             margin: 0;
-            display: flex;
-            flex-direction: column;
-            height: 100%;
+            padding: 0;
             color: #000;
-            font-weight: 400;
-            /* ✅ normal weight untuk menghindari double text */
+            font-weight: normal;
+        }
+
+        .nota {
+            width: 100%;
+            min-height: 5.2in;
+            max-height: 5.3in;
+            overflow: hidden;
+            page-break-after: always;
         }
 
         /* ======= HEADER ======= */
@@ -43,20 +43,20 @@
             display: flex;
             align-items: center;
             justify-content: space-between;
-            margin-bottom: 4px;
-            font-weight: 600;
+            margin-bottom: 3px;
+            font-weight: bold;
         }
 
         .header-section img {
-            width: 40px;
-            height: 40px;
-            margin-right: 10px;
+            width: 38px;
+            height: 38px;
+            margin-right: 8px;
             object-fit: contain;
         }
 
         .company-name {
-            font-size: 20px;
-            font-weight: 700;
+            font-size: 18px;
+            font-weight: bold;
         }
 
         .barcode {
@@ -65,14 +65,15 @@
 
         /* ======= GARIS PEMBATAS ======= */
         .line {
-            margin: 4px 0;
+            border-top: 1px solid #000;
+            margin: 2px 0;
         }
 
         /* ======= TABEL ======= */
         table {
             width: 100%;
             border-collapse: collapse;
-            font-size: 16px;
+            font-size: 15px;
         }
 
         th,
@@ -84,7 +85,7 @@
 
         th {
             text-align: left;
-            font-weight: 500;
+            font-weight: bold;
         }
 
         td.right,
@@ -92,19 +93,34 @@
             text-align: right;
         }
 
+        /* ======= INFO TABLE ======= */
+        .info-table {
+            font-size: 15px;
+            margin: 3px 0;
+        }
+
+        .info-table td {
+            padding: 0;
+            line-height: 1.3;
+        }
+
         /* ======= TABEL ITEM ======= */
+        .content-table {
+            margin: 2px 0;
+        }
+
         .content-table thead th {
-            font-weight: 500;
+            font-weight: bold;
+            padding-bottom: 2px;
         }
 
         .content-table tbody td {
-            font-weight: 300;
-            /* ✅ KUNCI: weight 300 untuk menghilangkan bayang-bayang */
+            font-weight: normal;
             color: #000;
-            line-height: 1.4;
+            line-height: 1.3;
             border: none !important;
             letter-spacing: 0;
-            /* ✅ hilangkan letter-spacing yang bisa bikin double effect */
+            padding: 1px 0;
         }
 
         .content-table tbody tr td:first-child {
@@ -112,97 +128,84 @@
         }
 
         .item-note {
-            font-size: 14px;
+            font-size: 13px;
             color: #000;
-            margin-top: -2px;
+            margin-top: -1px;
             margin-left: 40px;
-            font-weight: 300;
-            /* ✅ sama dengan konten item */
+            font-weight: normal;
         }
 
         /* ======= FOOTER ======= */
         .footer-grid {
             width: 100%;
-            margin-top: 10px;
-            page-break-inside: avoid;
-            font-size: 15px;
+            margin-top: 6px;
+            font-size: 14px;
             color: #000;
-            font-weight: 400;
+            font-weight: normal;
         }
 
         .footer-left {
             vertical-align: top;
+            line-height: 1.3;
+        }
+
+        .footer-left div {
+            margin-bottom: 1px;
         }
 
         .footer-right {
             text-align: right;
             vertical-align: top;
+            line-height: 1.3;
         }
 
         .footer-right div {
-            margin-bottom: 3px;
+            margin-bottom: 2px;
         }
 
-        /* ✅ bold sections */
         .footer-left b,
         .footer-right .bold {
-            font-weight: 600;
-        }
-
-        /* ======= MULTI HALAMAN ======= */
-        .content-table {
-            page-break-inside: auto;
-        }
-
-        .content-table thead {
-            display: table-header-group;
-        }
-
-        .content-table tr {
-            page-break-inside: avoid;
+            font-weight: bold;
         }
 
         /* ======= PRINT MODE ======= */
         @media print {
             @page {
                 size: 9.5in 5.5in landscape;
-                margin: 8mm;
+                margin: 6mm 8mm;
             }
 
             body {
                 margin: 0;
+                padding: 0;
                 -webkit-font-smoothing: antialiased;
-                /* ✅ smoothing untuk print yang lebih bersih */
                 -moz-osx-font-smoothing: grayscale;
             }
 
-            header,
-            footer {
-                display: none !important;
-            }
-
             .nota {
-                page-break-after: always;
+                page-break-after: always !important;
+                page-break-inside: avoid;
             }
 
-            th,
-            td,
-            div,
-            p,
-            span {
-                color: #000 !important;
-            }
-
-            /* ✅ pastikan tidak ada text-shadow atau efek lain saat print */
             * {
                 text-shadow: none !important;
                 filter: none !important;
             }
-        }
 
-        .page-divider {
-            border-top: 1px dashed #888;
-            margin: 2px 0;
+            .content-table tr {
+                page-break-inside: avoid;
+            }
+
+            .footer-grid {
+                page-break-inside: avoid;
+            }
+
+            /* ✅ Force stop setelah konten */
+            body::after {
+                content: "";
+                display: block;
+                page-break-after: always;
+            }
         }
     </style>
 
@@ -211,62 +214,23 @@
 <body>
     <div class="nota">
         {{-- HEADER --}}
-        <div>
-            <div class="header-section">
-                <img src="{{ url('storage/app/public/images/logo-cahaya-lowa-hitam.png') }}" alt="Logo CV Cahaya Lowa">
-                <div class="header-text">
-                    <div class="company-name">CV CAHAYA LOWA</div>
-                    <div style="font-size: 16px;">Anabanua, Kab. Wajo</div>
-                </div>
-                <div class="header-right">
-                    <div class="barcode">
-                        {!! $barcode !!}
-                    </div>
+        <div class="header-section">
+            <img src="{{ url('storage/app/public/images/logo-cahaya-lowa-hitam.png') }}" alt="Logo CV Cahaya Lowa">
+            <div class="header-text">
+                <div class="company-name">CV CAHAYA LOWA</div>
+                <div style="font-size: 15px;">Anabanua, Kab. Wajo</div>
+            </div>
+            <div class="header-right">
+                <div class="barcode">
+                    {!! $barcode !!}
                 </div>
             </div>
-
-            <div class="line"></div>
-
-            {{-- TABEL ITEM --}}
-            <table class="content-table">
-                <thead>
-                    <tr>
-                        <th style="width:40px;">GD</th>
-                        <th>NAMA BARANG</th>
-                        <th style="width:100px;">BANYAK</th>
-                        <th class="right" style="width:110px;">HARGA</th>
-                        <th class="right" style="width:120px;">SUBTOTAL</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @php $total = 0; @endphp
-                    @foreach ($penjualan->items as $i => $it)
-                        @php
-                            $subtotal = $it->jumlah * $it->harga;
-                            $total += $subtotal;
-                        @endphp
-                        <tr>
-                            <td>{{ $it->gudang->kode_gudang ?? '-' }}</td>
-                            <td>
-                                {{ strtoupper($it->item->nama_item ?? '-') }}
-                                @if (!empty($it->keterangan))
-                                    <div class="item-note">- {{ $it->keterangan }}</div>
-                                @endif
-                            </td>
-                            <td>{{ number_format($it->jumlah, fmod($it->jumlah, 1) ? 2 : 0, ',', '.') }}
-                                {{ $it->satuan->nama_satuan ?? 'PCS' }}</td>
-                            <td class="right">{{ number_format($it->harga, 0, ',', '.') }}</td>
-                            <td class="right">{{ number_format($subtotal, 0, ',', '.') }}</td>
-                        </tr>
-                    @endforeach
-                </tbody>
-            </table>
-
-            <div class="line"></div>
         </div>
 
+        <div class="line"></div>
+
         {{-- INFO TABLE --}}
-        <table style="width:100%; font-size:16px; margin-top:6px;">
+        <table class="info-table">
             <tr>
                 <td style="width:90px;">NPWP</td>
                 <td style="width:180px;">: {{ $penjualan->pelanggan->npwp ?? '0' }}</td>
@@ -293,6 +257,45 @@
             </tr>
         </table>
 
+        <div class="line"></div>
+
+        {{-- TABEL ITEM --}}
+        <table class="content-table">
+            <thead>
+                <tr>
+                    <th style="width:40px;">GD</th>
+                    <th>NAMA BARANG</th>
+                    <th style="width:100px;">BANYAK</th>
+                    <th class="right" style="width:110px;">HARGA</th>
+                    <th class="right" style="width:120px;">SUBTOTAL</th>
+                </tr>
+            </thead>
+            <tbody>
+                @php $total = 0; @endphp
+                @foreach ($penjualan->items as $i => $it)
+                    @php
+                        $subtotal = $it->jumlah * $it->harga;
+                        $total += $subtotal;
+                    @endphp
+                    <tr>
+                        <td>{{ $it->gudang->kode_gudang ?? '-' }}</td>
+                        <td>
+                            {{ strtoupper($it->item->nama_item ?? '-') }}
+                            @if (!empty($it->keterangan))
+                                <div class="item-note">- {{ $it->keterangan }}</div>
+                            @endif
+                        </td>
+                        <td>{{ number_format($it->jumlah, fmod($it->jumlah, 1) ? 2 : 0, ',', '.') }}
+                            {{ $it->satuan->nama_satuan ?? 'PCS' }}</td>
+                        <td class="right">{{ number_format($it->harga, 0, ',', '.') }}</td>
+                        <td class="right">{{ number_format($subtotal, 0, ',', '.') }}</td>
+                    </tr>
+                @endforeach
+            </tbody>
+        </table>
+
+        <div class="line"></div>
+
         {{-- FOOTER --}}
         <table class="footer-grid">
             <tr>
@@ -315,7 +318,7 @@
                         {{ number_format($grandTotal, 0, ',', '.') }}</div>
 
                     @if ($totalBayar > 0 && $sisaTagihan > 0)
-                        <div style="margin-top: 4px;">Jumlah Bayar : Rp {{ number_format($totalBayar, 0, ',', '.') }}
+                        <div style="margin-top: 3px;">Jumlah Bayar : Rp {{ number_format($totalBayar, 0, ',', '.') }}
                         </div>
                         <div class="bold" style="color: #cc0000;">SISA : Rp
                             {{ number_format($sisaTagihan, 0, ',', '.') }}</div>
@@ -324,6 +327,9 @@
             </tr>
         </table>
     </div>
+
+    {{-- ✅ FORM FEED untuk auto stop --}}
+    <div style="page-break-after: always; height: 0;"></div>
 
     <script>
         window.onload = function() {
