@@ -7,7 +7,7 @@
     <style>
         /* ======= SETTING KERTAS CF K2 PRS ======= */
         @page {
-            size: 9.5in 2.5in landscape;
+            size: 9.5in 5.5in landscape;
             /* Ukuran K2: 9.5 x 5.5 inch */
             margin: 8mm;
         }
@@ -38,7 +38,7 @@
         /* ======= NOTA ======= */
         .nota {
             width: 100%;
-            height: 5.5in;
+            height: ;
             /* Pas tinggi kertas K2 */
             display: flex;
             flex-direction: column;
@@ -78,7 +78,7 @@
 
         /* ======= GARIS PEMBATAS ======= */
         .line {
-            border-top: 1px solid #000;
+            border-top: 1px dashed #000;
             margin: 4px 0;
         }
 
@@ -96,7 +96,7 @@
         }
 
         th {
-            border-bottom: 1px solid #000;
+            border-bottom: 1px dashed #000;
             text-align: left;
             font-weight: 500;
         }
@@ -155,7 +155,7 @@
         /* ======= PRINT MODE ======= */
         @media print {
             @page {
-                size: 9.5in 5.5in;
+                size: 9.5in 5.5in landscape;
                 margin: 8mm;
             }
 
