@@ -20,7 +20,7 @@
         html,
         body,
         * {
-            font-family: 'Courier New', Courier, monospace !important;
+            font-family: 'Doto', sans-serif !important;
             box-sizing: border-box;
             color: #000;
             -webkit-print-color-adjust: exact !important;
@@ -34,8 +34,8 @@
             flex-direction: column;
             height: 100%;
             color: #000;
-            font-weight: 500;
-            /* cukup tebal tapi tidak boros pita */
+            font-weight: 400;
+            /* ✅ normal weight untuk menghindari double text */
         }
 
         /* ======= HEADER ======= */
@@ -44,7 +44,7 @@
             align-items: center;
             justify-content: space-between;
             margin-bottom: 4px;
-            font-weight: 700;
+            font-weight: 600;
         }
 
         .header-section img {
@@ -98,11 +98,13 @@
         }
 
         .content-table tbody td {
-            font-weight: 500;
+            font-weight: 300;
+            /* ✅ KUNCI: weight 300 untuk menghilangkan bayang-bayang */
             color: #000;
             line-height: 1.4;
             border: none !important;
-            letter-spacing: 0.3px;
+            letter-spacing: 0;
+            /* ✅ hilangkan letter-spacing yang bisa bikin double effect */
         }
 
         .content-table tbody tr td:first-child {
@@ -114,7 +116,8 @@
             color: #000;
             margin-top: -2px;
             margin-left: 40px;
-            font-weight: 500;
+            font-weight: 300;
+            /* ✅ sama dengan konten item */
         }
 
         /* ======= FOOTER ======= */
@@ -124,7 +127,7 @@
             page-break-inside: avoid;
             font-size: 15px;
             color: #000;
-            font-weight: 500;
+            font-weight: 400;
         }
 
         .footer-left {
@@ -140,10 +143,10 @@
             margin-bottom: 3px;
         }
 
-        /* ✅ hanya bagian tertentu yang bold */
+        /* ✅ bold sections */
         .footer-left b,
         .footer-right .bold {
-            font-weight: 500;
+            font-weight: 600;
         }
 
         /* ======= MULTI HALAMAN ======= */
@@ -168,6 +171,9 @@
 
             body {
                 margin: 0;
+                -webkit-font-smoothing: antialiased;
+                /* ✅ smoothing untuk print yang lebih bersih */
+                -moz-osx-font-smoothing: grayscale;
             }
 
             header,
@@ -185,6 +191,12 @@
             p,
             span {
                 color: #000 !important;
+            }
+
+            /* ✅ pastikan tidak ada text-shadow atau efek lain saat print */
+            * {
+                text-shadow: none !important;
+                filter: none !important;
             }
         }
 
@@ -213,37 +225,73 @@
                 </div>
             </div>
 
-            {{-- INFO TABLE --}}
-            {{-- <table style="width:100%; font-size:16px; margin-top:6px;">
-                <tr>
-                    <td style="width:90px;">NPWP</td>
-                    <td style="width:180px;">: {{ $penjualan->pelanggan->npwp ?? '0' }}</td>
-                    <td style="width:90px;">Nota #</td>
-                    <td>: {{ $penjualan->no_faktur }}</td>
-                </tr>
-                <tr>
-                    <td>Telp</td>
-                    <td>: 0811 4284 995</td>
-                    <td>Pelanggan</td>
-                    <td>: {{ $penjualan->pelanggan->nama_pelanggan ?? 'CUSTOMER' }}</td>
-                </tr>
-                <tr>
-                    <td>Tanggal</td>
-                    <td>: {{ \Carbon\Carbon::parse($penjualan->tanggal)->format('d/m/Y') }}</td>
-                    <td>Telepon</td>
-                    <td>: {{ $penjualan->pelanggan->kontak ?? '-' }}</td>
-                </tr>
-                <tr>
-                    <td>Admin</td>
-                    <td>: {{ $penjualan->createdBy->name ?? '-' }}</td>
-                    <td>Alamat</td>
-                    <td>: {{ $penjualan->pelanggan->alamat ?? '-' }}</td>
-                </tr>
-            </table> --}}
+            <div class="line"></div>
 
-            
+            {{-- TABEL ITEM --}}
+            <table class="content-table">
+                <thead>
+                    <tr>
+                        <th style="width:40px;">GD</th>
+                        <th>NAMA BARANG</th>
+                        <th style="width:100px;">BANYAK</th>
+                        <th class="right" style="width:110px;">HARGA</th>
+                        <th class="right" style="width:120px;">SUBTOTAL</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @php $total = 0; @endphp
+                    @foreach ($penjualan->items as $i => $it)
+                        @php
+                            $subtotal = $it->jumlah * $it->harga;
+                            $total += $subtotal;
+                        @endphp
+                        <tr>
+                            <td>{{ $it->gudang->kode_gudang ?? '-' }}</td>
+                            <td>
+                                {{ strtoupper($it->item->nama_item ?? '-') }}
+                                @if (!empty($it->keterangan))
+                                    <div class="item-note">- {{ $it->keterangan }}</div>
+                                @endif
+                            </td>
+                            <td>{{ number_format($it->jumlah, fmod($it->jumlah, 1) ? 2 : 0, ',', '.') }}
+                                {{ $it->satuan->nama_satuan ?? 'PCS' }}</td>
+                            <td class="right">{{ number_format($it->harga, 0, ',', '.') }}</td>
+                            <td class="right">{{ number_format($subtotal, 0, ',', '.') }}</td>
+                        </tr>
+                    @endforeach
+                </tbody>
+            </table>
 
-           
+            <div class="line"></div>
+        </div>
+
+        {{-- INFO TABLE --}}
+        <table style="width:100%; font-size:16px; margin-top:6px;">
+            <tr>
+                <td style="width:90px;">NPWP</td>
+                <td style="width:180px;">: {{ $penjualan->pelanggan->npwp ?? '0' }}</td>
+                <td style="width:90px;">Nota #</td>
+                <td>: {{ $penjualan->no_faktur }}</td>
+            </tr>
+            <tr>
+                <td>Telp</td>
+                <td>: 0811 4284 995</td>
+                <td>Pelanggan</td>
+                <td>: {{ $penjualan->pelanggan->nama_pelanggan ?? 'CUSTOMER' }}</td>
+            </tr>
+            <tr>
+                <td>Tanggal</td>
+                <td>: {{ \Carbon\Carbon::parse($penjualan->tanggal)->format('d/m/Y') }}</td>
+                <td>Telepon</td>
+                <td>: {{ $penjualan->pelanggan->kontak ?? '-' }}</td>
+            </tr>
+            <tr>
+                <td>Admin</td>
+                <td>: {{ $penjualan->createdBy->name ?? '-' }}</td>
+                <td>Alamat</td>
+                <td>: {{ $penjualan->pelanggan->alamat ?? '-' }}</td>
+            </tr>
+        </table>
 
         {{-- FOOTER --}}
         <table class="footer-grid">
