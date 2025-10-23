@@ -92,7 +92,7 @@
         }
 
         th {
-            border-bottom: 1px dashed #000;
+            border-bottom: 2px dashed #000;
             text-align: left;
             font-weight: 600;
         }
@@ -104,7 +104,7 @@
 
         .item-note {
             font-size: 14px;
-            color: #333;
+            color: #000;
             margin-top: -2px;
             margin-left: 40px;
         }
@@ -184,7 +184,7 @@
                 <img src="{{ url('storage/app/public/images/logo-cahaya-lowa-hitam.png') }}" alt="Logo CV Cahaya Lowa">
                 <div class="header-text">
                     <div class="company-name">CV CAHAYA LOWA</div>
-                    <div style="font-size: 13px;">Anabanua, Kab. Wajo</div>
+                    <div style="font-size: 16px;">Anabanua, Kab. Wajo, Telp: 082391497127</div>
                 </div>
                 <div class="header-right">
                     <div class="barcode">
