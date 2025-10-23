@@ -77,7 +77,7 @@
             margin: 4px 0;
         }
 
-        /* ======= TABEL ======= */
+        /* ======= TABEL UMUM ======= */
         table {
             width: 100%;
             border-collapse: collapse;
@@ -100,17 +100,22 @@
             text-align: right;
         }
 
-        /* ✅ Item table: samakan gaya dengan tabel header info */
-        .content-table th,
-        .content-table td {
-            padding: 2px 0;
-            border: none !important;
-            font-size: 16px;
+        /* ======= KHUSUS ITEM TABLE ======= */
+        .content-table thead th {
             font-weight: 400;
+            padding: 2px 0;
         }
 
-        .content-table thead th {
-            font-weight: 500;
+        .content-table tbody td {
+            font-weight: 400;
+            padding: 2px 0;
+            line-height: 1.3;
+            color: #000;
+            border: none !important;
+        }
+
+        .content-table tbody tr td:first-child {
+            width: 40px;
         }
 
         .item-note {
@@ -143,7 +148,7 @@
         }
 
         .footer-right .bold {
-            font-weight: 700;
+            font-weight: 600;
         }
 
         /* ======= MULTI HALAMAN ======= */
