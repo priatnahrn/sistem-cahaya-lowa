@@ -74,7 +74,6 @@
 
         /* ======= GARIS PEMBATAS ======= */
         .line {
-            /* border-top: 2px dashed #000; */
             margin: 4px 0;
         }
 
@@ -89,17 +88,29 @@
         td {
             padding: 0;
             vertical-align: top;
+            font-weight: 400;
         }
 
         th {
-            /* border-bottom: 2px dashed #000; */
             text-align: left;
-            font-weight: 600;
         }
 
         td.right,
         th.right {
             text-align: right;
+        }
+
+        /* ✅ Item table: samakan gaya dengan tabel header info */
+        .content-table th,
+        .content-table td {
+            padding: 2px 0;
+            border: none !important;
+            font-size: 16px;
+            font-weight: 400;
+        }
+
+        .content-table thead th {
+            font-weight: 500;
         }
 
         .item-note {
