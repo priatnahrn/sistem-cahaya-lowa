@@ -6,7 +6,7 @@
     <title>Nota Besar</title>
     <style>
         @page {
-            size: 9.5in auto landscape;
+            size: 9.5in 11in landscape;
             margin: 12mm;
         }
 
@@ -33,7 +33,7 @@
 
 
         body {
-            font-size: 14px;
+            font-size: 16px;
             margin: 0;
             padding: 0;
             color: #000;
@@ -64,7 +64,7 @@
         table {
             width: 100%;
             border-collapse: collapse;
-            font-size: 14px;
+            font-size: 16px;
         }
 
         th,
@@ -90,13 +90,13 @@
         }
 
         .footer-left {
-            font-size: 14px;
+            font-size: 16px;
             vertical-align: top;
         }
 
         .footer-right {
             text-align: right;
-            font-size: 14px;
+            font-size: 16px;
             vertical-align: top;
         }
 
@@ -109,7 +109,7 @@
         }
 
         .item-note {
-            font-size: 14px;
+            font-size: 16px;
             color: #333;
             margin-top: -2px;
             margin-left: 40px;
@@ -118,6 +118,7 @@
         .header-section {
             display: flex;
             align-items: center;
+            justify-content: space-between;
             margin-bottom: 6px;
         }
 
@@ -149,10 +150,18 @@
                     <div class="company-name">CV CAHAYA LOWA</div>
                     <div style="font-size: 13px;">Anabanua, Kab. Wajo</div>
                 </div>
+                <div class="header-right">
+
+                    {{-- BARCODE --}}
+                    {{-- QR / BARCODE --}}
+                    <div class="barcode">
+                        {!! $barcode !!}
+                    </div>
+                </div>
             </div>
 
             {{-- INFO TABLE --}}
-            <table style="width:100%; font-size:14px; margin-top:6px;">
+            <table style="width:100%; font-size:16px; margin-top:6px;">
                 <tr>
                     <td style="width:90px;">NPWP</td>
                     <td style="width:180px;">: {{ $penjualan->pelanggan->npwp ?? '0' }}</td>
