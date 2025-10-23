@@ -29,8 +29,7 @@
             flex-direction: column;
             height: 100%;
             color: #000;
-            font-weight: 400;
-            /* ✅ normal weight untuk menghindari double text */
+            font-weight: 100; /* ✅ SANGAT TIPIS - ini kunci utama */
         }
 
         /* ======= HEADER ======= */
@@ -39,7 +38,7 @@
             align-items: center;
             justify-content: space-between;
             margin-bottom: 4px;
-            font-weight: 600;
+            font-weight: normal; /* ✅ UBAH dari bold ke normal */
         }
 
         .header-section img {
@@ -51,7 +50,7 @@
 
         .company-name {
             font-size: 20px;
-            font-weight: 700;
+            font-weight: normal; /* ✅ UBAH dari bold ke normal */
         }
 
         .barcode {
@@ -60,6 +59,7 @@
 
         /* ======= GARIS PEMBATAS ======= */
         .line {
+            border-top: 1px solid #000;
             margin: 4px 0;
         }
 
@@ -75,11 +75,14 @@
             padding: 1px 0;
             vertical-align: top;
             color: #000;
+            font-weight: 100; /* ✅ SANGAT TIPIS */
         }
 
         th {
             text-align: left;
-            font-weight: 500;
+            font-weight: normal; /* ✅ Header cukup normal aja */
+            border-bottom: 1px solid #000;
+            padding-bottom: 2px;
         }
 
         td.right,
@@ -88,18 +91,23 @@
         }
 
         /* ======= TABEL ITEM ======= */
+        .content-table {
+            margin-top: 2px;
+        }
+
         .content-table thead th {
-            font-weight: 500;
+            font-weight: normal; /* ✅ Normal aja */
+            border-bottom: 1px solid #000;
+            padding-bottom: 2px;
         }
 
         .content-table tbody td {
-            font-weight: 300;
-            /* ✅ KUNCI: weight 300 untuk menghilangkan bayang-bayang */
+            font-weight: 100; /* ✅ SANGAT TIPIS - ini yang paling penting */
             color: #000;
             line-height: 1.4;
             border: none !important;
             letter-spacing: 0;
-            /* ✅ hilangkan letter-spacing yang bisa bikin double effect */
+            padding: 2px 0;
         }
 
         .content-table tbody tr td:first-child {
@@ -111,8 +119,7 @@
             color: #000;
             margin-top: -2px;
             margin-left: 40px;
-            font-weight: 300;
-            /* ✅ sama dengan konten item */
+            font-weight: 100; /* ✅ SANGAT TIPIS */
         }
 
         /* ======= FOOTER ======= */
@@ -122,7 +129,7 @@
             page-break-inside: avoid;
             font-size: 15px;
             color: #000;
-            font-weight: 400;
+            font-weight: 100; /* ✅ SANGAT TIPIS */
         }
 
         .footer-left {
@@ -138,10 +145,10 @@
             margin-bottom: 3px;
         }
 
-        /* ✅ bold sections */
+        /* ✅ Yang perlu emphasis cukup normal aja */
         .footer-left b,
         .footer-right .bold {
-            font-weight: 600;
+            font-weight: normal; /* ✅ UBAH dari bold ke normal */
         }
 
         /* ======= MULTI HALAMAN ======= */
@@ -166,9 +173,6 @@
 
             body {
                 margin: 0;
-                -webkit-font-smoothing: antialiased;
-                /* ✅ smoothing untuk print yang lebih bersih */
-                -moz-osx-font-smoothing: grayscale;
             }
 
             header,
@@ -188,10 +192,11 @@
                 color: #000 !important;
             }
 
-            /* ✅ pastikan tidak ada text-shadow atau efek lain saat print */
             * {
                 text-shadow: none !important;
                 filter: none !important;
+                -webkit-font-smoothing: none !important;
+                -moz-osx-font-smoothing: unset !important;
             }
         }
 
@@ -219,7 +224,7 @@
                     </div>
                 </div>
             </div>
-
+            
             {{-- INFO TABLE --}}
             <table style="width:100%; font-size:16px; margin-top:6px;">
                 <tr>
