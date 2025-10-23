@@ -7,7 +7,7 @@
     <style>
         /* ======= SETTING KERTAS CF K2 PRS ======= */
         @page {
-            size: 9.5in 5.5in;
+            size: 9.5in 2.5in landscape;
             /* Ukuran K2: 9.5 x 5.5 inch */
             margin: 8mm;
         }
