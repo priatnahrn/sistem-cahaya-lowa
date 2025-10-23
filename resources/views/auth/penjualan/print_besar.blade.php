@@ -74,7 +74,7 @@
 
         /* ======= GARIS PEMBATAS ======= */
         .line {
-            border-top: 2px dashed #000;
+            /* border-top: 2px dashed #000; */
             margin: 4px 0;
         }
 
@@ -92,7 +92,7 @@
         }
 
         th {
-            border-bottom: 2px dashed #000;
+            /* border-bottom: 2px dashed #000; */
             text-align: left;
             font-weight: 600;
         }
@@ -184,7 +184,7 @@
                 <img src="{{ url('storage/app/public/images/logo-cahaya-lowa-hitam.png') }}" alt="Logo CV Cahaya Lowa">
                 <div class="header-text">
                     <div class="company-name">CV CAHAYA LOWA</div>
-                    <div style="font-size: 16px;">Anabanua, Kab. Wajo, Telp: 082391497127</div>
+                    <div style="font-size: 16px;">Anabanua, Kab. Wajo</div>
                 </div>
                 <div class="header-right">
                     <div class="barcode">
