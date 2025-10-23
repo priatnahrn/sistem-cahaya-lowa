@@ -4,25 +4,23 @@
 <head>
     <meta charset="UTF-8">
     <title>Nota Besar</title>
+
+    <!-- ✅ Gunakan Google Font: Doto -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Doto:wght@100..900&display=swap" rel="stylesheet">
+
     <style>
         /* ======= SETTING KERTAS CF K2 PRS ======= */
         @page {
             size: 9.5in 5.5in landscape;
-            /* Ukuran K2: 9.5 x 5.5 inch */
             margin: 8mm;
-        }
-
-        @font-face {
-            font-family: 'DotMatrix';
-            src: url('/fonts/DOTMATRI.TTF') format('truetype');
-            font-weight: normal;
-            font-style: normal;
         }
 
         html,
         body,
         * {
-            font-family: 'DotMatrix', monospace !important;
+            font-family: 'Doto', monospace !important;
             box-sizing: border-box;
         }
 
@@ -38,8 +36,6 @@
         /* ======= NOTA ======= */
         .nota {
             width: 100%;
-            height: ;
-            /* Pas tinggi kertas K2 */
             display: flex;
             flex-direction: column;
             justify-content: space-between;
@@ -63,7 +59,7 @@
         }
 
         .company-name {
-            font-weight: bold;
+            font-weight: 800;
             font-size: 20px;
         }
 
@@ -98,7 +94,7 @@
         th {
             border-bottom: 1px dashed #000;
             text-align: left;
-            font-weight: 500;
+            font-weight: 600;
         }
 
         td.right,
@@ -136,7 +132,7 @@
         }
 
         .footer-right .bold {
-            font-weight: bold;
+            font-weight: 700;
         }
 
         /* ======= MULTI HALAMAN ======= */
