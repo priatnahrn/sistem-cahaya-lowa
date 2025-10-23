@@ -220,7 +220,7 @@
 
                 // Grouping sesuai sidebar
                 permissionGroups: {
-                    'UTAMA': ['dashboard'],
+                    'UTAMA': ['dashboard', 'cek_harga'],
                     'PENJUALAN': ['penjualan', 'pengiriman', 'retur_penjualan'],
                     'KASIR': ['penjualan_cepat', 'pembayaran', 'tagihan_penjualan'],
                     'PEMBELIAN': ['pembelian', 'retur_pembelian', 'tagihan_pembelian'],

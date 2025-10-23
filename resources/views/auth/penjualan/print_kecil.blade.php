@@ -110,6 +110,20 @@
             margin-top: 4px;
         }
 
+        /* ===== PAYMENT INFO ===== */
+        .payment-line {
+            display: flex;
+            justify-content: space-between;
+            width: 100%;
+            font-size: 16px;
+            margin-top: 3px;
+        }
+
+        .payment-line.sisa {
+            font-weight: bold;
+            color: #cc0000;
+        }
+
         footer {
             margin-top: 12px;
             text-align: center;
@@ -195,9 +209,21 @@
                 </div>
             @endforeach
 
-
-
             <div class="line" style="margin: 4px 0;"></div>
+
+            {{-- 🔹 SUBTOTAL --}}
+            <div class="payment-line">
+                <div class="left">Subtotal</div>
+                <div class="right">Rp {{ number_format($penjualan->sub_total ?? 0, 0, ',', '.') }}</div>
+            </div>
+
+            {{-- 🔹 BIAYA KIRIM (jika ada) --}}
+            @if ($penjualan->biaya_transport > 0)
+                <div class="payment-line">
+                    <div class="left">Biaya Kirim</div>
+                    <div class="right">Rp {{ number_format($penjualan->biaya_transport, 0, ',', '.') }}</div>
+                </div>
+            @endif
 
             {{-- 🔹 TOTAL --}}
             <div class="total-line">
@@ -205,9 +231,34 @@
                 <div class="right total-harga">Rp {{ number_format($penjualan->total, 0, ',', '.') }}</div>
             </div>
 
+            @php
+                // Hitung total pembayaran dari relasi pembayarans
+                $totalBayar = 0;
+                if (isset($penjualan->pembayarans)) {
+                    $totalBayar = $penjualan->pembayarans->where('jumlah_bayar', '>', 0)->sum('jumlah_bayar');
+                }
+
+                $sisaTagihan = $penjualan->total - $totalBayar;
+            @endphp
+
+            {{-- 🔹 JUMLAH BAYAR & SISA (jika ada pembayaran) --}}
+            @if ($totalBayar > 0)
+
+                @if ($sisaTagihan > 0)
+                    <div class="line" style="margin: 4px 0;"></div>
+
+                    <div class="payment-line">
+                        <div class="left">Jumlah Bayar</div>
+                        <div class="right">Rp {{ number_format($totalBayar, 0, ',', '.') }}</div>
+                    </div>
+                    <div class="payment-line sisa">
+                        <div class="left">SISA</div>
+                        <div class="right">Rp {{ number_format($sisaTagihan, 0, ',', '.') }}</div>
+                    </div>
+                @endif
+            @endif
+
             <div class="line"></div>
-
-
         </main>
 
         {{-- FOOTER --}}

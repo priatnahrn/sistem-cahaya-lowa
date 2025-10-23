@@ -145,12 +145,30 @@ class RoleController extends Controller
                 'ip_address'    => $request->ip(),
                 'user_agent'    => $request->userAgent(),
             ]);
+
             DB::commit();
+
+            // ✅ Return JSON kalau request dari AJAX/fetch
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Role berhasil diperbarui!'
+                ]);
+            }
 
             return redirect()->route('roles.index')
                 ->with('success', 'Role berhasil diperbarui!');
         } catch (\Exception $e) {
             DB::rollBack();
+
+            // ✅ Return JSON error kalau request dari AJAX
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Gagal memperbarui role: ' . $e->getMessage()
+                ], 500);
+            }
+
             return redirect()->back()
                 ->withInput()
                 ->with('error', 'Gagal memperbarui role: ' . $e->getMessage());

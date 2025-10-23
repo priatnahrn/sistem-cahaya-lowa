@@ -43,6 +43,7 @@ class RolesAndPermissionsSeeder extends Seeder
             'payrolls',
             'cashflows',
             'profile',
+            'cek_harga',
         ];
 
         // ================================

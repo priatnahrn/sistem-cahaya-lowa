@@ -661,12 +661,13 @@
                     <button @click="saveAdjustment()"
                         :disabled="adjustmentAmount > 0 && nominalAdjustment < adjustmentAmount"
                         :class="[
-                            'px-5 py-2.5 rounded-lg font-medium text-white shadow transition',
+                            'px-5 py-2.5 rounded-lg font-medium text-white shadow transition flex items-center justify-center gap-2',
                             (adjustmentAmount > 0 && nominalAdjustment < adjustmentAmount) ?
                             'bg-gray-400 cursor-not-allowed' :
                             'bg-[#344579] hover:bg-[#2e3e6a]'
                         ]">
-                        <span x-text="adjustmentAmount > 0 ? 'Proses Pembayaran' : 'Proses Pengembalian'"></span>
+                        <i class="fa-solid fa-print mr-1"></i>
+                        <span x-text="adjustmentAmount > 0 ? 'Bayar & Cetak' : 'Proses Pengembalian'"></span>
                     </button>
                 </div>
             </div>
@@ -678,7 +679,7 @@
 
             <!-- Overlay -->
             <div x-show="showAdjustmentSuccessModal" x-transition.opacity.duration.400ms
-                class="absolute inset-0 bg-black/50 backdrop-blur-sm"></div>
+                class="absolute inset-0 bg-black/50 "></div>
 
             <!-- Modal Card -->
             <div x-show="showAdjustmentSuccessModal" x-transition:enter="transition ease-out duration-300"
@@ -712,14 +713,9 @@
 
                 <!-- Tombol Aksi -->
                 <div class="mt-6 flex flex-col gap-3">
-                    <button @click="printNota('kecil')" type="button"
-                        class="px-4 py-2.5 rounded-lg bg-[#344579] text-white hover:bg-[#2e3e6a] transition font-medium flex items-center justify-center gap-2">
-                        <i class="fa-solid fa-print"></i> Cetak Nota
-                    </button>
-
                     <button @click="closeAdjustmentSuccessModal()"
-                        class="px-4 py-2.5 rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-100 transition font-medium flex items-center justify-center gap-2">
-                        <i class="fa-solid fa-arrow-left"></i> Kembali ke Daftar
+                        class="px-4 py-2.5 rounded-lg bg-white border border-slate-300 text-slate-700 hover:bg-slate-100 transition font-medium flex items-center justify-center gap-2">
+                        Kembali
                     </button>
                 </div>
             </div>
@@ -765,7 +761,8 @@
                 selectedPelangganLevel: 'retail',
                 subtotal: 0,
                 total: 0,
-                oldTotal: {{ $penjualan->total }}, // ✅ TAMBAHKAN: Total sebelum perubahan
+                oldTotal: {{ $penjualan->total }},
+                totalPembayaran: 0, // ✅ TAMBAHKAN: Total sebelum perubahan
                 savedPenjualanId: null,
                 showPrintModal: false,
                 showAdjustmentModal: false, // ✅ TAMBAHKAN
@@ -1241,7 +1238,6 @@
                 },
 
                 // === UPDATE ===
-                // ✅ UPDATE: Method update() - cek apakah perlu adjustment
                 async update() {
                     if (!this.validateBeforeSave()) return;
                     if (this.isSaving) return;
@@ -1312,21 +1308,26 @@
 
                             console.log('💰 Payment Info dari Backend:', paymentInfo);
 
-                            // ✅ HITUNG: Sisa lama + Tambahan baru
-                            const sisaLama = paymentInfo.total_penjualan_lama - paymentInfo.total_dibayar;
-                            const tambahanBaru = paymentInfo.total_penjualan_baru - paymentInfo.total_penjualan_lama;
-                            const nominalYangHarusDibayar = Math.max(0, sisaLama + tambahanBaru);
 
-                            console.log('📊 Calculation:', {
+                            // ✅ PERBAIKAN FINAL: Formula yang benar
+                            // adjustmentAmount = total_baru - sudah_dibayar
+                            // Jika POSITIF (+) = KEKURANGAN (harus bayar lagi)
+                            // Jika NEGATIF (-) = KELEBIHAN (harus dikembalikan)
+                            const harusDibayar = paymentInfo.total_penjualan_baru;
+                            const sudahDibayar = paymentInfo.total_dibayar;
+                            
+                            this.adjustmentAmount = harusDibayar - sudahDibayar;
+                            this.totalPembayaran = sudahDibayar;
+
+                            console.log("📊 Calculation (CORRECT):", {
                                 total_lama: paymentInfo.total_penjualan_lama,
                                 total_baru: paymentInfo.total_penjualan_baru,
-                                sudah_dibayar: paymentInfo.total_dibayar,
-                                sisa_lama: sisaLama,
-                                tambahan_baru: tambahanBaru,
-                                harus_bayar: nominalYangHarusDibayar
+                                sudah_dibayar: sudahDibayar,
+                                harus_dibayar: harusDibayar,
+                                adjustment: this.adjustmentAmount,
+                                type: this.adjustmentAmount > 0 ? "⚠️ KEKURANGAN" : "💰 KELEBIHAN"
                             });
 
-                            this.adjustmentAmount = nominalYangHarusDibayar;
 
                             // Reset form adjustment
                             this.nominalAdjustment = this.adjustmentAmount > 0 ? this.adjustmentAmount : 0;
@@ -1352,7 +1353,6 @@
                     }
                 },
 
-                // ✅ UPDATE method saveAdjustment():
                 async saveAdjustment() {
                     if (this.nominalAdjustment <= 0) {
                         this.notify('Nominal pembayaran harus lebih dari 0', 'error');
@@ -1360,7 +1360,6 @@
                     }
 
                     try {
-                        // ✅ UPDATE: Keterangan dengan nama bank jika transfer
                         let keterangan = '';
                         if (this.adjustmentAmount > 0) {
                             keterangan =
@@ -1383,8 +1382,6 @@
                             adjustment_amount: this.adjustmentAmount
                         };
 
-                        console.log('📤 Payload ke backend:', payload); // ✅ Debug
-
                         const res = await fetch('/pembayaran', {
                             method: 'POST',
                             headers: {
@@ -1395,7 +1392,6 @@
                         });
 
                         const result = await res.json();
-                        console.log('📥 Response dari backend:', result); // ✅ Debug
 
                         if (!result.success) throw new Error('Gagal menyimpan pembayaran.');
 
@@ -1406,20 +1402,56 @@
                             this.adjustmentKembalian = Math.abs(this.adjustmentAmount);
                         }
 
+                        // ✅ Tutup modal adjustment
                         this.showAdjustmentModal = false;
 
+                        // ✅ Auto preview nota kecil (tidak auto print)
+                        await this.printNotaKecilAdjustment();
+
+                        // ✅ Tampilkan modal success
                         setTimeout(() => {
                             this.showAdjustmentSuccessModal = true;
                             this.savedPenjualanId = this.form.id;
-                        }, 100);
+                        }, 500);
 
                         this.oldTotal = this.total;
+                        // ✅ Update total pembayaran setelah adjustment
+                        this.totalPembayaran = result.data?.total_pembayaran || (this.totalPembayaran + this
+                            .nominalAdjustment);
                         this.initialForm = JSON.parse(JSON.stringify(this.form));
                         this.isDirty = false;
 
                     } catch (err) {
                         console.error('❌ Error saveAdjustment:', err);
                         this.notify('Gagal menyimpan pembayaran: ' + err.message, 'error');
+                    }
+                },
+
+                // ✅ TAMBAHKAN function baru untuk print adjustment:
+                async printNotaKecilAdjustment() {
+                    try {
+                        const res = await fetch(`/penjualan-cepat/${this.form.id}/print?type=kecil`);
+                        if (!res.ok) throw new Error("Gagal memuat nota");
+
+                        const html = await res.text();
+                        const printWindow = window.open('', '_blank', 'width=800,height=600');
+
+                        if (!printWindow) {
+                            this.notify("Popup diblokir, izinkan popup untuk melanjutkan.", "error");
+                            return;
+                        }
+
+                        printWindow.document.write(html);
+                        printWindow.document.close();
+
+                        // ✅ HANYA PREVIEW - user bisa print manual dengan Ctrl+P
+                        printWindow.onload = () => {
+                            printWindow.focus();
+                        };
+
+                    } catch (err) {
+                        console.error('❌ Print error:', err);
+                        this.notify("Gagal menampilkan preview nota, coba lagi.", "error");
                     }
                 },
 
@@ -1442,49 +1474,48 @@
                     }
                 },
 
-                async printNota(type) {
-                    try {
-                        const res = await fetch(`/penjualan-cepat/${this.savedPenjualanId}/print?type=${type}`);
-                        if (!res.ok) throw new Error("Gagal memuat nota");
+                // async printNota(type) {
+                //     try {
+                //         const res = await fetch(`/penjualan-cepat/${this.savedPenjualanId}/print?type=${type}`);
+                //         if (!res.ok) throw new Error("Gagal memuat nota");
 
-                        const html = await res.text();
-                        const printWindow = window.open('', '_blank', 'width=800,height=600');
+                //         const html = await res.text();
+                //         const printWindow = window.open('', '_blank', 'width=800,height=600');
 
-                        if (!printWindow) {
-                            this.notify("Popup diblokir, izinkan popup untuk melanjutkan.", "error");
-                            return;
-                        }
+                //         if (!printWindow) {
+                //             this.notify("Popup diblokir, izinkan popup untuk melanjutkan.", "error");
+                //             return;
+                //         }
 
-                        printWindow.document.write(html);
-                        printWindow.document.close();
+                //         printWindow.document.write(html);
+                //         printWindow.document.close();
 
-                        printWindow.onload = () => {
-                            setTimeout(() => {
-                                printWindow.focus();
-                                printWindow.print();
+                //         printWindow.onload = () => {
+                //             setTimeout(() => {
+                //                 printWindow.focus();
+                //                 printWindow.print();
 
-                                printWindow.onafterprint = () => {
-                                    printWindow.close();
-                                    window.location.href = '/penjualan-cepat';
-                                };
+                //                 printWindow.onafterprint = () => {
+                //                     printWindow.close();
+                //                     window.location.href = '/penjualan-cepat';
+                //                 };
 
-                                setTimeout(() => {
-                                    if (!printWindow.closed) {
-                                        printWindow.close();
-                                    }
-                                    window.location.href = '/penjualan-cepat';
-                                }, 2000);
+                //                 setTimeout(() => {
+                //                     if (!printWindow.closed) {
+                //                         printWindow.close();
+                //                     }
+                //                     window.location.href = '/penjualan-cepat';
+                //                 }, 2000);
 
-                            }, 500);
-                        };
+                //             }, 500);
+                //         };
 
-                    } catch (err) {
-                        console.error(err);
-                        this.notify("Gagal mencetak nota, coba lagi.", "error");
-                    }
-                },
+                //     } catch (err) {
+                //         console.error(err);
+                //         this.notify("Gagal mencetak nota, coba lagi.", "error");
+                //     }
+                // },
 
-                // Di dalam function penjualanCepatShow():
                 closeAdjustmentSuccessModal() {
                     this.showAdjustmentSuccessModal = false;
                     setTimeout(() => {

@@ -58,7 +58,7 @@
                     <div class="mt-2 flex items-center gap-4 text-sm text-slate-600">
                         <span>
                             <i class="fa-solid fa-shield-halved text-slate-400"></i>
-                            <span x-text="form.permissions.length"></span> permission
+                            <span x-text="form.permissions.length"></span> dari <span x-text="allPermissions.length"></span> permission
                         </span>
                         <span>
                             <i class="fa-solid fa-users text-slate-400"></i>
@@ -151,7 +151,7 @@
                     </div>
                     {{-- Badge Selected Count --}}
                     <div class="px-3 py-1.5 bg-[#344579] text-white rounded-lg text-sm font-medium">
-                        <span x-text="form.permissions.length"></span> dipilih
+                        <span x-text="form.permissions.length"></span> / <span x-text="allPermissions.length"></span> dipilih
                     </div>
                 </div>
             </div>
@@ -279,20 +279,21 @@
                 notifType: '',
                 showNotif: false,
 
-                // Grouping sesuai sidebar
+                // ✅ LENGKAP: Grouping sesuai semua module yang ada
                 permissionGroups: {
-                    'UTAMA': ['dashboard'],
+                    'UTAMA': ['dashboard', 'cek_harga'],
                     'PENJUALAN': ['penjualan', 'pengiriman', 'retur_penjualan'],
                     'KASIR': ['penjualan_cepat', 'pembayaran', 'tagihan_penjualan'],
                     'PEMBELIAN': ['pembelian', 'retur_pembelian', 'tagihan_pembelian'],
                     'MANAJEMEN TOKO': ['gudang', 'supplier', 'items', 'kategori_items', 'pelanggan', 'mutasi_stok', 'produksi'],
                     'MANAJEMEN PENGGUNA': ['roles', 'users', 'activity_logs'],
-                    'KEUANGAN': ['kas_keuangan', 'gaji_karyawan'],
+                    'KEUANGAN': ['kas_keuangan', 'gaji_karyawan', 'cashflows', 'payrolls'], // ✅ Ditambah
                     'LAINNYA': ['profile'],
                 },
 
                 moduleTranslations: {
                     'dashboard': 'Dashboard',
+                    'cek_harga': 'Cek Harga',
                     'penjualan': 'Daftar Penjualan',
                     'penjualan_cepat': 'Penjualan Cepat',
                     'retur_penjualan': 'Retur Penjualan',
@@ -313,7 +314,9 @@
                     'roles': 'Role',
                     'activity_logs': 'Log Aktivitas',
                     'payrolls': 'Gaji Karyawan',
+                    'gaji_karyawan': 'Gaji Karyawan',
                     'cashflows': 'Kas Keuangan',
+                    'kas_keuangan': 'Kas Keuangan',
                     'profile': 'Profil',
                 },
 
@@ -326,7 +329,19 @@
 
                 init() {
                     this.originalData = JSON.parse(JSON.stringify(this.form));
-                    console.log('✅ Loaded role with', this.form.permissions.length, 'permissions');
+                    
+                    // ✅ DEBUG: Cek module apa saja yang ada
+                    const uniqueModules = [...new Set(this.allPermissions.map(p => p.module))];
+                    console.log('📦 Total Permissions:', this.allPermissions.length);
+                    console.log('📋 Unique Modules:', uniqueModules);
+                    console.log('✅ Selected Permissions:', this.form.permissions.length);
+                    
+                    // ✅ Cek module yang tidak terdaftar di permissionGroups
+                    const allGroupedModules = Object.values(this.permissionGroups).flat();
+                    const unmappedModules = uniqueModules.filter(m => !allGroupedModules.includes(m));
+                    if (unmappedModules.length > 0) {
+                        console.warn('⚠️ Module belum terdaftar di permissionGroups:', unmappedModules);
+                    }
                 },
 
                 fmtTanggal(iso) {
@@ -353,7 +368,7 @@
                     const query = this.searchQuery.toLowerCase();
                     let filtered = this.allPermissions;
 
-                    // Filter berdasarkan search query saja
+                    // Filter berdasarkan search query
                     if (query) {
                         filtered = filtered.filter(p => {
                             const moduleName = this.moduleTranslations[p.module] || p.module;
@@ -364,11 +379,9 @@
                         });
                     }
 
-                    // Selalu tampilkan SEMUA permissions (baik mode view maupun edit)
-                    // Checkbox akan otomatis tercentang kalau ada di form.permissions
-
                     const result = {};
                     
+                    // ✅ Loop semua group dan module
                     for (const [groupName, modules] of Object.entries(this.permissionGroups)) {
                         const groupModules = {};
                         
@@ -381,6 +394,24 @@
                         
                         if (Object.keys(groupModules).length > 0) {
                             result[groupName] = groupModules;
+                        }
+                    }
+                    
+                    // ✅ TAMBAH: Group "LAIN-LAIN" untuk module yang tidak terdaftar
+                    const allGroupedModules = Object.values(this.permissionGroups).flat();
+                    const ungroupedPerms = filtered.filter(p => !allGroupedModules.includes(p.module));
+                    
+                    if (ungroupedPerms.length > 0) {
+                        const ungroupedByModule = {};
+                        ungroupedPerms.forEach(perm => {
+                            if (!ungroupedByModule[perm.module]) {
+                                ungroupedByModule[perm.module] = [];
+                            }
+                            ungroupedByModule[perm.module].push(perm);
+                        });
+                        
+                        if (Object.keys(ungroupedByModule).length > 0) {
+                            result['TIDAK TERKATEGORI'] = ungroupedByModule;
                         }
                     }
                     
@@ -460,7 +491,6 @@
                         this.editMode = false;
                         this.originalData = JSON.parse(JSON.stringify(this.form));
 
-                        // Reload after 1.5s to get fresh data
                         setTimeout(() => {
                             window.location.reload();
                         }, 1500);

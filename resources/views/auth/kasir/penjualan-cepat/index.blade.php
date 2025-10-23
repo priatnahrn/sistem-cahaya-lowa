@@ -382,7 +382,7 @@
             </a>
 
             <!-- Tombol Print (hanya jika lunas) -->
-            <button @click="dropdownData.status === 'lunas' ? openPrintModal(dropdownData) : null"
+            {{-- <button @click="dropdownData.status === 'lunas' ? openPrintModal(dropdownData) : null"
                 :disabled="dropdownData.status !== 'lunas'"
                 class="w-full text-left px-4 py-2 text-sm flex items-center gap-2 rounded transition"
                 :class="{
@@ -392,7 +392,7 @@
                 <i class="fa-solid fa-print"
                     :class="dropdownData.status === 'lunas' ? 'text-green-500' : 'text-slate-400'"></i>
                 <span>Print</span>
-            </button>
+            </button> --}}
 
             <!-- Tombol Hapus -->
             @can('penjualan_cepat.delete')

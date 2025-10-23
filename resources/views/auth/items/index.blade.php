@@ -207,12 +207,13 @@
                             <tr class="hover:bg-slate-50 text-slate-700 border-b border-slate-200 text-center">
                                 <td class="px-4 py-3" x-text="(currentPage-1)*pageSize + idx + 1"></td>
 
-                                {{-- FOTO --}}
+                                {{-- FOTO dengan Preview --}}
                                 <td class="px-4 py-3">
                                     <div class="flex justify-center">
                                         <template x-if="r.foto_path">
                                             <img :src="'/storage/app/public/' + r.foto_path" alt="Foto Item"
-                                                class="h-12 w-12 object-cover rounded border border-slate-200">
+                                                @click="openImagePreview('/storage/app/public/' + r.foto_path, r.nama)"
+                                                class="h-12 w-12 object-cover rounded border border-slate-200 cursor-pointer hover:ring-2 hover:ring-blue-500 hover:scale-105 transition-all">
                                         </template>
                                         <template x-if="!r.foto_path">
                                             <div
@@ -330,6 +331,36 @@
             </div>
         </div>
 
+
+        {{-- 🖼️ Image Preview Modal --}}
+        <div x-show="showImagePreview" x-cloak @click="closeImagePreview()" @keydown.escape.window="closeImagePreview()"
+            class="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4 min-h-screen">
+
+            <div x-show="showImagePreview" x-transition:enter="transition ease-out duration-300"
+                x-transition:enter-start="opacity-0 scale-90" x-transition:enter-end="opacity-100 scale-100"
+                x-transition:leave="transition ease-in duration-200" x-transition:leave-start="opacity-100 scale-100"
+                x-transition:leave-end="opacity-0 scale-90" @click.stop
+                class="relative bg-white rounded-2xl shadow-2xl max-w-4xl max-h-[90vh] overflow-hidden">
+
+                {{-- Close Button --}}
+                <button @click="closeImagePreview()"
+                    class="absolute top-4 right-4 z-10 w-10 h-10 flex items-center justify-center rounded-full bg-black/50 text-white hover:bg-black/70 transition">
+                    <i class="fa-solid fa-xmark text-xl"></i>
+                </button>
+
+                {{-- Image Container --}}
+                <div class="relative">
+                    <img :src="previewImage" :alt="previewAlt" class="w-full h-auto max-h-[85vh] object-contain">
+
+                    {{-- Image Info Overlay --}}
+                    <div
+                        class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-4 text-white">
+                        <p class="font-semibold text-lg" x-text="previewAlt"></p>
+                        <p class="text-sm text-white/80 mt-1">Klik di luar gambar atau tekan ESC untuk menutup</p>
+                    </div>
+                </div>
+            </div>
+        </div>
         {{-- 🗑️ DELETE MODAL (Modern Design) --}}
         <div x-cloak x-show="showDeleteModal" aria-modal="true" role="dialog"
             class="fixed inset-0 z-50 flex items-center justify-center min-h-screen">
@@ -474,6 +505,9 @@
                 _resizeHandler: null,
                 showDeleteModal: false,
                 deleteItem: {},
+                showImagePreview: false,
+                previewImage: '',
+                previewAlt: '',
 
                 // sorting
                 sortBy: 'kode',
@@ -498,6 +532,22 @@
                         minimumFractionDigits: 0,
                         maximumFractionDigits: 2
                     }).replace('.', ',');
+                },
+
+                openImagePreview(imageSrc, altText) {
+                    this.previewImage = imageSrc;
+                    this.previewAlt = altText;
+                    this.showImagePreview = true;
+                    // Prevent body scroll when modal open
+                    document.body.style.overflow = 'hidden';
+                },
+
+                closeImagePreview() {
+                    this.showImagePreview = false;
+                    this.previewImage = '';
+                    this.previewAlt = '';
+                    // Restore body scroll
+                    document.body.style.overflow = '';
                 },
 
                 // --- FILTER HELPERS ---

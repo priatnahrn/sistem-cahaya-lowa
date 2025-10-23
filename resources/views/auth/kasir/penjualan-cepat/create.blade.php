@@ -434,8 +434,8 @@
                         Batal
                     </button>
                     <button @click="simpanPembayaran()"
-                        class="w-[70%] px-4 py-2 rounded-lg bg-[#344579] text-white hover:bg-[#2e3e6a] shadow transition">
-                        Bayar
+                        class="w-[70%] px-4 py-2 rounded-lg bg-[#344579] text-white hover:bg-[#2e3e6a] shadow transition flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-print"></i> Bayar & Cetak
                     </button>
                 </div>
             </div>
@@ -466,20 +466,14 @@
                 <!-- 💰 KEMBALIAN -->
                 <div class="bg-green-50 border border-green-200 rounded-lg p-3 mt-3 text-green-700">
                     <p class="text-sm font-medium">Kembalian:</p>
-                    <p class="text-xl font-bold transition-all duration-300" x-text="formatRupiah(kembalian ?? 0)">
+                    <p class="text-xl font-bold transition-all duration-300" x-text="'Rp ' + formatRupiah(kembalian ?? 0)">
                     </p>
                 </div>
 
                 <div class="mt-6 flex flex-col gap-3">
-                    <!-- ✅ LANGSUNG PRINT NOTA KECIL -->
-                    <button @click="printNotaKecil()" 
-                        class="px-4 py-2 rounded-lg bg-[#344579] text-white hover:bg-[#2e3e6a] transition font-medium flex items-center justify-center gap-2"
-                        type="button">
-                        <i class="fa-solid fa-print"></i> Cetak Nota Kecil
-                    </button>
                     <button @click="closeSuccessModal()"
-                        class="px-4 py-2 rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-100 transition font-medium flex items-center justify-center gap-2">
-                        <i class="fa-solid fa-arrow-left"></i> Kembali ke Kasir
+                        class="px-4 py-2 rounded-lg bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 transition font-medium flex items-center justify-center gap-2">
+ Kembali
                     </button>
                 </div>
             </div>
@@ -1060,14 +1054,23 @@
 
                         if (!result.success) throw new Error('Pembayaran gagal disimpan.');
 
+                        // ✅ Tutup modal pembayaran
                         this.showPaymentModal = false;
-                        this.showSuccessModal = true;
+
+                        // ✅ Langsung print nota
+                        await this.printNotaKecil();
+
+                        // ✅ Tampilkan modal sukses dengan kembalian
+                        setTimeout(() => {
+                            this.showSuccessModal = true;
+                        }, 500);
+
                     } catch (e) {
                         this.notify(e.message || 'Gagal menyimpan pembayaran.', 'error');
                     }
                 },
 
-                // ✅ FUNGSI PRINT NOTA KECIL OTOMATIS (seperti di pembayaran)
+                // ✅ PRINT NOTA KECIL (otomatis setelah bayar)
                 async printNotaKecil() {
                     if (!this.penjualanId) {
                         this.notify('Data penjualan tidak ditemukan', 'error');
@@ -1076,8 +1079,6 @@
 
                     try {
                         const url = `/penjualan/${this.penjualanId}/print?type=kecil`;
-                        console.log('🖨️ Print URL:', url);
-
                         const res = await fetch(url);
 
                         if (!res.ok) {
@@ -1102,19 +1103,12 @@
 
                         printWindow.onload = () => {
                             setTimeout(() => {
-                                printWindow.focus();
                                 printWindow.print();
-
+                                
+                                // ✅ Auto close setelah print
                                 printWindow.onafterprint = () => {
                                     printWindow.close();
                                 };
-
-                                setTimeout(() => {
-                                    if (!printWindow.closed) {
-                                        printWindow.close();
-                                    }
-                                }, 2000);
-
                             }, 500);
                         };
 
@@ -1130,8 +1124,21 @@
                     this.isNavigating = true;
                     this.showSuccessModal = false;
 
+                    // ✅ Reset form untuk transaksi baru
                     setTimeout(() => {
-                        window.location.href = '/penjualan-cepat';
+                        this.form.items = [];
+                        this.penjualanId = null;
+                        this.penjualanData = null;
+                        this.nominalBayarDisplay = '';
+                        this.nominalBayar = 0;
+                        this.kembalian = 0;
+                        this.metodePembayaran = 'cash';
+                        this.namaBank = '';
+                        this.recalc();
+                        this.isNavigating = false;
+                        
+                        // ✅ Reload halaman untuk generate nomor faktur baru
+                        window.location.reload();
                     }, 300);
                 },
 

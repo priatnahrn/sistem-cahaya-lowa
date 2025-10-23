@@ -34,8 +34,8 @@
     </div>
 
     {{-- NAV - SCROLLABLE (HIDDEN SCROLLBAR) --}}
-    <div class="flex-1 overflow-y-auto px-4 pb-4 mt-4 space-y-7 scrollbar-hide" 
-         style="scrollbar-width: none; -ms-overflow-style: none;">
+    <div class="flex-1 overflow-y-auto px-4 pb-4 mt-4 space-y-7 scrollbar-hide"
+        style="scrollbar-width: none; -ms-overflow-style: none;">
 
         {{-- ==================== --}}
         {{-- SECTION: UTAMA --}}
@@ -43,6 +43,7 @@
         @php
             // Cek apakah ada menu di section UTAMA
             $hasDashboard = auth()->user()->can('dashboard.view');
+            $canViewCekHarga = auth()->user()->can('cek_harga.view');
             $canViewPenjualan = auth()->user()->can('penjualan.view');
             $canViewPengiriman = auth()->user()->can('pengiriman.view');
             $canViewRetur = auth()->user()->can('retur_penjualan.view');
@@ -52,18 +53,25 @@
             $canViewPembelian = auth()->user()->can('pembelian.view');
             $canViewReturPembelian = auth()->user()->can('retur_pembelian.view');
             $canViewTagihanPembelian = auth()->user()->can('tagihan_pembelian.view');
-            
+
             $showPenjualanSection = $canViewPenjualan || $canViewPengiriman || $canViewRetur;
             $showKasirSection = $canViewPenjualanCepat || $canViewPembayaran || $canViewTagihanPenjualan;
             $showPembelianSection = $canViewPembelian || $canViewReturPembelian || $canViewTagihanPembelian;
-            
+
             // Show section UTAMA jika ada minimal 1 menu
-            $showUtamaSection = $hasDashboard || $showPenjualanSection || $showKasirSection || $showPembelianSection;
+            $showUtamaSection =
+                $hasDashboard ||
+                $canViewCekHarga ||
+                $showPenjualanSection ||
+                $showKasirSection ||
+                $showPembelianSection;
         @endphp
+
 
         @if ($showUtamaSection)
             <div>
-                <div x-show="!collapsed" class="text-[11px] font-semibold tracking-wider mb-3 text-blue-100/80">UTAMA</div>
+                <div x-show="!collapsed" class="text-[11px] font-semibold tracking-wider mb-3 text-blue-100/80">UTAMA
+                </div>
 
                 {{-- Dashboard --}}
                 @can('dashboard.view')
@@ -73,6 +81,17 @@
                         :class="{ 'justify-center': collapsed }">
                         <i class="fa-solid fa-house" :class="collapsed ? 'text-lg' : ''"></i>
                         <span x-show="!collapsed" class="font-medium">Dashboard</span>
+                    </a>
+                @endcan
+
+                {{-- Cek Harga --}}
+                @can('cek_harga.view')
+                    @php $active = $is('cek-harga.*'); @endphp
+                    <a href="{{ route('cek-harga.index') }}"
+                        class="mt-2 flex items-center gap-3 px-3 py-[10px] rounded-md transition {{ $active ? 'bg-white text-[#344579]' : 'text-white/85 hover:bg-white/5' }}"
+                        :class="{ 'justify-center': collapsed }">
+                        <i class="fa-solid fa-barcode" :class="collapsed ? 'text-lg' : ''"></i>
+                        <span x-show="!collapsed" class="font-medium">Cek Harga</span>
                     </a>
                 @endcan
 
@@ -99,7 +118,8 @@
                                 <a href="{{ route('penjualan.index') }}"
                                     class="block px-3 py-2 rounded-md text-[13px] transition {{ $on ? 'bg-white text-[#344579] font-semibold' : 'text-white/80 hover:bg-white/5' }}">
                                     <span class="flex items-center gap-3">
-                                        <span class="inline-block w-[3px] h-5 rounded {{ $on ? 'bg-white' : 'bg-transparent' }}"></span>
+                                        <span
+                                            class="inline-block w-[3px] h-5 rounded {{ $on ? 'bg-white' : 'bg-transparent' }}"></span>
                                         <span>Daftar Penjualan</span>
                                     </span>
                                 </a>
@@ -111,7 +131,8 @@
                                 <a href="{{ route('pengiriman.index') }}"
                                     class="block px-3 py-2 rounded-md text-[13px] transition {{ $on ? 'bg-white text-[#344579] font-semibold' : 'text-white/80 hover:bg-white/5' }}">
                                     <span class="flex items-center gap-3">
-                                        <span class="inline-block w-[3px] h-5 rounded {{ $on ? 'bg-white' : 'bg-transparent' }}"></span>
+                                        <span
+                                            class="inline-block w-[3px] h-5 rounded {{ $on ? 'bg-white' : 'bg-transparent' }}"></span>
                                         <span>Daftar Pengiriman</span>
                                     </span>
                                 </a>
@@ -123,7 +144,8 @@
                                 <a href="{{ route('retur-penjualan.index') }}"
                                     class="block px-3 py-2 rounded-md text-[13px] transition {{ $on ? 'bg-white text-[#344579] font-semibold' : 'text-white/80 hover:bg-white/5' }}">
                                     <span class="flex items-center gap-3">
-                                        <span class="inline-block w-[3px] h-5 rounded {{ $on ? 'bg-white' : 'bg-transparent' }}"></span>
+                                        <span
+                                            class="inline-block w-[3px] h-5 rounded {{ $on ? 'bg-white' : 'bg-transparent' }}"></span>
                                         <span>Retur Penjualan</span>
                                     </span>
                                 </a>
@@ -155,7 +177,8 @@
                                 <a href="{{ route('penjualan-cepat.index') }}"
                                     class="block px-3 py-2 rounded-md text-[13px] transition {{ $on ? 'bg-white text-[#344579] font-semibold' : 'text-white/80 hover:bg-white/5' }}">
                                     <span class="flex items-center gap-3">
-                                        <span class="inline-block w-[3px] h-5 rounded {{ $on ? 'bg-white' : 'bg-transparent' }}"></span>
+                                        <span
+                                            class="inline-block w-[3px] h-5 rounded {{ $on ? 'bg-white' : 'bg-transparent' }}"></span>
                                         <span>Penjualan Cepat</span>
                                     </span>
                                 </a>
@@ -167,7 +190,8 @@
                                 <a href="{{ route('pembayaran.index') }}"
                                     class="block px-3 py-2 rounded-md text-[13px] transition {{ $on ? 'bg-white text-[#344579] font-semibold' : 'text-white/80 hover:bg-white/5' }}">
                                     <span class="flex items-center gap-3">
-                                        <span class="inline-block w-[3px] h-5 rounded {{ $on ? 'bg-white' : 'bg-transparent' }}"></span>
+                                        <span
+                                            class="inline-block w-[3px] h-5 rounded {{ $on ? 'bg-white' : 'bg-transparent' }}"></span>
                                         <span>Pembayaran</span>
                                     </span>
                                 </a>
@@ -179,7 +203,8 @@
                                 <a href="{{ route('tagihan-penjualan.index') }}"
                                     class="block px-3 py-2 rounded-md text-[13px] transition {{ $on ? 'bg-white text-[#344579] font-semibold' : 'text-white/80 hover:bg-white/5' }}">
                                     <span class="flex items-center gap-3">
-                                        <span class="inline-block w-[3px] h-5 rounded {{ $on ? 'bg-white' : 'bg-transparent' }}"></span>
+                                        <span
+                                            class="inline-block w-[3px] h-5 rounded {{ $on ? 'bg-white' : 'bg-transparent' }}"></span>
                                         <span>Tagihan Penjualan</span>
                                     </span>
                                 </a>
@@ -211,7 +236,8 @@
                                 <a href="{{ route('pembelian.index') }}"
                                     class="block px-3 py-2 rounded-md text-[13px] transition {{ $on ? 'bg-white text-[#344579] font-semibold' : 'text-white/80 hover:bg-white/5' }}">
                                     <span class="flex items-center gap-3">
-                                        <span class="inline-block w-[3px] h-5 rounded {{ $on ? 'bg-white' : 'bg-transparent' }}"></span>
+                                        <span
+                                            class="inline-block w-[3px] h-5 rounded {{ $on ? 'bg-white' : 'bg-transparent' }}"></span>
                                         <span>Daftar Pembelian</span>
                                     </span>
                                 </a>
@@ -223,7 +249,8 @@
                                 <a href="{{ route('retur-pembelian.index') }}"
                                     class="block px-3 py-2 rounded-md text-[13px] transition {{ $on ? 'bg-white text-[#344579] font-semibold' : 'text-white/80 hover:bg-white/5' }}">
                                     <span class="flex items-center gap-3">
-                                        <span class="inline-block w-[3px] h-5 rounded {{ $on ? 'bg-white' : 'bg-transparent' }}"></span>
+                                        <span
+                                            class="inline-block w-[3px] h-5 rounded {{ $on ? 'bg-white' : 'bg-transparent' }}"></span>
                                         <span>Retur Pembelian</span>
                                     </span>
                                 </a>
@@ -235,7 +262,8 @@
                                 <a href="{{ route('tagihan-pembelian.index') }}"
                                     class="block px-3 py-2 rounded-md text-[13px] transition {{ $on ? 'bg-white text-[#344579] font-semibold' : 'text-white/80 hover:bg-white/5' }}">
                                     <span class="flex items-center gap-3">
-                                        <span class="inline-block w-[3px] h-5 rounded {{ $on ? 'bg-white' : 'bg-transparent' }}"></span>
+                                        <span
+                                            class="inline-block w-[3px] h-5 rounded {{ $on ? 'bg-white' : 'bg-transparent' }}"></span>
                                         <span>Tagihan Pembelian</span>
                                     </span>
                                 </a>
@@ -316,7 +344,8 @@
                                 <a href="{{ route('items.categories.index') }}"
                                     class="block px-3 py-2 rounded-md text-[13px] transition {{ $on ? 'bg-white text-[#344579] font-semibold' : 'text-white/80 hover:bg-white/5' }}">
                                     <span class="flex items-center gap-3">
-                                        <span class="inline-block w-[3px] h-5 rounded {{ $on ? 'bg-white' : 'bg-transparent' }}"></span>
+                                        <span
+                                            class="inline-block w-[3px] h-5 rounded {{ $on ? 'bg-white' : 'bg-transparent' }}"></span>
                                         <span>Kategori Item</span>
                                     </span>
                                 </a>
@@ -327,7 +356,8 @@
                                 <a href="{{ route('items.index') }}"
                                     class="block px-3 py-2 rounded-md text-[13px] transition {{ $on ? 'bg-white text-[#344579] font-semibold' : 'text-white/80 hover:bg-white/5' }}">
                                     <span class="flex items-center gap-3">
-                                        <span class="inline-block w-[3px] h-5 rounded {{ $on ? 'bg-white' : 'bg-transparent' }}"></span>
+                                        <span
+                                            class="inline-block w-[3px] h-5 rounded {{ $on ? 'bg-white' : 'bg-transparent' }}"></span>
                                         <span>Daftar Item</span>
                                     </span>
                                 </a>
@@ -472,8 +502,10 @@
 
         /* Hide scrollbar for IE, Edge and Firefox */
         .scrollbar-hide {
-            -ms-overflow-style: none;  /* IE and Edge */
-            scrollbar-width: none;  /* Firefox */
+            -ms-overflow-style: none;
+            /* IE and Edge */
+            scrollbar-width: none;
+            /* Firefox */
         }
     </style>
 </aside>

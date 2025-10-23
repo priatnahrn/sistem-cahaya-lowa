@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\CekHargaController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\GajiController;
 use Illuminate\Support\Facades\Route;
@@ -28,14 +29,7 @@ use App\Http\Controllers\RoleController;
 use App\Http\Controllers\TagihanPenjualanController;
 use App\Http\Controllers\UserManagementController;
 
-// ========================
-// 🔹 Root Route
-// ========================
-Route::get('/', function () {
-    return Auth::check()
-        ? redirect('/dashboard')
-        : redirect()->route('login');
-});
+
 
 // ========================
 // 🔹 Guest Routes (Login)
@@ -55,6 +49,7 @@ Route::get('/', function () {
     // Cari halaman pertama yang accessible
     $accessiblePages = [
         ['permission' => 'dashboard.view', 'route' => 'dashboard'],
+        ['permission' => 'cek_harga.view', 'route' => 'cek-harga.index'],
         ['permission' => 'penjualan_cepat.view', 'route' => 'penjualan-cepat.index'],
         ['permission' => 'pembayaran.view', 'route' => 'pembayaran.index'],
         ['permission' => 'penjualan.view', 'route' => 'penjualan.index'],
@@ -136,6 +131,17 @@ Route::middleware('auth')->group(function () {
             ->name('destroy');
     });
 
+
+    // ------------------------
+    // Cek Harga
+    // ------------------------
+
+    Route::prefix('cek-harga')->name('cek-harga.')->middleware('permission:cek_harga.view')->group(function () {
+        Route::get('/', [CekHargaController::class, 'index'])->name('index');
+        Route::get('/search', [CekHargaController::class, 'searchItems'])->name('search');
+        Route::get('/item/{id}', [CekHargaController::class, 'getItemDetail'])->whereNumber('id')->name('detail');
+        Route::get('/barcode/{barcode}', [CekHargaController::class, 'getItemByBarcode'])->name('barcode');
+    });
     // ------------------------
     // 🧾 Penjualan
     // ------------------------
@@ -144,10 +150,10 @@ Route::middleware('auth')->group(function () {
         Route::get('/', [PenjualanController::class, 'index'])->name('index');
         Route::get('/{id}', [PenjualanController::class, 'show'])->whereNumber('id')->name('show');
         Route::get('/{id}/last-price', [PenjualanController::class, 'getLastPrice'])->name('last_price');
-        
+
         // Helper routes (tidak perlu permission khusus, cukup view)
         Route::get('/items/search', [PenjualanController::class, 'searchItems'])->name('items.search');
-        
+
         // Create routes
         Route::middleware('permission:penjualan.create')->group(function () {
             Route::get('/create', [PenjualanController::class, 'create'])->name('create');
@@ -165,13 +171,13 @@ Route::middleware('auth')->group(function () {
             ->middleware('permission:penjualan.delete')
             ->name('destroy');
     });
-    
+
     // ✅ Kasir bisa scan faktur (tanpa akses menu penjualan)
     Route::get('/penjualan/search', [PenjualanController::class, 'searchPenjualan'])
-    ->name('penjualan.search')
-    ->middleware('permission:pembayaran.create|penjualan.view');
+        ->name('penjualan.search')
+        ->middleware('permission:pembayaran.create|penjualan.view');
     Route::get('/penjualan/{id}/print', [PenjualanController::class, 'print'])->name('penjualan.print')->middleware('permission:penjualan.view|pembayaran.create');
-    
+
     // Helper routes untuk items (bisa diakses siapa saja yang login)
     Route::get('/items/barcode/{barcode}', [PenjualanController::class, 'getItemByBarcode']);
     Route::get('/items/stock', [PenjualanController::class, 'getStock']);
