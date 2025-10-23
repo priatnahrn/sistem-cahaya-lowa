@@ -6,7 +6,7 @@
     <title>Nota Besar</title>
     <style>
         @page {
-            size: 9.5in 5in;
+            size: 9.5in 5in landscape;
             margin: 12mm;
         }
 
