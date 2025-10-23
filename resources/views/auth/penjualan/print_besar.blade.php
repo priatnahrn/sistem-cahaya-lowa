@@ -5,35 +5,61 @@
     <meta charset="UTF-8">
     <title>Nota Besar</title>
     <style>
+        /* ======= SETTING KERTAS CF K2 PRS ======= */
         @page {
-            size: 9.5in 5in landscape;
-            margin: 12mm;
+            size: 9.5in 5.5in;
+            /* Ukuran K2: 9.5 x 5.5 inch */
+            margin: 8mm;
         }
 
         @font-face {
             font-family: 'DotMatrix';
             src: url('/fonts/DOTMATRI.TTF') format('truetype');
+            font-weight: normal;
+            font-style: normal;
         }
 
+        html,
+        body,
         * {
-            font-family: 'DotMatrix', Calibri, Arial, sans-serif;
+            font-family: 'DotMatrix', monospace !important;
             box-sizing: border-box;
         }
 
         body {
             font-size: 16px;
             margin: 0;
-            padding: 0;
             color: #000;
+            display: flex;
+            flex-direction: column;
+            height: 100%;
         }
 
+        /* ======= NOTA ======= */
         .nota {
+            width: 100%;
+            height: 5.5in;
+            /* Pas tinggi kertas K2 */
             display: flex;
             flex-direction: column;
             justify-content: space-between;
-            min-height: 5in;
-            page-break-after: always;
             padding-bottom: 6px;
+            page-break-after: always;
+        }
+
+        /* ======= HEADER ======= */
+        .header-section {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 4px;
+        }
+
+        .header-section img {
+            width: 40px;
+            height: 40px;
+            margin-right: 10px;
+            object-fit: contain;
         }
 
         .company-name {
@@ -41,11 +67,22 @@
             font-size: 20px;
         }
 
+        .header-text {
+            flex: 1;
+        }
+
+        .barcode {
+            text-align: right;
+            margin-left: 12px;
+        }
+
+        /* ======= GARIS PEMBATAS ======= */
         .line {
             border-top: 1px solid #000;
             margin: 4px 0;
         }
 
+        /* ======= TABEL ======= */
         table {
             width: 100%;
             border-collapse: collapse;
@@ -69,44 +106,28 @@
             text-align: right;
         }
 
-        /* --- Header tabel selalu muncul di tiap halaman --- */
-        .content-table {
-            width: 100%;
-            border-collapse: collapse;
-            page-break-inside: auto;
+        .item-note {
+            font-size: 14px;
+            color: #333;
+            margin-top: -2px;
+            margin-left: 40px;
         }
 
-        .content-table thead {
-            display: table-header-group;
-        }
-
-        .content-table tbody {
-            display: table-row-group;
-        }
-
-        .content-table tfoot {
-            display: table-footer-group;
-        }
-
-        .content-table tbody tr {
-            page-break-inside: avoid;
-        }
-
-        /* --- FOOTER --- */
+        /* ======= FOOTER ======= */
         .footer-grid {
             width: 100%;
-            margin-top: 12px;
+            margin-top: 10px;
             page-break-inside: avoid;
         }
 
         .footer-left {
-            font-size: 16px;
+            font-size: 14px;
             vertical-align: top;
         }
 
         .footer-right {
             text-align: right;
-            font-size: 16px;
+            font-size: 14px;
             vertical-align: top;
         }
 
@@ -118,46 +139,23 @@
             font-weight: bold;
         }
 
-        .item-note {
-            font-size: 16px;
-            color: #333;
-            margin-top: -2px;
-            margin-left: 40px;
+        /* ======= MULTI HALAMAN ======= */
+        .content-table {
+            page-break-inside: auto;
         }
 
-        .header-section {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            margin-bottom: 6px;
+        .content-table thead {
+            display: table-header-group;
         }
 
-        .header-section img {
-            width: 40px;
-            height: 40px;
-            margin-right: 10px;
-            object-fit: contain;
+        .content-table tr {
+            page-break-inside: avoid;
         }
 
-        .header-text {
-            flex: 1;
-        }
-
-        .barcode {
-            text-align: right;
-            margin-left: 12px;
-        }
-
-        /* --- Pisahkan halaman setiap 5 inch --- */
-        .page-break {
-            page-break-after: always;
-            height: 0;
-            margin: 0;
-            padding: 0;
-        }
-
+        /* ======= PRINT MODE ======= */
         @media print {
             @page {
+                size: 9.5in 5.5in;
                 margin: 8mm;
             }
 
@@ -165,9 +163,19 @@
                 margin: 0;
             }
 
+            header,
+            footer {
+                display: none !important;
+            }
+
             .nota {
                 page-break-after: always;
             }
+        }
+
+        .page-divider {
+            border-top: 1px dashed #888;
+            margin: 2px 0;
         }
     </style>
 </head>
@@ -180,7 +188,7 @@
                 <img src="{{ url('storage/app/public/images/logo-cahaya-lowa-hitam.png') }}" alt="Logo CV Cahaya Lowa">
                 <div class="header-text">
                     <div class="company-name">CV CAHAYA LOWA</div>
-                    <div style="font-size: 14px;">Anabanua, Kab. Wajo</div>
+                    <div style="font-size: 13px;">Anabanua, Kab. Wajo</div>
                 </div>
                 <div class="header-right">
                     <div class="barcode">
@@ -245,10 +253,8 @@
                                     <div class="item-note">- {{ $it->keterangan }}</div>
                                 @endif
                             </td>
-                            <td>
-                                {{ number_format($it->jumlah, fmod($it->jumlah, 1) ? 2 : 0, ',', '.') }}
-                                {{ $it->satuan->nama_satuan ?? 'PCS' }}
-                            </td>
+                            <td>{{ number_format($it->jumlah, fmod($it->jumlah, 1) ? 2 : 0, ',', '.') }}
+                                {{ $it->satuan->nama_satuan ?? 'PCS' }}</td>
                             <td class="right">{{ number_format($it->harga, 0, ',', '.') }}</td>
                             <td class="right">{{ number_format($subtotal, 0, ',', '.') }}</td>
                         </tr>
@@ -277,7 +283,7 @@
 
                     <div>Subtotal : Rp {{ number_format($penjualan->sub_total ?? $total, 0, ',', '.') }}</div>
                     <div>Biaya Kirim : Rp {{ number_format($penjualan->biaya_transport ?? 0, 0, ',', '.') }}</div>
-                    <div class="bold" style="font-size:16px;">TOTAL : Rp
+                    <div class="bold" style="font-size:15px;">TOTAL : Rp
                         {{ number_format($grandTotal, 0, ',', '.') }}</div>
 
                     @if ($totalBayar > 0 && $sisaTagihan > 0)
