@@ -22,15 +22,19 @@
         * {
             font-family: 'Doto', monospace !important;
             box-sizing: border-box;
+            color: #000;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
         }
 
         body {
             font-size: 16px;
+            font-weight: 700;
             margin: 0;
-            color: #000;
             display: flex;
             flex-direction: column;
             height: 100%;
+            color: #000;
         }
 
         /* ======= NOTA ======= */
@@ -61,6 +65,7 @@
         .company-name {
             font-weight: 800;
             font-size: 20px;
+            color: #000;
         }
 
         .header-text {
@@ -77,18 +82,21 @@
             margin: 4px 0;
         }
 
-        /* ======= TABEL UMUM ======= */
+        /* ======= TABEL ======= */
         table {
             width: 100%;
             border-collapse: collapse;
             font-size: 16px;
+            color: #000;
         }
 
         th,
         td {
-            padding: 0;
+            padding: 2px 0;
             vertical-align: top;
-            font-weight: 400;
+            font-weight: 700;
+            color: #000;
+            line-height: 1.3;
         }
 
         th {
@@ -100,17 +108,16 @@
             text-align: right;
         }
 
-        /* ======= KHUSUS ITEM TABLE ======= */
+        /* ======= ITEM TABLE ======= */
         .content-table thead th {
-            font-weight: 400;
+            font-weight: 800;
             padding: 2px 0;
         }
 
         .content-table tbody td {
-            font-weight: 400;
-            padding: 2px 0;
-            line-height: 1.3;
+            font-weight: 700;
             color: #000;
+            padding: 2px 0;
             border: none !important;
         }
 
@@ -123,6 +130,7 @@
             color: #000;
             margin-top: -2px;
             margin-left: 40px;
+            font-weight: 700;
         }
 
         /* ======= FOOTER ======= */
@@ -130,17 +138,19 @@
             width: 100%;
             margin-top: 10px;
             page-break-inside: avoid;
+            font-weight: 700;
         }
 
-        .footer-left {
-            font-size: 14px;
+        .footer-left,
+        .footer-right {
+            font-size: 16px;
+            color: #000;
+            font-weight: 700;
             vertical-align: top;
         }
 
         .footer-right {
             text-align: right;
-            font-size: 14px;
-            vertical-align: top;
         }
 
         .footer-right div {
@@ -148,7 +158,7 @@
         }
 
         .footer-right .bold {
-            font-weight: 600;
+            font-weight: 800;
         }
 
         /* ======= MULTI HALAMAN ======= */
@@ -182,6 +192,15 @@
 
             .nota {
                 page-break-after: always;
+            }
+
+            th,
+            td,
+            div,
+            p,
+            span {
+                color: #000 !important;
+                font-weight: 700 !important;
             }
         }
 
