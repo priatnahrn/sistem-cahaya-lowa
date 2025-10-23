@@ -20,7 +20,7 @@
         html,
         body,
         * {
-            font-family: 'Doto', monospace !important;
+            font-family: 'Courier New', Courier, monospace !important;
             box-sizing: border-box;
             color: #000;
             -webkit-print-color-adjust: exact !important;
@@ -29,22 +29,13 @@
 
         body {
             font-size: 16px;
-            font-weight: 700;
             margin: 0;
             display: flex;
             flex-direction: column;
             height: 100%;
             color: #000;
-        }
-
-        /* ======= NOTA ======= */
-        .nota {
-            width: 100%;
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-            padding-bottom: 6px;
-            page-break-after: always;
+            font-weight: 500;
+            /* cukup tebal tapi tidak boros pita */
         }
 
         /* ======= HEADER ======= */
@@ -53,6 +44,7 @@
             align-items: center;
             justify-content: space-between;
             margin-bottom: 4px;
+            font-weight: 700;
         }
 
         .header-section img {
@@ -63,18 +55,12 @@
         }
 
         .company-name {
-            font-weight: 800;
             font-size: 20px;
-            color: #000;
-        }
-
-        .header-text {
-            flex: 1;
+            font-weight: 700;
         }
 
         .barcode {
             text-align: right;
-            margin-left: 12px;
         }
 
         /* ======= GARIS PEMBATAS ======= */
@@ -87,20 +73,18 @@
             width: 100%;
             border-collapse: collapse;
             font-size: 16px;
-            color: #000;
         }
 
         th,
         td {
-            padding: 2px 0;
+            padding: 1px 0;
             vertical-align: top;
-            font-weight: 700;
             color: #000;
-            line-height: 1.3;
         }
 
         th {
             text-align: left;
+            font-weight: 500;
         }
 
         td.right,
@@ -108,17 +92,17 @@
             text-align: right;
         }
 
-        /* ======= ITEM TABLE ======= */
+        /* ======= TABEL ITEM ======= */
         .content-table thead th {
-            font-weight: 800;
-            padding: 2px 0;
+            font-weight: 500;
         }
 
         .content-table tbody td {
-            font-weight: 700;
+            font-weight: 500;
             color: #000;
-            padding: 2px 0;
+            line-height: 1.4;
             border: none !important;
+            letter-spacing: 0.3px;
         }
 
         .content-table tbody tr td:first-child {
@@ -130,7 +114,7 @@
             color: #000;
             margin-top: -2px;
             margin-left: 40px;
-            font-weight: 700;
+            font-weight: 500;
         }
 
         /* ======= FOOTER ======= */
@@ -138,27 +122,28 @@
             width: 100%;
             margin-top: 10px;
             page-break-inside: avoid;
-            font-weight: 700;
+            font-size: 15px;
+            color: #000;
+            font-weight: 500;
         }
 
-        .footer-left,
-        .footer-right {
-            font-size: 16px;
-            color: #000;
-            font-weight: 700;
+        .footer-left {
             vertical-align: top;
         }
 
         .footer-right {
             text-align: right;
+            vertical-align: top;
         }
 
         .footer-right div {
             margin-bottom: 3px;
         }
 
+        /* ✅ hanya bagian tertentu yang bold */
+        .footer-left b,
         .footer-right .bold {
-            font-weight: 800;
+            font-weight: 500;
         }
 
         /* ======= MULTI HALAMAN ======= */
@@ -200,7 +185,6 @@
             p,
             span {
                 color: #000 !important;
-                font-weight: 700 !important;
             }
         }
 
@@ -209,6 +193,7 @@
             margin: 2px 0;
         }
     </style>
+
 </head>
 
 <body>
