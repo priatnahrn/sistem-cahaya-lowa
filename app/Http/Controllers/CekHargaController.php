@@ -48,6 +48,7 @@ class CekHargaController extends Controller
                     'kode_item' => $item->kode_item,
                     'barcode' => $item->barcode,
                     'kategori' => $item->kategori?->nama_kategori ?? '-',
+                    'foto_path' => $item->foto_path, // ✅ TAMBAHKAN
                 ];
             });
 
@@ -100,6 +101,7 @@ class CekHargaController extends Controller
                 'barcode' => $item->barcode,
                 'kategori' => $item->kategori?->nama_kategori ?? '-',
                 'deskripsi' => $item->deskripsi,
+                'foto_path' => $item->foto_path, // ✅ TAMBAHKAN
                 'gudang_items' => $gudangItems,
             ]
         ]);
