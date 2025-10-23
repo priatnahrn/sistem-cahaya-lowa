@@ -219,7 +219,7 @@
                     </div>
                 </div>
             </div>
-            
+
             {{-- INFO TABLE --}}
             <table style="width:100%; font-size:16px; margin-top:6px;">
                 <tr>
