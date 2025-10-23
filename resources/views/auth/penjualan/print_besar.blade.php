@@ -7,7 +7,7 @@
     <style>
         @page {
             size: 9.5in 11in landscape;
-            margin: 4mm;
+            margin: 12mm;
         }
 
         /* Gunakan Calibri di seluruh elemen */
