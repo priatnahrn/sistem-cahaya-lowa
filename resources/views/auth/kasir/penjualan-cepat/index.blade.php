@@ -67,10 +67,10 @@
             class="bg-white border border-slate-200 rounded-xl px-6 py-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
             <div class="flex items-center gap-3">
                 @can('penjualan_cepat.create')
-                <a href="{{ route('penjualan-cepat.create') }}"
-                    class="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-white bg-[#344579] hover:bg-[#2e3e6a] shadow">
-                    <i class="fa-solid fa-add"></i> Tambah Penjualan Cepat
-                </a>
+                    <a href="{{ route('penjualan-cepat.create') }}"
+                        class="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-white bg-[#344579] hover:bg-[#2e3e6a] shadow">
+                        <i class="fa-solid fa-add"></i> Tambah Penjualan Cepat
+                    </a>
                 @endcan
             </div>
 
@@ -175,8 +175,8 @@
                                 <td class="px-4 py-3 font-medium" x-text="r.no_faktur"></td>
                                 <td class="px-4 py-3 text-slate-600" x-text="fmtTanggal(r.tanggal)"></td>
                                 <td class="px-4 py-3 text-green-600 font-medium">
-                                    <a :href="`/penjualan-cepat/${r.id}`" class="hover:underline hover:text-[#2e3e6a] transition"
-                                        x-text="r.pelanggan">
+                                    <a :href="`/penjualan-cepat/${r.id}`"
+                                        class="hover:underline hover:text-[#2e3e6a] transition" x-text="r.pelanggan">
                                     </a>
                                 </td>
                                 <td class="px-4 py-3 text-right font-semibold" x-text="formatRupiah(r.total)"></td>
@@ -295,7 +295,8 @@
                         <div class="text-sm text-amber-700">
                             <p class="font-medium">Perhatian:</p>
                             <p class="mt-1">Tindakan ini akan menghapus data dan mengembalikan stok. Proses ini
-                                <strong>tidak dapat dibatalkan</strong>.</p>
+                                <strong>tidak dapat dibatalkan</strong>.
+                            </p>
                         </div>
                     </div>
                 </div>
@@ -382,7 +383,7 @@
             </a>
 
             <!-- Tombol Print (hanya jika lunas) -->
-            {{-- <button @click="dropdownData.status === 'lunas' ? openPrintModal(dropdownData) : null"
+            <button @click="dropdownData.status === 'lunas' ? openPrintModal(dropdownData) : null"
                 :disabled="dropdownData.status !== 'lunas'"
                 class="w-full text-left px-4 py-2 text-sm flex items-center gap-2 rounded transition"
                 :class="{
@@ -392,15 +393,14 @@
                 <i class="fa-solid fa-print"
                     :class="dropdownData.status === 'lunas' ? 'text-green-500' : 'text-slate-400'"></i>
                 <span>Print</span>
-            </button> --}}
+            </button>
 
             <!-- Tombol Hapus -->
             @can('penjualan_cepat.delete')
-
-            <button @click="confirmDelete(dropdownData)"
-                class="w-full text-left px-4 py-2 text-sm hover:bg-red-50 flex items-center gap-2 text-red-600">
-                <i class="fa-solid fa-trash"></i> Hapus
-            </button>
+                <button @click="confirmDelete(dropdownData)"
+                    class="w-full text-left px-4 py-2 text-sm hover:bg-red-50 flex items-center gap-2 text-red-600">
+                    <i class="fa-solid fa-trash"></i> Hapus
+                </button>
             @endcan
         </div>
     </div>
@@ -477,7 +477,7 @@
                 // --- FILTER + SORT ---
                 filteredList() {
                     const q = this.q.trim().toLowerCase();
-                    
+
                     let list = this.data.filter(r => {
                         if (q && !(`${r.no_faktur} ${r.pelanggan}`.toLowerCase().includes(q))) return false;
                         if (this.filters.no_faktur && !r.no_faktur.toLowerCase().includes(this.filters.no_faktur
@@ -723,7 +723,9 @@
                 confirmDelete(item) {
                     if (!item) return;
                     this.closeDropdown();
-                    this.deleteItem = {...item};
+                    this.deleteItem = {
+                        ...item
+                    };
                     this.showDeleteModal = true;
                 },
 
@@ -772,7 +774,9 @@
                 openPrintModal(item) {
                     if (!item || item.status !== 'lunas') return;
                     this.closeDropdown();
-                    this.printItem = {...item};
+                    this.printItem = {
+                        ...item
+                    };
                     this.showPrintModal = true;
                 },
 
@@ -828,7 +832,7 @@
                     }
                 },
 
-               
+
 
                 // --- NOTIFICATION ---
                 showNotification(type, message) {

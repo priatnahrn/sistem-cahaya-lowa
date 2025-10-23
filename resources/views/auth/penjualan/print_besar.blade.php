@@ -6,34 +6,22 @@
     <title>Nota Besar</title>
     <style>
         @page {
-            size: 9.5in 11in landscape;
+            size: 9.5in 5in landscape;
             margin: 12mm;
         }
 
-        /* Gunakan Calibri di seluruh elemen */
+        @font-face {
+            font-family: 'DotMatrix';
+            src: url('/fonts/DOTMATRI.TTF') format('truetype');
+        }
+
         * {
-            font-family: Calibri, Arial, sans-serif;
+            font-family: 'DotMatrix', Calibri, Arial, sans-serif;
             box-sizing: border-box;
         }
 
-        @media print {
-            @page {
-                margin: 8mm;
-            }
-
-            body {
-                margin: 0;
-            }
-
-            header,
-            footer {
-                display: none !important;
-            }
-        }
-
-
         body {
-            font-size: 16px;
+            font-size: 18px;
             margin: 0;
             padding: 0;
             color: #000;
@@ -46,9 +34,10 @@
             display: flex;
             flex-direction: column;
             justify-content: space-between;
-            height: 5in;
-            /* setengah dari 11 inch */
+            height: auto;
+            min-height: 5in;
             padding-bottom: 6px;
+            page-break-after: auto;
         }
 
         .company-name {
@@ -64,7 +53,7 @@
         table {
             width: 100%;
             border-collapse: collapse;
-            font-size: 16px;
+            font-size: 18px;
         }
 
         th,
@@ -87,16 +76,17 @@
         .footer-grid {
             width: 100%;
             margin-top: 12px;
+            page-break-inside: avoid;
         }
 
         .footer-left {
-            font-size: 16px;
+            font-size: 18px;
             vertical-align: top;
         }
 
         .footer-right {
             text-align: right;
-            font-size: 16px;
+            font-size: 18px;
             vertical-align: top;
         }
 
@@ -109,7 +99,7 @@
         }
 
         .item-note {
-            font-size: 16px;
+            font-size: 18px;
             color: #333;
             margin-top: -2px;
             margin-left: 40px;
@@ -133,6 +123,45 @@
             flex: 1;
         }
 
+        .barcode {
+            text-align: right;
+            margin-left: 12px;
+        }
+
+        /* --- Konten table agar bisa multi halaman --- */
+        .content-table {
+            max-height: 5in;
+            overflow: visible;
+            page-break-inside: auto;
+        }
+
+        .content-table thead {
+            display: table-header-group;
+        }
+
+        .content-table tbody tr {
+            page-break-inside: avoid;
+        }
+
+        @media print {
+            @page {
+                margin: 8mm;
+            }
+
+            body {
+                margin: 0;
+            }
+
+            header,
+            footer {
+                display: none !important;
+            }
+
+            .nota {
+                page-break-after: auto;
+            }
+        }
+
         .page-divider {
             border-top: 1px dashed #888;
             margin: 2px 0;
@@ -142,7 +171,7 @@
 
 <body>
     <div class="nota">
-        {{-- HEADER --}}
+        {{-- HEADER (Hanya sekali muncul di atas) --}}
         <div>
             <div class="header-section">
                 <img src="{{ url('storage/app/public/images/logo-cahaya-lowa-hitam.png') }}" alt="Logo CV Cahaya Lowa">
@@ -151,9 +180,6 @@
                     <div style="font-size: 13px;">Anabanua, Kab. Wajo</div>
                 </div>
                 <div class="header-right">
-
-                    {{-- BARCODE --}}
-                    {{-- QR / BARCODE --}}
                     <div class="barcode">
                         {!! $barcode !!}
                     </div>
@@ -161,7 +187,7 @@
             </div>
 
             {{-- INFO TABLE --}}
-            <table style="width:100%; font-size:16px; margin-top:6px;">
+            <table style="width:100%; font-size:18px; margin-top:6px;">
                 <tr>
                     <td style="width:90px;">NPWP</td>
                     <td style="width:180px;">: {{ $penjualan->pelanggan->npwp ?? '0' }}</td>
@@ -191,7 +217,7 @@
             <div class="line"></div>
 
             {{-- TABEL ITEM --}}
-            <table>
+            <table class="content-table">
                 <thead>
                     <tr>
                         <th style="width:40px;">GD</th>
@@ -230,14 +256,14 @@
             <div class="line"></div>
         </div>
 
-        {{-- FOOTER --}}
+        {{-- FOOTER (Hanya sekali di bawah terakhir) --}}
         <table class="footer-grid">
             <tr>
                 <td class="footer-left" style="width:60%;">
                     <div><b>PERHATIAN :</b></div>
                     <div>1. Barang yang sudah dibeli tidak dapat dikembalikan/ditukar.</div>
                     <div>2. Pembayaran dengan Cek/BG dianggap lunas setelah dicairkan.</div>
-                    <div>HARGA SUDAH TERMASUK PPN</div>
+                    <div><b>HARGA SUDAH TERMASUK PPN</b></div>
                 </td>
                 <td class="footer-right">
                     @php
@@ -262,17 +288,10 @@
         </table>
     </div>
 
-    <div class="page-divider"></div>
-
-    {{-- Jika ingin dua nota dalam satu halaman, copy ulang blok .nota di sini --}}
-
     <script>
         window.onload = function() {
             window.print();
-            // Auto-close setelah print dialog (baik print atau cancel)
             window.onafterprint = () => window.close();
-
-            // Fallback: auto-close paksa setelah 2 detik
             setTimeout(() => {
                 if (!window.closed) window.close();
             }, 2000);
