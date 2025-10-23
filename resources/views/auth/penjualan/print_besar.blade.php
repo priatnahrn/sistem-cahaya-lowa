@@ -254,6 +254,15 @@
                         <th class="right" style="width:120px;">SUBTOTAL</th>
                     </tr>
                 </thead>
+                 <thead>
+                    <tr>
+                        <th style="width:40px;">GD</th>
+                        <th>NAMA BARANG</th>
+                        <th style="width:100px;">BANYAK</th>
+                        <th class="right" style="width:110px;">HARGA</th>
+                        <th class="right" style="width:120px;">SUBTOTAL</th>
+                    </tr>
+                </thead>
                 <tbody>
                     @php $total = 0; @endphp
                     @foreach ($penjualan->items as $i => $it)
