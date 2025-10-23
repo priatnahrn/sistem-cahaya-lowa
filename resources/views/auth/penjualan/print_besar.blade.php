@@ -7,11 +7,16 @@
     <style>
         @page {
             size: 9.5in 11in landscape;
-            margin: 8mm;
+            margin: 4mm;
+        }
+
+        /* Gunakan Calibri di seluruh elemen */
+        * {
+            font-family: Calibri, Arial, sans-serif;
+            box-sizing: border-box;
         }
 
         body {
-            font-family: 'Courier New', monospace;
             font-size: 14px;
             margin: 0;
             padding: 0;
@@ -25,37 +30,36 @@
             display: flex;
             flex-direction: column;
             justify-content: space-between;
-            height: 5.5in;
-            /* setengah dari 11 inch */
+            height: 5in; /* setengah dari 11 inch */
             padding-bottom: 6px;
-            box-sizing: border-box;
         }
 
         .company-name {
             font-weight: bold;
-            font-size: 18px;
+            font-size: 20px;
         }
 
         .line {
             border-top: 1px solid #000;
-            margin: 6px 0;
+            margin: 8px 0;
         }
 
         table {
             width: 100%;
             border-collapse: collapse;
-            font-size: 12px;
+            font-size: 14px;
         }
 
         th,
         td {
-            padding: 3px 5px;
+            padding: 2px 4px;
+            vertical-align: top;
         }
 
         th {
             border-bottom: 1px solid #000;
             text-align: left;
-            font-weight: 600;
+            font-weight: 500;
         }
 
         td.right,
@@ -69,13 +73,13 @@
         }
 
         .footer-left {
-            font-size: 15px;
+            font-size: 12px;
             vertical-align: top;
         }
 
         .footer-right {
             text-align: right;
-            font-size: 15px;
+            font-size: 14px;
             vertical-align: top;
         }
 
@@ -88,7 +92,7 @@
         }
 
         .item-note {
-            font-size: 14px;
+            font-size: 13px;
             color: #333;
             margin-top: -2px;
             margin-left: 40px;
@@ -97,12 +101,12 @@
         .header-section {
             display: flex;
             align-items: center;
-            margin-bottom: 5px;
+            margin-bottom: 6px;
         }
 
         .header-section img {
-            width: 35px;
-            height: 35px;
+            width: 40px;
+            height: 40px;
             margin-right: 10px;
             object-fit: contain;
         }
@@ -126,7 +130,7 @@
                 <img src="{{ url('storage/app/public/images/logo-cahaya-lowa-hitam.png') }}" alt="Logo CV Cahaya Lowa">
                 <div class="header-text">
                     <div class="company-name">CV CAHAYA LOWA</div>
-                    <div>Anabanua, Kab. Wajo</div>
+                    <div style="font-size: 13px;">Anabanua, Kab. Wajo</div>
                 </div>
             </div>
 
@@ -164,7 +168,7 @@
             <table>
                 <thead>
                     <tr>
-                        <th style="width:40px;">NO</th>
+                        <th style="width:40px;">GD</th>
                         <th>NAMA BARANG</th>
                         <th style="width:100px;">BANYAK</th>
                         <th class="right" style="width:110px;">HARGA</th>
@@ -179,7 +183,7 @@
                             $total += $subtotal;
                         @endphp
                         <tr>
-                            <td>{{ str_pad($i + 1, 2, '0', STR_PAD_LEFT) }}</td>
+                            <td>{{ $it->gudang->kode_gudang ?? '-' }}</td>
                             <td>
                                 {{ strtoupper($it->item->nama_item ?? '-') }}
                                 @if (!empty($it->keterangan))
@@ -207,7 +211,7 @@
                     <div><b>PERHATIAN :</b></div>
                     <div>1. Barang yang sudah dibeli tidak dapat dikembalikan/ditukar.</div>
                     <div>2. Pembayaran dengan Cek/BG dianggap lunas setelah dicairkan.</div>
-                    <div>3. Periksa kembali barang sebelum meninggalkan toko.</div>
+                    <div>HARGA SUDAH TERMASUK PPN</div>
                 </td>
                 <td class="footer-right">
                     @php
@@ -218,13 +222,11 @@
 
                     <div>Subtotal : Rp {{ number_format($penjualan->sub_total ?? $total, 0, ',', '.') }}</div>
                     <div>Biaya Kirim : Rp {{ number_format($penjualan->biaya_transport ?? 0, 0, ',', '.') }}</div>
-                    <div class="bold">TOTAL : Rp {{ number_format($grandTotal, 0, ',', '.') }}</div>
+                    <div class="bold" style="font-size:15px;">TOTAL : Rp {{ number_format($grandTotal, 0, ',', '.') }}</div>
 
                     @if ($totalBayar > 0 && $sisaTagihan > 0)
-                        <div style="margin-top: 4px;">Jumlah Bayar : Rp {{ number_format($totalBayar, 0, ',', '.') }}
-                        </div>
-                        <div class="bold" style="color: #cc0000;">SISA : Rp
-                            {{ number_format($sisaTagihan, 0, ',', '.') }}</div>
+                        <div style="margin-top: 4px;">Jumlah Bayar : Rp {{ number_format($totalBayar, 0, ',', '.') }}</div>
+                        <div class="bold" style="color: #cc0000;">SISA : Rp {{ number_format($sisaTagihan, 0, ',', '.') }}</div>
                     @endif
                 </td>
             </tr>
