@@ -219,7 +219,34 @@
                     </div>
                 </div>
             </div>
-
+            
+            {{-- INFO TABLE --}}
+            <table style="width:100%; font-size:16px; margin-top:6px;">
+                <tr>
+                    <td style="width:90px;">NPWP</td>
+                    <td style="width:180px;">: {{ $penjualan->pelanggan->npwp ?? '0' }}</td>
+                    <td style="width:90px;">Nota #</td>
+                    <td>: {{ $penjualan->no_faktur }}</td>
+                </tr>
+                <tr>
+                    <td>Telp</td>
+                    <td>: 0811 4284 995</td>
+                    <td>Pelanggan</td>
+                    <td>: {{ $penjualan->pelanggan->nama_pelanggan ?? 'CUSTOMER' }}</td>
+                </tr>
+                <tr>
+                    <td>Tanggal</td>
+                    <td>: {{ \Carbon\Carbon::parse($penjualan->tanggal)->format('d/m/Y') }}</td>
+                    <td>Telepon</td>
+                    <td>: {{ $penjualan->pelanggan->kontak ?? '-' }}</td>
+                </tr>
+                <tr>
+                    <td>Admin</td>
+                    <td>: {{ $penjualan->createdBy->name ?? '-' }}</td>
+                    <td>Alamat</td>
+                    <td>: {{ $penjualan->pelanggan->alamat ?? '-' }}</td>
+                </tr>
+            </table>
             <div class="line"></div>
 
             {{-- TABEL ITEM --}}
@@ -260,33 +287,6 @@
             <div class="line"></div>
         </div>
 
-        {{-- INFO TABLE --}}
-        <table style="width:100%; font-size:16px; margin-top:6px;">
-            <tr>
-                <td style="width:90px;">NPWP</td>
-                <td style="width:180px;">: {{ $penjualan->pelanggan->npwp ?? '0' }}</td>
-                <td style="width:90px;">Nota #</td>
-                <td>: {{ $penjualan->no_faktur }}</td>
-            </tr>
-            <tr>
-                <td>Telp</td>
-                <td>: 0811 4284 995</td>
-                <td>Pelanggan</td>
-                <td>: {{ $penjualan->pelanggan->nama_pelanggan ?? 'CUSTOMER' }}</td>
-            </tr>
-            <tr>
-                <td>Tanggal</td>
-                <td>: {{ \Carbon\Carbon::parse($penjualan->tanggal)->format('d/m/Y') }}</td>
-                <td>Telepon</td>
-                <td>: {{ $penjualan->pelanggan->kontak ?? '-' }}</td>
-            </tr>
-            <tr>
-                <td>Admin</td>
-                <td>: {{ $penjualan->createdBy->name ?? '-' }}</td>
-                <td>Alamat</td>
-                <td>: {{ $penjualan->pelanggan->alamat ?? '-' }}</td>
-            </tr>
-        </table>
 
         {{-- FOOTER --}}
         <table class="footer-grid">
